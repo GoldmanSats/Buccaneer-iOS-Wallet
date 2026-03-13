@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   FlatList,
   RefreshControl,
   Platform,
+  TextInput,
   Alert,
 } from "react-native";
 import { router } from "expo-router";
@@ -20,7 +21,7 @@ import Animated, {
   withRepeat,
   FadeInDown,
 } from "react-native-reanimated";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -28,7 +29,6 @@ import { useWallet } from "@/contexts/WalletContext";
 const GOLD = "#c9a24d";
 const NAVY = "#0B1426";
 const NAVY_CARD = "#111D35";
-const NAVY_ELEVATED = "#172040";
 
 function formatSats(sats: number): string {
   return sats.toLocaleString();
@@ -57,23 +57,23 @@ function truncate(str: string, max: number): string {
   return str.slice(0, max) + "…";
 }
 
-interface TransactionItemProps {
-  tx: {
-    id: string;
-    type: "send" | "receive";
-    amountSats: number;
-    feeSats: number;
-    description: string;
-    timestamp: string;
-    status: string;
-  };
+interface TxType {
+  id: string;
+  type: "send" | "receive";
+  amountSats: number;
+  feeSats: number;
+  description: string;
+  memo: string;
+  timestamp: string;
+  status: string;
 }
 
-function TransactionItem({ tx }: TransactionItemProps) {
+function TransactionItem({ tx, onEditMemo }: { tx: TxType; onEditMemo: (id: string, current: string) => void }) {
   const isSend = tx.type === "send";
+  const displayText = tx.memo || tx.description || (isSend ? "Sent" : "Received");
   return (
     <Animated.View entering={FadeInDown.duration(300)}>
-      <View style={txStyles.row}>
+      <Pressable style={txStyles.row} onLongPress={() => onEditMemo(tx.id, tx.memo || "")}>
         <View style={[txStyles.iconBg, { backgroundColor: isSend ? "rgba(231,111,81,0.18)" : "rgba(45,198,83,0.15)" }]}>
           <Ionicons
             name={isSend ? "arrow-up" : "arrow-down"}
@@ -84,7 +84,7 @@ function TransactionItem({ tx }: TransactionItemProps) {
 
         <View style={txStyles.meta}>
           <Text style={txStyles.desc} numberOfLines={1}>
-            {truncate(tx.description || (isSend ? "Sent" : "Received"), 38)}
+            {truncate(displayText, 38)}
           </Text>
           <Text style={txStyles.time}>{formatTimestamp(tx.timestamp)}</Text>
         </View>
@@ -102,7 +102,7 @@ function TransactionItem({ tx }: TransactionItemProps) {
             </View>
           )}
         </View>
-      </View>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -124,61 +124,30 @@ const txStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  meta: {
-    flex: 1,
-    gap: 3,
-  },
-  desc: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    color: "#CDDAED",
-  },
-  time: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    color: "#4A6080",
-  },
-  amountCol: {
-    alignItems: "flex-end",
-    gap: 1,
-  },
-  amount: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-  },
-  unit: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 10,
-    color: "#4A6080",
-  },
-  feeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 1,
-  },
-  feeLabel: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 10,
-    color: "#4A6080",
-  },
-  feeValue: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 10,
-    color: "#4A6080",
-  },
+  meta: { flex: 1, gap: 3 },
+  desc: { fontFamily: "Inter_500Medium", fontSize: 13, color: "#CDDAED" },
+  time: { fontFamily: "Inter_400Regular", fontSize: 11, color: "#4A6080" },
+  amountCol: { alignItems: "flex-end", gap: 1 },
+  amount: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  unit: { fontFamily: "Inter_400Regular", fontSize: 10, color: "#4A6080" },
+  feeRow: { flexDirection: "row", alignItems: "center", marginTop: 1 },
+  feeLabel: { fontFamily: "Inter_400Regular", fontSize: 10, color: "#4A6080" },
+  feeValue: { fontFamily: "Inter_400Regular", fontSize: 10, color: "#4A6080" },
 });
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { settings, isLoading: settingsLoading } = useSettings();
+  const { settings, isLoading: settingsLoading, toggleBalanceHidden, toggleDisplayMode } = useSettings();
+  const { balance, transactions, btcPrice, isBalanceLoading, isTransactionsLoading, refetchBalance, refetchTransactions, updateMemo } = useWallet();
 
-  // Redirect to onboarding if not done
+  const [editingMemo, setEditingMemo] = useState<{ txId: string; text: string } | null>(null);
+
   useEffect(() => {
     if (!settingsLoading && !settings.onboardingDone) {
       router.replace("/onboarding");
     }
   }, [settingsLoading, settings.onboardingDone]);
-  const { balance, transactions, btcPrice, isBalanceLoading, isTransactionsLoading, refetchBalance, refetchTransactions } = useWallet();
+
   const balanceScale = useSharedValue(1);
   const pulseOpacity = useSharedValue(0.6);
 
@@ -197,6 +166,29 @@ export default function HomeScreen() {
     balanceScale.value = withSpring(0.95, {}, () => {
       balanceScale.value = withSpring(1);
     });
+    await toggleBalanceHidden();
+  };
+
+  const handleDisplayToggle = async () => {
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await toggleDisplayMode();
+  };
+
+  const handleEditMemo = (txId: string, current: string) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setEditingMemo({ txId, text: current });
+  };
+
+  const handleSaveMemo = async () => {
+    if (!editingMemo) return;
+    try {
+      await updateMemo(editingMemo.txId, editingMemo.text);
+    } catch (_e) {}
+    setEditingMemo(null);
   };
 
   const refreshing = isBalanceLoading || isTransactionsLoading;
@@ -206,10 +198,8 @@ export default function HomeScreen() {
   }, [refetchBalance, refetchTransactions]);
 
   const sats = balance?.balanceSats ?? 0;
-  const fiatLabel = btcPrice
-    ? formatFiat(sats, btcPrice.price, btcPrice.symbol)
-    : null;
-
+  const showFiat = settings.primaryDisplay === "fiat" && btcPrice;
+  const fiatLabel = btcPrice ? formatFiat(sats, btcPrice.price, btcPrice.symbol) : null;
   const isBackedUp = settings.backupCompleted;
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -217,19 +207,40 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: NAVY }]}>
+      {editingMemo && (
+        <View style={styles.memoOverlay}>
+          <Pressable style={styles.memoBackdrop} onPress={() => setEditingMemo(null)} />
+          <View style={styles.memoCard}>
+            <Text style={styles.memoTitle}>Edit Memo</Text>
+            <TextInput
+              style={styles.memoInput}
+              value={editingMemo.text}
+              onChangeText={(t) => setEditingMemo({ ...editingMemo, text: t })}
+              placeholder="Add a note..."
+              placeholderTextColor="#4A6080"
+              autoFocus
+              multiline
+            />
+            <View style={styles.memoActions}>
+              <Pressable onPress={() => setEditingMemo(null)} style={styles.memoCancelBtn}>
+                <Text style={styles.memoCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleSaveMemo} style={styles.memoSaveBtn}>
+                <Text style={styles.memoSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+
       <FlatList
         data={transactions}
         keyExtractor={(item) => item.id}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={GOLD}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GOLD} />
         }
         ListHeaderComponent={
           <View>
-            {/* Header Row */}
             <View style={[styles.header, { paddingTop: topPad + 12 }]}>
               <Pressable
                 testID="settings-button"
@@ -258,25 +269,45 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* Balance Section */}
-            <Pressable onPress={handleBalanceTap} testID="balance-display">
+            <Pressable onPress={handleBalanceTap} onLongPress={handleDisplayToggle} testID="balance-display">
               <Animated.View style={[styles.balanceSection, balanceAnimStyle]}>
-                <View style={styles.balanceRow}>
-                  <Text style={styles.btcSymbol}>₿</Text>
-                  <Text style={styles.balanceText}>
-                    {isBalanceLoading ? "···" : formatSats(sats)}
-                  </Text>
-                </View>
-                {fiatLabel && (
-                  <Text style={styles.fiatText}>≈ {fiatLabel} {btcPrice?.currency}</Text>
+                {settings.balanceHidden ? (
+                  <View style={styles.balanceRow}>
+                    <Text style={styles.hiddenBalance}>••••••</Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.balanceRow}>
+                      {showFiat ? (
+                        <Text style={styles.balanceText}>
+                          {isBalanceLoading ? "···" : fiatLabel}
+                        </Text>
+                      ) : (
+                        <>
+                          <Text style={styles.btcSymbol}>₿</Text>
+                          <Text style={styles.balanceText}>
+                            {isBalanceLoading ? "···" : formatSats(sats)}
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                    {showFiat ? (
+                      <Text style={styles.fiatText}>{formatSats(sats)} sats</Text>
+                    ) : (
+                      fiatLabel ? (
+                        <Text style={styles.fiatText}>≈ {fiatLabel} {btcPrice?.currency}</Text>
+                      ) : !isBalanceLoading ? (
+                        <Text style={styles.fiatText}>Loading price…</Text>
+                      ) : null
+                    )}
+                  </>
                 )}
-                {!fiatLabel && !isBalanceLoading && (
-                  <Text style={styles.fiatText}>Loading price…</Text>
-                )}
+                <Text style={styles.tapHint}>
+                  {settings.balanceHidden ? "Tap to reveal" : "Tap to hide · Hold to toggle display"}
+                </Text>
               </Animated.View>
             </Pressable>
 
-            {/* Send / Receive Buttons */}
             <View style={styles.actionRow}>
               <Pressable
                 testID="receive-button"
@@ -286,10 +317,7 @@ export default function HomeScreen() {
                   router.push("/receive");
                 }}
               >
-                <LinearGradient
-                  colors={["#172040", "#0D1830"]}
-                  style={styles.actionGradient}
-                >
+                <LinearGradient colors={["#172040", "#0D1830"]} style={styles.actionGradient}>
                   <View style={[styles.actionIcon, { backgroundColor: "rgba(42,157,143,0.2)" }]}>
                     <Ionicons name="arrow-down" size={26} color="#2A9D8F" />
                   </View>
@@ -305,10 +333,7 @@ export default function HomeScreen() {
                   router.push("/send");
                 }}
               >
-                <LinearGradient
-                  colors={["#1F1430", "#150D20"]}
-                  style={styles.actionGradient}
-                >
+                <LinearGradient colors={["#1F1430", "#150D20"]} style={styles.actionGradient}>
                   <View style={[styles.actionIcon, { backgroundColor: "rgba(231,111,81,0.2)" }]}>
                     <Ionicons name="arrow-up" size={26} color="#E76F51" />
                   </View>
@@ -317,10 +342,10 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
-            {/* Transaction Log Header */}
             <View style={styles.txHeaderRow}>
               <Ionicons name="time-outline" size={16} color={GOLD} />
               <Text style={styles.txHeaderText}>Transaction Log</Text>
+              <Text style={styles.txCount}>{transactions.length}</Text>
             </View>
           </View>
         }
@@ -337,7 +362,7 @@ export default function HomeScreen() {
             </View>
           )
         }
-        renderItem={({ item }) => <TransactionItem tx={item} />}
+        renderItem={({ item }) => <TransactionItem tx={item as TxType} onEditMemo={handleEditMemo} />}
         style={styles.list}
         contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad + 20 }]}
         showsVerticalScrollIndicator={false}
@@ -347,16 +372,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NAVY,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    flexGrow: 1,
-  },
+  container: { flex: 1, backgroundColor: NAVY },
+  list: { flex: 1 },
+  listContent: { flexGrow: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -395,7 +413,7 @@ const styles = StyleSheet.create({
   },
   balanceSection: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 36,
     paddingHorizontal: 20,
   },
   balanceRow: {
@@ -411,16 +429,29 @@ const styles = StyleSheet.create({
   },
   balanceText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 64,
+    fontSize: 56,
     color: "#FFFFFF",
     letterSpacing: -2,
-    lineHeight: 72,
+    lineHeight: 64,
+  },
+  hiddenBalance: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 56,
+    color: "#4A6080",
+    letterSpacing: 4,
+    lineHeight: 64,
   },
   fiatText: {
     fontFamily: "Inter_400Regular",
     fontSize: 16,
     color: "#8FA3C8",
     marginTop: 4,
+  },
+  tapHint: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: "#4A6080",
+    marginTop: 8,
   },
   actionRow: {
     flexDirection: "row",
@@ -465,6 +496,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 16,
     color: "#FFFFFF",
+    flex: 1,
+  },
+  txCount: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: "#4A6080",
   },
   emptyState: {
     alignItems: "center",
@@ -480,5 +517,67 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 13,
     color: "#4A6080",
+  },
+  memoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memoBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.7)",
+  },
+  memoCard: {
+    width: "85%",
+    backgroundColor: NAVY_CARD,
+    borderRadius: 20,
+    padding: 24,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: "#1E2D50",
+  },
+  memoTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+    color: "#FFFFFF",
+  },
+  memoInput: {
+    backgroundColor: "#0D1830",
+    borderRadius: 12,
+    padding: 14,
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: "#CDDAED",
+    minHeight: 60,
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "#1E2D50",
+  },
+  memoActions: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "flex-end",
+  },
+  memoCancelBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  memoCancelText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: "#4A6080",
+  },
+  memoSaveBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: GOLD,
+  },
+  memoSaveText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+    color: NAVY,
   },
 });

@@ -7,8 +7,8 @@ let initializationError: string | null = null;
 let initialized = false;
 let listenerAdded = false;
 
-// Called by the event listener when a payment comes in
 const pendingEvents: breezSdk.SdkEvent[] = [];
+let lastPaymentTimestamp = 0;
 
 async function addSdkListener(s: breezSdk.BindingLiquidSdk) {
   if (listenerAdded) return;
@@ -21,7 +21,7 @@ async function addSdkListener(s: breezSdk.BindingLiquidSdk) {
 
         if (event.type === "paymentSucceeded") {
           const p = event.details;
-          // Cache the received payment
+          lastPaymentTimestamp = Date.now();
           db.insert(transactionCacheTable)
             .values({
               txId: p.txId ?? p.destination ?? String(p.timestamp),
@@ -58,7 +58,6 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
   }
 
   try {
-    // defaultConfig is synchronous in v0.12.x
     const config = breezSdk.defaultConfig("mainnet", apiKey);
 
     sdk = await breezSdk.connect({
@@ -69,10 +68,8 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
     initialized = true;
     console.log("[Breez] SDK initialized successfully");
 
-    // Register event listener and trigger sync
     await addSdkListener(sdk);
 
-    // Force sync to pick up any payments that arrived while offline
     try {
       await sdk.sync();
       console.log("[Breez] Initial sync complete");
@@ -90,11 +87,14 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
   }
 }
 
+export function getSdkStatus(): { initialized: boolean; error: string | null } {
+  return { initialized, error: initializationError };
+}
+
 export async function syncWallet(): Promise<void> {
   const breez = await getBreezSdk();
   if (!breez) throw new Error("Wallet not initialized");
   await breez.sync();
-  console.log("[Breez] Manual sync complete");
 }
 
 export async function getBalance(): Promise<{
@@ -121,9 +121,117 @@ export async function getBalance(): Promise<{
   }
 }
 
+export async function getNodeInfo(): Promise<{
+  pubkey: string;
+  network: string;
+  blockHeight: number;
+  balanceSat: number;
+  pendingSendSat: number;
+  pendingReceiveSat: number;
+}> {
+  const breez = await getBreezSdk();
+  if (!breez) {
+    return { pubkey: "", network: "mainnet", blockHeight: 0, balanceSat: 0, pendingSendSat: 0, pendingReceiveSat: 0 };
+  }
+  const info = await breez.getInfo();
+  const w = info.walletInfo;
+  return {
+    pubkey: w.pubkey ?? "",
+    network: "mainnet",
+    blockHeight: w.blockHeight ?? 0,
+    balanceSat: w.balanceSat,
+    pendingSendSat: w.pendingSendSat,
+    pendingReceiveSat: w.pendingReceiveSat,
+  };
+}
+
+export interface ParsedInput {
+  type: "bolt11" | "lnurl" | "lightning_address" | "bitcoin" | "unknown";
+  invoice?: string;
+  address?: string;
+  amountSats?: number;
+  description?: string;
+  lnurlData?: unknown;
+}
+
+export async function parseInput(input: string): Promise<ParsedInput> {
+  const trimmed = input.trim();
+
+  if (trimmed.startsWith("lightning:")) {
+    return parseInput(trimmed.replace("lightning:", ""));
+  }
+
+  if (trimmed.startsWith("bitcoin:")) {
+    const url = new URL(trimmed);
+    const address = url.pathname;
+    const amountBtc = url.searchParams.get("amount");
+    const lightning = url.searchParams.get("lightning");
+    if (lightning) {
+      return parseInput(lightning);
+    }
+    return {
+      type: "bitcoin",
+      address,
+      amountSats: amountBtc ? Math.round(parseFloat(amountBtc) * 100_000_000) : undefined,
+    };
+  }
+
+  if (trimmed.includes("@") && !trimmed.startsWith("lnurl") && !trimmed.startsWith("lnbc")) {
+    return {
+      type: "lightning_address",
+      address: trimmed.toLowerCase(),
+    };
+  }
+
+  if (trimmed.toLowerCase().startsWith("lnurl")) {
+    return {
+      type: "lnurl",
+      address: trimmed,
+    };
+  }
+
+  if (trimmed.toLowerCase().startsWith("lnbc") || trimmed.toLowerCase().startsWith("lntb")) {
+    try {
+      const decoded = breezSdk.parseInvoice(trimmed);
+      return {
+        type: "bolt11",
+        invoice: trimmed,
+        amountSats: decoded.amountMsat ? Math.floor(decoded.amountMsat / 1000) : undefined,
+        description: decoded.description,
+      };
+    } catch {
+      return { type: "bolt11", invoice: trimmed };
+    }
+  }
+
+  return { type: "unknown" };
+}
+
+export async function prepareSendPayment(destination: string, amountSats?: number): Promise<{
+  feesSat: number;
+  destination: string;
+  amountSat: number;
+  prepareResponse: unknown;
+}> {
+  const breez = await getBreezSdk();
+  if (!breez) throw new Error("Wallet not initialized");
+
+  const prepareResp = await breez.prepareSendPayment({
+    destination,
+    ...(amountSats ? { amount: { type: "bitcoin", amountMsat: amountSats * 1000 } } : {}),
+  });
+
+  return {
+    feesSat: (prepareResp as any).feesSat ?? 0,
+    destination,
+    amountSat: amountSats ?? (prepareResp as any).amountSat ?? 0,
+    prepareResponse: prepareResp,
+  };
+}
+
 export async function sendPayment(
   bolt11: string,
-  _amountSats?: number
+  amountSats?: number
 ): Promise<{
   success: boolean;
   paymentHash: string;
@@ -133,12 +241,11 @@ export async function sendPayment(
   const breez = await getBreezSdk();
   if (!breez) throw new Error("Wallet not initialized — check BREEZ_API_KEY and WALLET_MNEMONIC");
 
-  // Step 1: Prepare
   const prepareResp = await breez.prepareSendPayment({
     destination: bolt11,
+    ...(amountSats ? { amount: { type: "bitcoin", amountMsat: amountSats * 1000 } } : {}),
   });
 
-  // Step 2: Send
   const result = await breez.sendPayment({ prepareResponse: prepareResp });
 
   const payment = result.payment;
@@ -177,13 +284,11 @@ export async function receivePayment(
   const breez = await getBreezSdk();
   if (!breez) throw new Error("Wallet not initialized — check BREEZ_API_KEY and WALLET_MNEMONIC");
 
-  // Step 1: Prepare — get fee quote
   const prepareResp = await breez.prepareReceivePayment({
     paymentMethod: "bolt11Invoice",
     amount: { type: "bitcoin", amountMsat: amountSats * 1000 },
   });
 
-  // Step 2: Create the invoice
   const receiveResp = await breez.receivePayment({
     prepareResponse: prepareResp,
     description: description ?? "Buccaneer Wallet payment",
@@ -236,7 +341,6 @@ export async function decodeInvoice(bolt11: string): Promise<{
   isExpired: boolean;
 }> {
   try {
-    // parseInvoice is synchronous in v0.12.x
     const invoice = breezSdk.parseInvoice(bolt11);
     const now = Math.floor(Date.now() / 1000);
     const expiry = invoice.expiry ?? 3600;
@@ -253,4 +357,11 @@ export async function decodeInvoice(bolt11: string): Promise<{
       "Failed to decode invoice: " + (err instanceof Error ? err.message : String(err))
     );
   }
+}
+
+export function getNewPayments(): { hasNew: boolean; timestamp: number } {
+  const events = pendingEvents.filter(e => e.type === "paymentSucceeded");
+  const hasNew = events.length > 0;
+  pendingEvents.length = 0;
+  return { hasNew, timestamp: lastPaymentTimestamp };
 }

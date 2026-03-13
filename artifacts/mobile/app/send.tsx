@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +16,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown, useSharedValue, withSpring, useAnimatedStyle } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
+import * as ImagePicker from "expo-image-picker";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useWallet } from "@/contexts/WalletContext";
 
 const NAVY = "#0B1426";
@@ -27,17 +29,21 @@ type Stage = "scan" | "review" | "sending" | "success" | "error";
 
 export default function SendScreen() {
   const insets = useSafeAreaInsets();
-  const { sendPayment, decodeInvoice } = useWallet();
+  const { sendPayment, decodeInvoice, parseInput } = useWallet();
   const [stage, setStage] = useState<Stage>("scan");
   const [invoiceInput, setInvoiceInput] = useState("");
   const [decodedInvoice, setDecodedInvoice] = useState<{
     amountSats?: number;
     description?: string;
     isExpired: boolean;
+    type?: string;
+    address?: string;
   } | null>(null);
   const [error, setError] = useState("");
   const [isDecoding, setIsDecoding] = useState(false);
   const [result, setResult] = useState<{ feeSats: number; amountSats: number } | null>(null);
+  const [cameraActive, setCameraActive] = useState(true);
+  const [permission, requestPermission] = useCameraPermissions();
   const successScale = useSharedValue(0);
 
   const successStyle = useAnimatedStyle(() => ({
@@ -47,25 +53,102 @@ export default function SendScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const handlePasteInvoice = async () => {
-    // In real app, use Clipboard
-    setStage("scan");
+  useEffect(() => {
+    if (!permission?.granted && permission?.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission]);
+
+  const handleBarCodeScanned = async (data: string) => {
+    if (!data || isDecoding) return;
+    setCameraActive(false);
+    setInvoiceInput(data);
+    await handleDecodeInput(data);
   };
 
-  const handleDecodeInvoice = async (bolt11: string) => {
-    if (!bolt11.trim()) return;
+  const handlePasteInvoice = async () => {
+    try {
+      const text = await Clipboard.getStringAsync();
+      if (text) {
+        setInvoiceInput(text);
+        await handleDecodeInput(text);
+      }
+    } catch (_e) {}
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 1,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setError("QR code detection from images requires native processing. Please paste the invoice instead.");
+      }
+    } catch (_e) {}
+  };
+
+  const handleDecodeInput = async (input: string) => {
+    if (!input.trim()) return;
     setIsDecoding(true);
     setError("");
     try {
-      const decoded = await decodeInvoice(bolt11.trim());
-      if (decoded.isExpired) {
-        setError("This invoice has expired");
-        return;
+      const parsed = await parseInput(input.trim());
+
+      if (parsed.type === "bolt11" && parsed.invoice) {
+        const decoded = await decodeInvoice(parsed.invoice);
+        if (decoded.isExpired) {
+          setError("This invoice has expired");
+          setIsDecoding(false);
+          return;
+        }
+        setDecodedInvoice({
+          ...decoded,
+          type: "bolt11",
+        });
+        setInvoiceInput(parsed.invoice);
+        setStage("review");
+      } else if (parsed.type === "lightning_address") {
+        setDecodedInvoice({
+          type: "lightning_address",
+          address: parsed.address,
+          description: `Pay to ${parsed.address}`,
+          isExpired: false,
+        });
+        setStage("review");
+      } else if (parsed.type === "bitcoin") {
+        setDecodedInvoice({
+          type: "bitcoin",
+          address: parsed.address,
+          amountSats: parsed.amountSats,
+          description: "On-chain payment",
+          isExpired: false,
+        });
+        setStage("review");
+      } else if (parsed.type === "lnurl") {
+        setDecodedInvoice({
+          type: "lnurl",
+          address: parsed.address,
+          description: "LNURL payment",
+          isExpired: false,
+        });
+        setStage("review");
+      } else {
+        try {
+          const decoded = await decodeInvoice(input.trim());
+          if (decoded.isExpired) {
+            setError("This invoice has expired");
+            setIsDecoding(false);
+            return;
+          }
+          setDecodedInvoice({ ...decoded, type: "bolt11" });
+          setStage("review");
+        } catch {
+          setError("Could not recognize this payment format. Try pasting a Lightning invoice.");
+        }
       }
-      setDecodedInvoice(decoded);
-      setStage("review");
     } catch (e) {
-      setError("Invalid invoice. Please check and try again.");
+      setError("Invalid input. Please check and try again.");
     } finally {
       setIsDecoding(false);
     }
@@ -88,11 +171,19 @@ export default function SendScreen() {
     }
   };
 
+  const getPaymentTypeLabel = () => {
+    switch (decodedInvoice?.type) {
+      case "lightning_address": return "Lightning Address";
+      case "bitcoin": return "On-chain (Submarine Swap)";
+      case "lnurl": return "LNURL Pay";
+      default: return "Lightning";
+    }
+  };
+
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <LinearGradient colors={[NAVY, "#0A1020"]} style={StyleSheet.absoluteFill} />
 
-      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} testID="send-back-button">
           <Ionicons name="arrow-back" size={22} color="#8FA3C8" />
@@ -110,24 +201,36 @@ export default function SendScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Scan Stage */}
           {(stage === "scan") && (
             <Animated.View entering={FadeIn} style={{ gap: 20 }}>
-              {/* QR Scanner placeholder */}
               <View style={styles.scannerBox}>
+                {permission?.granted && cameraActive && Platform.OS !== "web" ? (
+                  <CameraView
+                    style={StyleSheet.absoluteFill}
+                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                    onBarcodeScanned={(result) => handleBarCodeScanned(result.data)}
+                  />
+                ) : null}
                 <View style={styles.cornerTL} />
                 <View style={styles.cornerTR} />
                 <View style={styles.cornerBL} />
                 <View style={styles.cornerBR} />
-                <Text style={styles.scanningText}>SCANNING FOR QR CODE...</Text>
+                {!permission?.granted && (
+                  <Pressable onPress={requestPermission} style={styles.cameraPermBtn}>
+                    <Ionicons name="camera" size={24} color="#8FA3C8" />
+                    <Text style={styles.cameraPermText}>Tap to enable camera</Text>
+                  </Pressable>
+                )}
+                {(permission?.granted && cameraActive) && (
+                  <Text style={styles.scanningText}>SCANNING FOR QR CODE...</Text>
+                )}
               </View>
 
-              {/* Invoice Input */}
               <View style={styles.inputGroup}>
                 <TextInput
                   testID="invoice-input"
                   style={styles.input}
-                  placeholder="Paste a Lightning invoice (lnbc...)"
+                  placeholder="Paste invoice, address, or LNURL..."
                   placeholderTextColor="#4A6080"
                   value={invoiceInput}
                   onChangeText={setInvoiceInput}
@@ -138,15 +241,12 @@ export default function SendScreen() {
                 />
               </View>
 
-              {error ? (
-                <Text style={styles.errorText}>{error}</Text>
-              ) : null}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-              {/* Action buttons */}
               <Pressable
                 testID="paste-invoice-button"
                 style={styles.dashedBtn}
-                onPress={() => invoiceInput ? handleDecodeInvoice(invoiceInput) : null}
+                onPress={invoiceInput ? () => handleDecodeInput(invoiceInput) : handlePasteInvoice}
               >
                 {isDecoding ? (
                   <ActivityIndicator color={GOLD} size="small" />
@@ -154,20 +254,19 @@ export default function SendScreen() {
                   <>
                     <Ionicons name="clipboard-outline" size={18} color="#8FA3C8" />
                     <Text style={styles.dashedBtnText}>
-                      {invoiceInput ? "Confirm Invoice" : "Paste Invoice"}
+                      {invoiceInput ? "Confirm Invoice" : "Paste from Clipboard"}
                     </Text>
                   </>
                 )}
               </Pressable>
 
-              <Pressable testID="import-photos-button" style={styles.dashedBtn}>
+              <Pressable testID="import-photos-button" style={styles.dashedBtn} onPress={handlePickImage}>
                 <MaterialCommunityIcons name="image-plus" size={18} color="#8FA3C8" />
                 <Text style={styles.dashedBtnText}>Import from Photos</Text>
               </Pressable>
             </Animated.View>
           )}
 
-          {/* Review Stage */}
           {stage === "review" && decodedInvoice && (
             <Animated.View entering={FadeInDown} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
@@ -199,9 +298,18 @@ export default function SendScreen() {
                 <Text style={styles.reviewLabel}>Network</Text>
                 <View style={styles.badge}>
                   <MaterialCommunityIcons name="lightning-bolt" size={12} color="#4A90D9" />
-                  <Text style={styles.badgeText}>Lightning</Text>
+                  <Text style={styles.badgeText}>{getPaymentTypeLabel()}</Text>
                 </View>
               </View>
+
+              {decodedInvoice.type === "bitcoin" && (
+                <View style={styles.warningBanner}>
+                  <Ionicons name="warning-outline" size={16} color={GOLD} />
+                  <Text style={styles.warningText}>
+                    On-chain payments use submarine swaps and may take longer with additional fees.
+                  </Text>
+                </View>
+              )}
 
               <Pressable
                 testID="confirm-send-button"
@@ -219,13 +327,12 @@ export default function SendScreen() {
                 </LinearGradient>
               </Pressable>
 
-              <Pressable onPress={() => setStage("scan")} style={styles.cancelBtn}>
+              <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); }} style={styles.cancelBtn}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
             </Animated.View>
           )}
 
-          {/* Sending Stage */}
           {stage === "sending" && (
             <Animated.View entering={FadeIn} style={styles.centerState}>
               <ActivityIndicator color={GOLD} size="large" />
@@ -234,7 +341,6 @@ export default function SendScreen() {
             </Animated.View>
           )}
 
-          {/* Success Stage */}
           {stage === "success" && result && (
             <Animated.View entering={FadeIn} style={styles.centerState}>
               <Animated.View style={[styles.successCircle, successStyle]}>
@@ -247,17 +353,12 @@ export default function SendScreen() {
               {result.feeSats > 0 && (
                 <Text style={styles.feeNote}>Fee: {result.feeSats} sats</Text>
               )}
-              <Pressable
-                testID="send-done-button"
-                style={styles.doneBtn}
-                onPress={() => router.back()}
-              >
+              <Pressable testID="send-done-button" style={styles.doneBtn} onPress={() => router.back()}>
                 <Text style={styles.doneBtnText}>Done</Text>
               </Pressable>
             </Animated.View>
           )}
 
-          {/* Error Stage */}
           {stage === "error" && (
             <Animated.View entering={FadeIn} style={styles.centerState}>
               <View style={styles.errorCircle}>
@@ -267,7 +368,7 @@ export default function SendScreen() {
               <Text style={styles.stateSubtitle} numberOfLines={3}>{error}</Text>
               <Pressable
                 style={styles.retryBtn}
-                onPress={() => { setStage("scan"); setError(""); }}
+                onPress={() => { setStage("scan"); setError(""); setCameraActive(true); }}
               >
                 <Text style={styles.doneBtnText}>Try Again</Text>
               </Pressable>
@@ -298,16 +399,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1E2D50",
   },
-  title: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 20,
-    color: "#FFFFFF",
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-    flexGrow: 1,
-  },
+  title: { fontFamily: "Inter_700Bold", fontSize: 20, color: "#FFFFFF" },
+  content: { padding: 20, gap: 16, flexGrow: 1 },
   scannerBox: {
     height: 280,
     backgroundColor: "#000",
@@ -321,6 +414,15 @@ const styles = StyleSheet.create({
   cornerTR: { position: "absolute", top: 16, right: 16, width: 28, height: 28, borderTopWidth: 3, borderRightWidth: 3, borderColor: "#FFF", borderRadius: 4 },
   cornerBL: { position: "absolute", bottom: 16, left: 16, width: 28, height: 28, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: "#FFF", borderRadius: 4 },
   cornerBR: { position: "absolute", bottom: 16, right: 16, width: 28, height: 28, borderBottomWidth: 3, borderRightWidth: 3, borderColor: "#FFF", borderRadius: 4 },
+  cameraPermBtn: {
+    alignItems: "center",
+    gap: 8,
+  },
+  cameraPermText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: "#8FA3C8",
+  },
   scanningText: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
@@ -355,17 +457,8 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderColor: "#1E2D50",
   },
-  dashedBtnText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 15,
-    color: "#8FA3C8",
-  },
-  errorText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: "#E63946",
-    textAlign: "center",
-  },
+  dashedBtnText: { fontFamily: "Inter_500Medium", fontSize: 15, color: "#8FA3C8" },
+  errorText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
   reviewCard: {
     backgroundColor: NAVY_CARD,
     borderRadius: 20,
@@ -382,35 +475,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#1E2D50",
   },
-  reviewTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-    color: "#FFFFFF",
-  },
+  reviewTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: "#FFFFFF" },
   reviewRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
   },
-  reviewLabel: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#8FA3C8",
-  },
+  reviewLabel: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#8FA3C8" },
   reviewValueCol: { flex: 1, alignItems: "flex-end" },
-  reviewAmount: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    color: "#FFFFFF",
-  },
-  reviewValue: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-    color: "#CDDAED",
-    flex: 1,
-    textAlign: "right",
-  },
+  reviewAmount: { fontFamily: "Inter_700Bold", fontSize: 22, color: "#FFFFFF" },
+  reviewValue: { fontFamily: "Inter_500Medium", fontSize: 14, color: "#CDDAED", flex: 1, textAlign: "right" },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -420,16 +495,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  badgeText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    color: "#4A90D9",
+  badgeText: { fontFamily: "Inter_500Medium", fontSize: 12, color: "#4A90D9" },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "rgba(201,162,77,0.1)",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(201,162,77,0.3)",
   },
-  confirmBtn: {
-    borderRadius: 14,
-    overflow: "hidden",
-    marginTop: 8,
-  },
+  warningText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 12, color: "#CDDAED", lineHeight: 18 },
+  confirmBtn: { borderRadius: 14, overflow: "hidden", marginTop: 8 },
   confirmGradient: {
     flexDirection: "row",
     alignItems: "center",
@@ -437,17 +515,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 16,
   },
-  confirmText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    color: "#FFF",
-  },
+  confirmText: { fontFamily: "Inter_700Bold", fontSize: 16, color: "#FFF" },
   cancelBtn: { alignItems: "center", paddingVertical: 8 },
-  cancelText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#4A6080",
-  },
+  cancelText: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#4A6080" },
   centerState: {
     flex: 1,
     alignItems: "center",
@@ -455,23 +525,9 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingTop: 80,
   },
-  stateTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 24,
-    color: "#FFFFFF",
-  },
-  stateSubtitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#8FA3C8",
-    textAlign: "center",
-    paddingHorizontal: 20,
-  },
-  feeNote: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "#4A6080",
-  },
+  stateTitle: { fontFamily: "Inter_700Bold", fontSize: 24, color: "#FFFFFF" },
+  stateSubtitle: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#8FA3C8", textAlign: "center", paddingHorizontal: 20 },
+  feeNote: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#4A6080" },
   successCircle: {
     width: 100,
     height: 100,
@@ -508,9 +564,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1E2D50",
   },
-  doneBtnText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    color: NAVY,
-  },
+  doneBtnText: { fontFamily: "Inter_700Bold", fontSize: 16, color: NAVY },
 });

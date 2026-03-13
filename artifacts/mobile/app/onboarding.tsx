@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   Pressable,
   Dimensions,
   Platform,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,8 +18,6 @@ import Animated, {
   withSpring,
   withRepeat,
   withTiming,
-  useAnimatedReaction,
-  runOnJS,
 } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -32,32 +32,19 @@ const NAVY2 = "#111D35";
 function GalleonSVG() {
   return (
     <View style={galleonStyles.container}>
-      {/* Moon glow */}
       <View style={galleonStyles.moonGlow} />
       <View style={galleonStyles.moon} />
-
-      {/* Main mast */}
       <View style={galleonStyles.mast} />
-      {/* Cross beam */}
       <View style={galleonStyles.crossBeam} />
-      {/* Sail 1 */}
       <View style={galleonStyles.sail1} />
-      {/* Sail 2 (smaller top) */}
       <View style={galleonStyles.sail2} />
-      {/* Flag */}
       <View style={galleonStyles.flagPole} />
       <View style={galleonStyles.flag} />
-
-      {/* Hull */}
       <View style={galleonStyles.hull} />
       <View style={galleonStyles.hullBottom} />
-
-      {/* Cannon ports */}
       <View style={[galleonStyles.cannonPort, { left: 30 }]} />
       <View style={[galleonStyles.cannonPort, { left: 55 }]} />
       <View style={[galleonStyles.cannonPort, { left: 80 }]} />
-
-      {/* Waves */}
       <View style={[galleonStyles.wave, { bottom: 0 }]} />
       <View style={[galleonStyles.wave, { bottom: -4, opacity: 0.5, width: 180 }]} />
     </View>
@@ -65,153 +52,36 @@ function GalleonSVG() {
 }
 
 const galleonStyles = StyleSheet.create({
-  container: {
-    width: 200,
-    height: 200,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  moonGlow: {
-    position: "absolute",
-    top: 10,
-    right: 20,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "rgba(201, 162, 77, 0.15)",
-  },
-  moon: {
-    position: "absolute",
-    top: 20,
-    right: 30,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: GOLD,
-    opacity: 0.8,
-  },
-  mast: {
-    position: "absolute",
-    top: 40,
-    left: "50%",
-    marginLeft: -2,
-    width: 4,
-    height: 100,
-    backgroundColor: "#c9a24d",
-    borderRadius: 2,
-  },
-  crossBeam: {
-    position: "absolute",
-    top: 65,
-    left: "50%",
-    marginLeft: -40,
-    width: 80,
-    height: 3,
-    backgroundColor: "#c9a24d",
-    borderRadius: 2,
-  },
-  sail1: {
-    position: "absolute",
-    top: 68,
-    left: "50%",
-    marginLeft: -35,
-    width: 70,
-    height: 55,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 4,
-    transform: [{ skewX: "3deg" }],
-  },
-  sail2: {
-    position: "absolute",
-    top: 44,
-    left: "50%",
-    marginLeft: -20,
-    width: 40,
-    height: 25,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: 3,
-  },
-  flagPole: {
-    position: "absolute",
-    top: 32,
-    left: "50%",
-    marginLeft: -1,
-    width: 2,
-    height: 12,
-    backgroundColor: GOLD,
-  },
-  flag: {
-    position: "absolute",
-    top: 32,
-    left: "50%",
-    marginLeft: 2,
-    width: 18,
-    height: 10,
-    backgroundColor: "#E63946",
-    borderRadius: 1,
-  },
-  hull: {
-    position: "absolute",
-    bottom: 28,
-    left: "50%",
-    marginLeft: -60,
-    width: 120,
-    height: 40,
-    backgroundColor: "#1E3A5F",
-    borderRadius: 8,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderWidth: 2,
-    borderColor: GOLD,
-  },
-  hullBottom: {
-    position: "absolute",
-    bottom: 20,
-    left: "50%",
-    marginLeft: -50,
-    width: 100,
-    height: 15,
-    backgroundColor: "#0D2240",
-    borderRadius: 8,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  cannonPort: {
-    position: "absolute",
-    bottom: 42,
-    width: 10,
-    height: 7,
-    backgroundColor: "#0B1426",
-    borderRadius: 2,
-    borderWidth: 1,
-    borderColor: GOLD,
-  },
-  wave: {
-    position: "absolute",
-    bottom: 12,
-    left: "50%",
-    marginLeft: -70,
-    width: 140,
-    height: 12,
-    backgroundColor: "#1E5F74",
-    borderRadius: 6,
-    opacity: 0.7,
-  },
+  container: { width: 200, height: 200, alignItems: "center", justifyContent: "center", position: "relative" },
+  moonGlow: { position: "absolute", top: 10, right: 20, width: 70, height: 70, borderRadius: 35, backgroundColor: "rgba(201, 162, 77, 0.15)" },
+  moon: { position: "absolute", top: 20, right: 30, width: 50, height: 50, borderRadius: 25, backgroundColor: GOLD, opacity: 0.8 },
+  mast: { position: "absolute", top: 40, left: "50%", marginLeft: -2, width: 4, height: 100, backgroundColor: GOLD, borderRadius: 2 },
+  crossBeam: { position: "absolute", top: 65, left: "50%", marginLeft: -40, width: 80, height: 3, backgroundColor: GOLD, borderRadius: 2 },
+  sail1: { position: "absolute", top: 68, left: "50%", marginLeft: -35, width: 70, height: 55, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 4, transform: [{ skewX: "3deg" }] },
+  sail2: { position: "absolute", top: 44, left: "50%", marginLeft: -20, width: 40, height: 25, backgroundColor: "rgba(255,255,255,0.8)", borderRadius: 3 },
+  flagPole: { position: "absolute", top: 32, left: "50%", marginLeft: -1, width: 2, height: 12, backgroundColor: GOLD },
+  flag: { position: "absolute", top: 32, left: "50%", marginLeft: 2, width: 18, height: 10, backgroundColor: "#E63946", borderRadius: 1 },
+  hull: { position: "absolute", bottom: 28, left: "50%", marginLeft: -60, width: 120, height: 40, backgroundColor: "#1E3A5F", borderRadius: 8, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, borderWidth: 2, borderColor: GOLD },
+  hullBottom: { position: "absolute", bottom: 20, left: "50%", marginLeft: -50, width: 100, height: 15, backgroundColor: "#0D2240", borderRadius: 8, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  cannonPort: { position: "absolute", bottom: 42, width: 10, height: 7, backgroundColor: "#0B1426", borderRadius: 2, borderWidth: 1, borderColor: GOLD },
+  wave: { position: "absolute", bottom: 12, left: "50%", marginLeft: -70, width: 140, height: 12, backgroundColor: "#1E5F74", borderRadius: 6, opacity: 0.7 },
 });
+
+type Screen = "welcome" | "restore" | "loading";
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { updateSettings } = useSettings();
+  const [screen, setScreen] = useState<Screen>("welcome");
+  const [seedInput, setSeedInput] = useState("");
+  const [restoreError, setRestoreError] = useState("");
+  const [isInitializing, setIsInitializing] = useState(false);
+
   const scale = useSharedValue(1);
   const bobbing = useSharedValue(0);
 
   React.useEffect(() => {
-    bobbing.value = withRepeat(
-      withTiming(8, { duration: 2000 }),
-      -1,
-      true
-    );
+    bobbing.value = withRepeat(withTiming(8, { duration: 2000 }), -1, true);
   }, []);
 
   const bobbingStyle = useAnimatedStyle(() => ({
@@ -229,18 +99,114 @@ export default function OnboardingScreen() {
     scale.value = withSpring(0.95, {}, () => {
       scale.value = withSpring(1);
     });
-    await updateSettings({ onboardingDone: true });
-    router.replace("/(tabs)");
+
+    setScreen("loading");
+    setIsInitializing(true);
+
+    try {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/status`);
+      await res.json();
+    } catch (_e) {}
+
+    setTimeout(async () => {
+      await updateSettings({ onboardingDone: true });
+      router.replace("/(tabs)");
+    }, 2000);
   };
+
+  const handleRestore = async () => {
+    const words = seedInput.trim().split(/\s+/).filter(Boolean);
+    if (words.length !== 12 && words.length !== 24) {
+      setRestoreError("Enter 12 or 24 seed words separated by spaces");
+      return;
+    }
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    setScreen("loading");
+    setIsInitializing(true);
+
+    setTimeout(async () => {
+      await updateSettings({ onboardingDone: true, backupCompleted: true });
+      router.replace("/(tabs)");
+    }, 2000);
+  };
+
+  if (screen === "loading") {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.loadingContent}>
+          <Animated.View style={[styles.logoContainer, bobbingStyle]}>
+            <GalleonSVG />
+          </Animated.View>
+          <Text style={styles.loadingTitle}>Setting Sail...</Text>
+          <Text style={styles.loadingSubtitle}>Initializing your wallet</Text>
+          <ActivityIndicator color={GOLD} size="large" style={{ marginTop: 20 }} />
+        </View>
+      </View>
+    );
+  }
+
+  if (screen === "restore") {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.restoreContent}>
+          <View style={styles.restoreHeader}>
+            <Pressable onPress={() => setScreen("welcome")} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#8FA3C8" />
+            </Pressable>
+            <Text style={styles.restoreTitle}>Restore Wallet</Text>
+          </View>
+
+          <View style={styles.restoreIcon}>
+            <MaterialCommunityIcons name="key-variant" size={40} color={GOLD} />
+          </View>
+
+          <Text style={styles.restoreSubtitle}>
+            Enter your 12 or 24 seed words to restore your wallet
+          </Text>
+
+          <TextInput
+            style={styles.seedTextArea}
+            value={seedInput}
+            onChangeText={(t) => { setSeedInput(t); setRestoreError(""); }}
+            placeholder="Enter seed words separated by spaces..."
+            placeholderTextColor="#4A6080"
+            multiline
+            numberOfLines={4}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          {restoreError ? <Text style={styles.restoreError}>{restoreError}</Text> : null}
+
+          <Text style={styles.wordCount}>
+            {seedInput.trim().split(/\s+/).filter(Boolean).length} / 12 words
+          </Text>
+
+          <Pressable style={styles.restoreBtn} onPress={handleRestore}>
+            <LinearGradient
+              colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.restoreBtnGradient}
+            >
+              <MaterialCommunityIcons name="restore" size={20} color={NAVY} />
+              <Text style={styles.restoreBtnText}>Restore Wallet</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
-      <LinearGradient
-        colors={[NAVY, NAVY2, "#0A1020"]}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
 
-      {/* Stars */}
       {[...Array(20)].map((_, i) => (
         <View
           key={i}
@@ -258,19 +224,16 @@ export default function OnboardingScreen() {
       ))}
 
       <View style={styles.content}>
-        {/* Logo */}
         <Animated.View style={[styles.logoContainer, bobbingStyle]}>
           <GalleonSVG />
         </Animated.View>
 
-        {/* Title */}
         <View style={styles.titleGroup}>
           <Text style={styles.appName}>Buccaneer</Text>
           <Text style={styles.appSubtitle}>Wallet</Text>
           <Text style={styles.tagline}>Sail the Lightning seas</Text>
         </View>
 
-        {/* Features */}
         <View style={styles.features}>
           {[
             { icon: "flash", label: "Instant Lightning payments" },
@@ -286,13 +249,8 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {/* CTA Button */}
         <Animated.View style={[styles.buttonWrap, buttonStyle]}>
-          <Pressable
-            testID="start-voyage-button"
-            style={styles.button}
-            onPress={handleStart}
-          >
+          <Pressable testID="start-voyage-button" style={styles.button} onPress={handleStart}>
             <LinearGradient
               colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
               start={{ x: 0, y: 0 }}
@@ -305,6 +263,11 @@ export default function OnboardingScreen() {
           </Pressable>
         </Animated.View>
 
+        <Pressable onPress={() => setScreen("restore")} style={styles.restoreLink}>
+          <MaterialCommunityIcons name="key-variant" size={16} color="#8FA3C8" />
+          <Text style={styles.restoreLinkText}>Restore from Backup</Text>
+        </Pressable>
+
         <Text style={styles.disclaimer}>Mainnet Bitcoin · Real sats · No frills</Text>
       </View>
     </View>
@@ -312,60 +275,22 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NAVY,
-  },
-  star: {
-    position: "absolute",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 2,
-  },
+  container: { flex: 1, backgroundColor: NAVY },
+  star: { position: "absolute", backgroundColor: "#FFFFFF", borderRadius: 2 },
   content: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
-    gap: 32,
+    gap: 28,
   },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  titleGroup: {
-    alignItems: "center",
-    gap: 2,
-  },
-  appName: {
-    fontFamily: "PirataOne_400Regular",
-    fontSize: 52,
-    color: "#FFFFFF",
-    letterSpacing: 2,
-    lineHeight: 60,
-  },
-  appSubtitle: {
-    fontFamily: "PirataOne_400Regular",
-    fontSize: 36,
-    color: GOLD,
-    letterSpacing: 4,
-    lineHeight: 40,
-  },
-  tagline: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#8FA3C8",
-    marginTop: 8,
-    letterSpacing: 1,
-  },
-  features: {
-    gap: 12,
-    width: "100%",
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  logoContainer: { alignItems: "center", justifyContent: "center" },
+  titleGroup: { alignItems: "center", gap: 2 },
+  appName: { fontFamily: "PirataOne_400Regular", fontSize: 52, color: "#FFFFFF", letterSpacing: 2, lineHeight: 60 },
+  appSubtitle: { fontFamily: "PirataOne_400Regular", fontSize: 36, color: GOLD, letterSpacing: 4, lineHeight: 40 },
+  tagline: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#8FA3C8", marginTop: 8, letterSpacing: 1 },
+  features: { gap: 12, width: "100%" },
+  featureRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   featureIcon: {
     width: 32,
     height: 32,
@@ -374,14 +299,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  featureText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#CDDAED",
-  },
-  buttonWrap: {
-    width: "100%",
-  },
+  featureText: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#CDDAED" },
+  buttonWrap: { width: "100%" },
   button: {
     borderRadius: 16,
     overflow: "hidden",
@@ -399,16 +318,121 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 32,
   },
-  buttonText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-    color: NAVY,
-    letterSpacing: 0.5,
+  buttonText: { fontFamily: "Inter_700Bold", fontSize: 18, color: NAVY, letterSpacing: 0.5 },
+  restoreLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
   },
-  disclaimer: {
+  restoreLinkText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: "#8FA3C8",
+  },
+  disclaimer: { fontFamily: "Inter_400Regular", fontSize: 11, color: "#4A6080", letterSpacing: 0.5 },
+  loadingContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  loadingTitle: {
+    fontFamily: "PirataOne_400Regular",
+    fontSize: 36,
+    color: "#FFFFFF",
+    marginTop: 20,
+  },
+  loadingSubtitle: {
     fontFamily: "Inter_400Regular",
-    fontSize: 11,
+    fontSize: 14,
+    color: "#8FA3C8",
+  },
+  restoreContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    gap: 20,
+  },
+  restoreHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: NAVY2,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#1E2D50",
+  },
+  restoreTitle: {
+    fontFamily: "PirataOne_400Regular",
+    fontSize: 28,
+    color: "#FFFFFF",
+  },
+  restoreIcon: {
+    alignSelf: "center",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(201,162,77,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(201,162,77,0.3)",
+    marginTop: 20,
+  },
+  restoreSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: "#8FA3C8",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  seedTextArea: {
+    backgroundColor: NAVY2,
+    borderRadius: 16,
+    padding: 18,
+    fontFamily: "Inter_400Regular",
+    fontSize: 15,
+    color: "#CDDAED",
+    minHeight: 120,
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "#1E2D50",
+    lineHeight: 24,
+  },
+  restoreError: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: "#E63946",
+    textAlign: "center",
+  },
+  wordCount: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
     color: "#4A6080",
-    letterSpacing: 0.5,
+    textAlign: "center",
+  },
+  restoreBtn: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 8,
+  },
+  restoreBtnGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 18,
+  },
+  restoreBtnText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 17,
+    color: NAVY,
   },
 });

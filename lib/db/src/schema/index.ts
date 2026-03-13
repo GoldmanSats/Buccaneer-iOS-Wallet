@@ -22,6 +22,10 @@ export const agentKeysTable = pgTable("agent_keys", {
   nwcUri: text("nwc_uri").notNull(),
   secretKey: text("secret_key").notNull(),
   spendingLimitSats: integer("spending_limit_sats"),
+  maxDailySats: integer("max_daily_sats"),
+  spentToday: integer("spent_today").notNull().default(0),
+  spentDate: text("spent_date"),
+  connectionType: text("connection_type").notNull().default("nwc"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at"),
@@ -46,3 +50,23 @@ export const transactionCacheTable = pgTable("transaction_cache", {
 export const insertTransactionSchema = createInsertSchema(transactionCacheTable).omit({ id: true });
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactionCacheTable.$inferSelect;
+
+export const transactionMemosTable = pgTable("transaction_memos", {
+  txId: text("tx_id").primaryKey(),
+  memo: text("memo").notNull().default(""),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type TransactionMemo = typeof transactionMemosTable.$inferSelect;
+
+export const agentLogsTable = pgTable("agent_logs", {
+  id: serial("id").primaryKey(),
+  keyId: integer("key_id").notNull(),
+  action: text("action").notNull(),
+  amount: integer("amount"),
+  status: text("status").notNull().default("success"),
+  detail: text("detail"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type AgentLog = typeof agentLogsTable.$inferSelect;

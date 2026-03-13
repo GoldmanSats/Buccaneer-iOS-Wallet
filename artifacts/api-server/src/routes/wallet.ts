@@ -1,18 +1,7 @@
 import { Router, type IRouter } from "express";
-import { z } from "zod/v4";
-import {
-  GetBalanceResponse,
-  GetTransactionsResponse,
-  SendPaymentBodyRequest,
-  SendPaymentResponse,
-  CreateInvoiceBodyRequest,
-  CreateInvoiceResponse,
-  GetLightningAddressResponse,
-  GetBtcPriceResponse,
-  DecodeInvoiceBodyRequest,
-  DecodedInvoiceResponse,
-  GetSeedPhraseResponse,
-} from "@workspace/api-zod";
+import { db } from "@workspace/db";
+import { transactionMemosTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   getBalance,
   sendPayment,
@@ -20,13 +9,14 @@ import {
   listPayments,
   decodeInvoice,
   syncWallet,
+  parseInput,
+  getNodeInfo,
+  getSdkStatus,
+  getNewPayments,
 } from "../lib/breez.js";
 
 const router: IRouter = Router();
 
-const LIGHTNING_ADDRESS = "buccaneeradiciw@breez.tips";
-
-// GET /wallet/balance
 router.get("/balance", async (_req, res) => {
   try {
     const balance = await getBalance();
@@ -36,20 +26,46 @@ router.get("/balance", async (_req, res) => {
   }
 });
 
-// GET /wallet/transactions
 router.get("/transactions", async (req, res) => {
   try {
     const limit = parseInt(String(req.query["limit"] ?? "50"));
     const offset = parseInt(String(req.query["offset"] ?? "0"));
     const txs = await listPayments();
-    const paginated = txs.slice(offset, offset + limit);
-    res.json({ transactions: paginated, total: txs.length });
+
+    const memos = await db.select().from(transactionMemosTable);
+    const memoMap = new Map(memos.map(m => [m.txId, m.memo]));
+
+    const enriched = txs.map(tx => ({
+      ...tx,
+      memo: memoMap.get(tx.id) ?? "",
+    }));
+
+    const paginated = enriched.slice(offset, offset + limit);
+    res.json({ transactions: paginated, total: enriched.length });
   } catch (err) {
     res.status(500).json({ error: "wallet_error", message: String(err) });
   }
 });
 
-// POST /wallet/send
+router.patch("/transactions/:id/memo", async (req, res) => {
+  try {
+    const txId = req.params["id"] ?? "";
+    const { memo } = req.body as { memo: string };
+    if (memo === undefined) {
+      return res.status(400).json({ error: "missing_memo" });
+    }
+    await db.insert(transactionMemosTable)
+      .values({ txId, memo, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: transactionMemosTable.txId,
+        set: { memo, updatedAt: new Date() },
+      });
+    res.json({ txId, memo });
+  } catch (err) {
+    res.status(500).json({ error: "memo_error", message: String(err) });
+  }
+});
+
 router.post("/send", async (req, res) => {
   const body = req.body as { bolt11: string; amountSats?: number };
   if (!body.bolt11) {
@@ -63,7 +79,6 @@ router.post("/send", async (req, res) => {
   }
 });
 
-// POST /wallet/decode-invoice
 router.post("/decode-invoice", async (req, res) => {
   const body = req.body as { bolt11: string };
   if (!body.bolt11) {
@@ -77,7 +92,19 @@ router.post("/decode-invoice", async (req, res) => {
   }
 });
 
-// POST /wallet/receive
+router.post("/parse", async (req, res) => {
+  const body = req.body as { input: string };
+  if (!body.input) {
+    return res.status(400).json({ error: "missing_input" });
+  }
+  try {
+    const parsed = await parseInput(body.input);
+    res.json(parsed);
+  } catch (err) {
+    res.status(400).json({ error: "parse_failed", message: String(err) });
+  }
+});
+
 router.post("/receive", async (req, res) => {
   const body = req.body as { amountSats: number; description?: string };
   if (!body.amountSats || body.amountSats <= 0) {
@@ -91,15 +118,14 @@ router.post("/receive", async (req, res) => {
   }
 });
 
-// GET /wallet/lightning-address
 router.get("/lightning-address", (_req, res) => {
+  const address = "buccaneeradiciw@breez.tips";
   res.json({
-    address: LIGHTNING_ADDRESS,
-    lnurlp: `https://breez.tips/.well-known/lnurlp/${LIGHTNING_ADDRESS.split("@")[0]}`,
+    address,
+    lnurlp: `https://breez.tips/.well-known/lnurlp/${address.split("@")[0]}`,
   });
 });
 
-// GET /wallet/btc-price
 router.get("/btc-price", async (req, res) => {
   const currency = String(req.query["currency"] ?? "USD").toUpperCase();
   try {
@@ -116,12 +142,10 @@ router.get("/btc-price", async (req, res) => {
 
     res.json({ currency, price, symbol: symbols[currency] ?? currency });
   } catch (_err) {
-    // Fallback price
     res.json({ currency, price: 85000, symbol: "$" });
   }
 });
 
-// POST /wallet/sync — force a sync with the network
 router.post("/sync", async (_req, res) => {
   try {
     await syncWallet();
@@ -131,11 +155,29 @@ router.post("/sync", async (_req, res) => {
   }
 });
 
-// GET /wallet/seed-phrase
 router.get("/seed-phrase", (_req, res) => {
   const mnemonic = process.env["WALLET_MNEMONIC"] ?? "";
   const words = mnemonic.trim().split(/\s+/).filter(Boolean);
   res.json({ words });
+});
+
+router.get("/node-info", async (_req, res) => {
+  try {
+    const info = await getNodeInfo();
+    res.json(info);
+  } catch (err) {
+    res.status(500).json({ error: "node_info_error", message: String(err) });
+  }
+});
+
+router.get("/status", (_req, res) => {
+  const status = getSdkStatus();
+  res.json(status);
+});
+
+router.get("/new-payments", (_req, res) => {
+  const result = getNewPayments();
+  res.json(result);
 });
 
 export default router;

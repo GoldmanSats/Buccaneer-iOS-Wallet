@@ -15,6 +15,7 @@ interface Transaction {
   amountSats: number;
   feeSats: number;
   description: string;
+  memo: string;
   timestamp: string;
   status: string;
   paymentHash: string;
@@ -24,6 +25,21 @@ interface BtcPrice {
   currency: string;
   price: number;
   symbol: string;
+}
+
+interface ParsedInput {
+  type: "bolt11" | "lnurl" | "lightning_address" | "bitcoin" | "unknown";
+  invoice?: string;
+  address?: string;
+  amountSats?: number;
+  description?: string;
+}
+
+interface NodeInfo {
+  pubkey: string;
+  network: string;
+  blockHeight: number;
+  balanceSat: number;
 }
 
 interface WalletContextValue {
@@ -37,6 +53,10 @@ interface WalletContextValue {
   sendPayment: (bolt11: string, amountSats?: number) => Promise<{ success: boolean; feeSats: number; amountSats: number }>;
   createInvoice: (amountSats: number, description?: string) => Promise<{ bolt11: string }>;
   decodeInvoice: (bolt11: string) => Promise<{ amountSats?: number; description?: string; isExpired: boolean }>;
+  parseInput: (input: string) => Promise<ParsedInput>;
+  updateMemo: (txId: string, memo: string) => Promise<void>;
+  getNodeInfo: () => Promise<NodeInfo>;
+  getSdkStatus: () => Promise<{ initialized: boolean; error: string | null }>;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -109,6 +129,39 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return data;
   }, []);
 
+  const parseInputFn = useCallback(async (input: string): Promise<ParsedInput> => {
+    const res = await fetch(`${API_BASE}/wallet/parse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? "Failed to parse input");
+    return data;
+  }, []);
+
+  const updateMemo = useCallback(async (txId: string, memo: string) => {
+    const res = await fetch(`${API_BASE}/wallet/transactions/${encodeURIComponent(txId)}/memo`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memo }),
+    });
+    if (!res.ok) throw new Error("Failed to update memo");
+    await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  }, [queryClient]);
+
+  const getNodeInfoFn = useCallback(async (): Promise<NodeInfo> => {
+    const res = await fetch(`${API_BASE}/wallet/node-info`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? "Failed to get node info");
+    return data;
+  }, []);
+
+  const getSdkStatusFn = useCallback(async () => {
+    const res = await fetch(`${API_BASE}/wallet/status`);
+    return res.json();
+  }, []);
+
   const value = useMemo(() => ({
     balance: balance ?? null,
     transactions: txData?.transactions ?? [],
@@ -120,7 +173,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     sendPayment,
     createInvoice,
     decodeInvoice,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPayment, createInvoice, decodeInvoice]);
+    parseInput: parseInputFn,
+    updateMemo,
+    getNodeInfo: getNodeInfoFn,
+    getSdkStatus: getSdkStatusFn,
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPayment, createInvoice, decodeInvoice, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

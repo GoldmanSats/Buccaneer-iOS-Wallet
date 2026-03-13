@@ -9,6 +9,8 @@ interface Settings {
   lightningAddress: string;
   isDarkMode: boolean;
   onboardingDone: boolean;
+  balanceHidden: boolean;
+  biometricsEnabled: boolean;
 }
 
 interface SettingsContextValue {
@@ -16,6 +18,7 @@ interface SettingsContextValue {
   isLoading: boolean;
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
   toggleDisplayMode: () => Promise<void>;
+  toggleBalanceHidden: () => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -28,6 +31,8 @@ const DEFAULT_SETTINGS: Settings = {
   lightningAddress: "buccaneeradiciw@breez.tips",
   isDarkMode: true,
   onboardingDone: false,
+  balanceHidden: false,
+  biometricsEnabled: false,
 };
 
 const STORAGE_KEY = "@buccaneer_settings";
@@ -44,7 +49,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
         }
 
-        // Sync from server
         try {
           const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/settings`);
           if (res.ok) {
@@ -58,9 +62,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
               lightningAddress: serverSettings.lightningAddress ?? prev.lightningAddress,
             }));
           }
-        } catch (_e) {
-          // Offline, use cached
-        }
+        } catch (_e) {}
       } catch (e) {
         console.error("Settings load error:", e);
       } finally {
@@ -74,7 +76,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings(next);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 
-    // Sync to server (non-critical)
     try {
       await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/settings`, {
         method: "PUT",
@@ -88,8 +89,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await updateSettings({ primaryDisplay: settings.primaryDisplay === "sats" ? "fiat" : "sats" });
   };
 
+  const toggleBalanceHidden = async () => {
+    await updateSettings({ balanceHidden: !settings.balanceHidden });
+  };
+
   const value = useMemo(
-    () => ({ settings, isLoading, updateSettings, toggleDisplayMode }),
+    () => ({ settings, isLoading, updateSettings, toggleDisplayMode, toggleBalanceHidden }),
     [settings, isLoading]
   );
 
