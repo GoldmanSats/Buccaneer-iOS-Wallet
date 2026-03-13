@@ -2,6 +2,9 @@ import * as breezSdk from "@breeztech/breez-sdk-liquid";
 import { db } from "@workspace/db";
 import { transactionCacheTable } from "@workspace/db";
 
+// LiquidNetwork is a string union: "mainnet" | "testnet" | "regtest"
+// PaymentMethod is a string union: "bolt11Invoice" | "bolt12Offer" | "bitcoinAddress" | "liquidAddress"
+
 let sdk: breezSdk.BindingLiquidSdk | null = null;
 let initializationError: string | null = null;
 let initialized = false;
@@ -21,10 +24,8 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
   }
 
   try {
-    const config = await breezSdk.defaultConfig(
-      breezSdk.LiquidNetwork.MAINNET,
-      apiKey
-    );
+    // defaultConfig is synchronous in v0.12.x
+    const config = breezSdk.defaultConfig("mainnet", apiKey);
 
     sdk = await breezSdk.connect({
       mnemonic,
@@ -55,10 +56,11 @@ export async function getBalance(): Promise<{
 
   try {
     const info = await breez.getInfo();
+    const w = info.walletInfo;
     return {
-      balanceSats: Number(info.balanceSat),
-      pendingSendSats: Number(info.pendingSendSat),
-      pendingReceiveSats: Number(info.pendingReceiveSat),
+      balanceSats: w.balanceSat,
+      pendingSendSats: w.pendingSendSat,
+      pendingReceiveSats: w.pendingReceiveSat,
     };
   } catch (err) {
     console.error("[Breez] getBalance error:", err);
@@ -66,23 +68,29 @@ export async function getBalance(): Promise<{
   }
 }
 
-export async function sendPayment(bolt11: string, amountSats?: number): Promise<{
+export async function sendPayment(
+  bolt11: string,
+  _amountSats?: number
+): Promise<{
   success: boolean;
   paymentHash: string;
   feeSats: number;
   amountSats: number;
 }> {
   const breez = await getBreezSdk();
-  if (!breez) throw new Error("Wallet not initialized");
+  if (!breez) throw new Error("Wallet not initialized — check BREEZ_API_KEY and WALLET_MNEMONIC");
 
-  const result = await breez.sendPayment({
-    bolt11,
-    ...(amountSats ? { amountMsat: amountSats * 1000 } : {}),
+  // Step 1: Prepare
+  const prepareResp = await breez.prepareSendPayment({
+    destination: bolt11,
   });
 
+  // Step 2: Send
+  const result = await breez.sendPayment({ prepareResponse: prepareResp });
+
   const payment = result.payment;
-  const paidAmountSats = Number(payment.amountSat);
-  const feeSats = Number(payment.feesSat ?? 0);
+  const paidAmountSats = payment.amountSat;
+  const feeSats = payment.feesSat ?? 0;
 
   try {
     await db.insert(transactionCacheTable).values({
@@ -90,8 +98,8 @@ export async function sendPayment(bolt11: string, amountSats?: number): Promise<
       type: "send",
       amountSats: paidAmountSats,
       feeSats,
-      description: payment.description ?? "",
-      paymentHash: payment.destination,
+      description: "",
+      paymentHash: payment.destination ?? "",
       status: "complete",
     }).onConflictDoNothing();
   } catch (e) {
@@ -106,22 +114,26 @@ export async function sendPayment(bolt11: string, amountSats?: number): Promise<
   };
 }
 
-export async function receivePayment(amountSats: number, description?: string): Promise<{
+export async function receivePayment(
+  amountSats: number,
+  description?: string
+): Promise<{
   bolt11: string;
   paymentHash: string;
 }> {
   const breez = await getBreezSdk();
-  if (!breez) throw new Error("Wallet not initialized");
+  if (!breez) throw new Error("Wallet not initialized — check BREEZ_API_KEY and WALLET_MNEMONIC");
 
-  const amountMsat = BigInt(amountSats * 1000);
+  // Step 1: Prepare — get fee quote
   const prepareResp = await breez.prepareReceivePayment({
-    paymentMethod: breezSdk.PaymentMethod.LIGHTNING,
-    payerAmountSat: amountSats,
+    paymentMethod: "bolt11Invoice",
+    amount: { type: "bitcoin", amountMsat: amountSats * 1000 },
   });
 
+  // Step 2: Create the invoice
   const receiveResp = await breez.receivePayment({
     prepareResponse: prepareResp,
-    description: description ?? "Buccaneer payment",
+    description: description ?? "Buccaneer Wallet payment",
   });
 
   return {
@@ -130,30 +142,31 @@ export async function receivePayment(amountSats: number, description?: string): 
   };
 }
 
-export async function listPayments(): Promise<{
-  id: string;
-  type: "send" | "receive";
-  amountSats: number;
-  feeSats: number;
-  description: string;
-  timestamp: string;
-  status: string;
-  paymentHash: string;
-}[]> {
+export async function listPayments(): Promise<
+  {
+    id: string;
+    type: "send" | "receive";
+    amountSats: number;
+    feeSats: number;
+    description: string;
+    timestamp: string;
+    status: string;
+    paymentHash: string;
+  }[]
+> {
   const breez = await getBreezSdk();
   if (!breez) return [];
 
   try {
     const payments = await breez.listPayments({});
     return payments.map((p) => ({
-      id: p.txId ?? p.destination ?? Date.now().toString(),
-      type: p.paymentType === breezSdk.PaymentType.SEND ? "send" : "receive",
-      amountSats: Number(p.amountSat),
-      feeSats: Number(p.feesSat ?? 0),
-      description: p.description ?? "",
-      timestamp: new Date(Number(p.timestamp) * 1000).toISOString(),
-      status: p.status === breezSdk.PaymentState.COMPLETE ? "complete" :
-        p.status === breezSdk.PaymentState.PENDING ? "pending" : "failed",
+      id: p.txId ?? p.destination ?? String(p.timestamp),
+      type: p.paymentType === "send" ? "send" : "receive",
+      amountSats: p.amountSat,
+      feeSats: p.feesSat ?? 0,
+      description: "",
+      timestamp: new Date(p.timestamp * 1000).toISOString(),
+      status: p.status === "complete" ? "complete" : p.status === "pending" ? "pending" : "failed",
       paymentHash: p.destination ?? "",
     }));
   } catch (err) {
@@ -170,22 +183,21 @@ export async function decodeInvoice(bolt11: string): Promise<{
   isExpired: boolean;
 }> {
   try {
-    const decoded = await breezSdk.parseInput(bolt11);
-    if (decoded.type === breezSdk.InputType.BOLT11) {
-      const invoice = decoded.invoice;
-      const now = Math.floor(Date.now() / 1000);
-      const expiry = Number(invoice.expiry ?? 3600);
-      const timestamp = Number(invoice.timestamp ?? 0);
-      return {
-        amountSats: invoice.amountMsat ? Math.floor(Number(invoice.amountMsat) / 1000) : undefined,
-        description: invoice.description,
-        expiry,
-        paymentHash: invoice.paymentHash,
-        isExpired: now > timestamp + expiry,
-      };
-    }
-    throw new Error("Not a BOLT11 invoice");
+    // parseInvoice is synchronous in v0.12.x
+    const invoice = breezSdk.parseInvoice(bolt11);
+    const now = Math.floor(Date.now() / 1000);
+    const expiry = invoice.expiry ?? 3600;
+    const timestamp = invoice.timestamp ?? 0;
+    return {
+      amountSats: invoice.amountMsat ? Math.floor(invoice.amountMsat / 1000) : undefined,
+      description: invoice.description,
+      expiry,
+      paymentHash: invoice.paymentHash,
+      isExpired: now > timestamp + expiry,
+    };
   } catch (err) {
-    throw new Error("Failed to decode invoice: " + (err instanceof Error ? err.message : String(err)));
+    throw new Error(
+      "Failed to decode invoice: " + (err instanceof Error ? err.message : String(err))
+    );
   }
 }
