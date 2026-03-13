@@ -1,22 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Buccaneer Wallet API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: wallet
+    description: Lightning wallet operations
+  - name: settings
+    description: User settings
+  - name: agent-keys
+    description: NWC agent key management
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +28,261 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /wallet/balance:
+    get:
+      operationId: getBalance
+      tags: [wallet]
+      summary: Get wallet balance
+      responses:
+        "200":
+          description: Wallet balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletBalance"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /wallet/transactions:
+    get:
+      operationId: getTransactions
+      tags: [wallet]
+      summary: Get transaction history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /wallet/send:
+    post:
+      operationId: sendPayment
+      tags: [wallet]
+      summary: Send Lightning payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendPaymentRequest"
+      responses:
+        "200":
+          description: Payment sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendPaymentResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /wallet/decode-invoice:
+    post:
+      operationId: decodeInvoice
+      tags: [wallet]
+      summary: Decode a Lightning invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecodeInvoiceRequest"
+      responses:
+        "200":
+          description: Decoded invoice details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecodedInvoice"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /wallet/receive:
+    post:
+      operationId: createInvoice
+      tags: [wallet]
+      summary: Create Lightning invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceRequest"
+      responses:
+        "200":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateInvoiceResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /wallet/lightning-address:
+    get:
+      operationId: getLightningAddress
+      tags: [wallet]
+      summary: Get static Lightning address
+      responses:
+        "200":
+          description: Lightning address info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LightningAddressInfo"
+
+  /wallet/btc-price:
+    get:
+      operationId: getBtcPrice
+      tags: [wallet]
+      summary: Get current BTC price in fiat
+      parameters:
+        - name: currency
+          in: query
+          schema:
+            type: string
+            default: USD
+      responses:
+        "200":
+          description: BTC price
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BtcPrice"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get user settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+  /agent-keys:
+    get:
+      operationId: getAgentKeys
+      tags: [agent-keys]
+      summary: Get all NWC agent keys
+      responses:
+        "200":
+          description: List of agent keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentKeyList"
+    post:
+      operationId: createAgentKey
+      tags: [agent-keys]
+      summary: Create a new NWC agent key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentKeyRequest"
+      responses:
+        "201":
+          description: Agent key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentKey"
+
+  /agent-keys/{id}:
+    delete:
+      operationId: deleteAgentKey
+      tags: [agent-keys]
+      summary: Delete an agent key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /wallet/seed-phrase:
+    get:
+      operationId: getSeedPhrase
+      tags: [wallet]
+      summary: Get wallet seed phrase (protected)
+      responses:
+        "200":
+          description: Seed phrase words
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedPhraseResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +290,233 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+
+    WalletBalance:
+      type: object
+      properties:
+        balanceSats:
+          type: integer
+          description: Balance in satoshis
+        pendingSendSats:
+          type: integer
+        pendingReceiveSats:
+          type: integer
+      required: [balanceSats, pendingSendSats, pendingReceiveSats]
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [send, receive]
+        amountSats:
+          type: integer
+        feeSats:
+          type: integer
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, complete, failed]
+        paymentHash:
+          type: string
+      required: [id, type, amountSats, feeSats, timestamp, status]
+
+    TransactionList:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        total:
+          type: integer
+      required: [transactions, total]
+
+    SendPaymentRequest:
+      type: object
+      properties:
+        bolt11:
+          type: string
+          description: BOLT11 Lightning invoice
+        amountSats:
+          type: integer
+          description: Amount in sats (for zero-amount invoices)
+      required: [bolt11]
+
+    SendPaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        paymentHash:
+          type: string
+        feeSats:
+          type: integer
+        amountSats:
+          type: integer
+      required: [success, paymentHash, feeSats, amountSats]
+
+    DecodeInvoiceRequest:
+      type: object
+      properties:
+        bolt11:
+          type: string
+      required: [bolt11]
+
+    DecodedInvoice:
+      type: object
+      properties:
+        amountSats:
+          type: integer
+        description:
+          type: string
+        expiry:
+          type: integer
+        paymentHash:
+          type: string
+        isExpired:
+          type: boolean
+      required: [isExpired]
+
+    CreateInvoiceRequest:
+      type: object
+      properties:
+        amountSats:
+          type: integer
+        description:
+          type: string
+      required: [amountSats]
+
+    CreateInvoiceResponse:
+      type: object
+      properties:
+        bolt11:
+          type: string
+        paymentHash:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required: [bolt11, paymentHash]
+
+    LightningAddressInfo:
+      type: object
+      properties:
+        address:
+          type: string
+        lnurlp:
+          type: string
+      required: [address]
+
+    BtcPrice:
+      type: object
+      properties:
+        currency:
+          type: string
+        price:
+          type: number
+        symbol:
+          type: string
+      required: [currency, price, symbol]
+
+    UserSettings:
+      type: object
+      properties:
+        fiatCurrency:
+          type: string
+        primaryDisplay:
+          type: string
+          enum: [sats, fiat]
+        soundEffectsEnabled:
+          type: boolean
+        backupCompleted:
+          type: boolean
+        lightningAddress:
+          type: string
+      required: [fiatCurrency, primaryDisplay, soundEffectsEnabled, backupCompleted]
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        fiatCurrency:
+          type: string
+        primaryDisplay:
+          type: string
+          enum: [sats, fiat]
+        soundEffectsEnabled:
+          type: boolean
+        backupCompleted:
+          type: boolean
+        lightningAddress:
+          type: string
+
+    AgentKey:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nwcUri:
+          type: string
+        spendingLimitSats:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+      required: [id, name, nwcUri, isActive, createdAt]
+
+    AgentKeyList:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentKey"
+      required: [keys]
+
+    CreateAgentKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        spendingLimitSats:
+          type: integer
+      required: [name]
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    SeedPhraseResponse:
+      type: object
+      properties:
+        words:
+          type: array
+          items:
+            type: string
+      required: [words]

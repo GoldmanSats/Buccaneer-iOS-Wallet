@@ -5,7 +5,8 @@
  * Buccaneer Wallet API
  * OpenAPI spec version: 0.1.0
  */
+import type { AgentKey } from "./agentKey";
 
-export interface HealthStatus {
-  status: string;
+export interface AgentKeyList {
+  keys: AgentKey[];
 }
