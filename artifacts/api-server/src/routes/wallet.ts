@@ -19,6 +19,7 @@ import {
   receivePayment,
   listPayments,
   decodeInvoice,
+  syncWallet,
 } from "../lib/breez.js";
 
 const router: IRouter = Router();
@@ -117,6 +118,16 @@ router.get("/btc-price", async (req, res) => {
   } catch (_err) {
     // Fallback price
     res.json({ currency, price: 85000, symbol: "$" });
+  }
+});
+
+// POST /wallet/sync — force a sync with the network
+router.post("/sync", async (_req, res) => {
+  try {
+    await syncWallet();
+    res.json({ success: true, message: "Synced" });
+  } catch (err) {
+    res.status(500).json({ error: "sync_failed", message: String(err) });
   }
 });
 

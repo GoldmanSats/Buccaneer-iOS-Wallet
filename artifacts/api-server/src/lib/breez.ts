@@ -2,12 +2,46 @@ import * as breezSdk from "@breeztech/breez-sdk-liquid";
 import { db } from "@workspace/db";
 import { transactionCacheTable } from "@workspace/db";
 
-// LiquidNetwork is a string union: "mainnet" | "testnet" | "regtest"
-// PaymentMethod is a string union: "bolt11Invoice" | "bolt12Offer" | "bitcoinAddress" | "liquidAddress"
-
 let sdk: breezSdk.BindingLiquidSdk | null = null;
 let initializationError: string | null = null;
 let initialized = false;
+let listenerAdded = false;
+
+// Called by the event listener when a payment comes in
+const pendingEvents: breezSdk.SdkEvent[] = [];
+
+async function addSdkListener(s: breezSdk.BindingLiquidSdk) {
+  if (listenerAdded) return;
+  listenerAdded = true;
+  try {
+    await s.addEventListener({
+      onEvent: (event: breezSdk.SdkEvent) => {
+        console.log("[Breez] Event:", JSON.stringify(event));
+        pendingEvents.push(event);
+
+        if (event.type === "paymentSucceeded") {
+          const p = event.details;
+          // Cache the received payment
+          db.insert(transactionCacheTable)
+            .values({
+              txId: p.txId ?? p.destination ?? String(p.timestamp),
+              type: p.paymentType === "send" ? "send" : "receive",
+              amountSats: p.amountSat,
+              feeSats: p.feesSat ?? 0,
+              description: "",
+              paymentHash: p.destination ?? "",
+              status: "complete",
+            })
+            .onConflictDoNothing()
+            .catch((e: unknown) => console.error("[Breez] Cache write error:", e));
+        }
+      },
+    });
+    console.log("[Breez] Event listener registered");
+  } catch (e) {
+    console.error("[Breez] Failed to add event listener:", e);
+  }
+}
 
 export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
   if (initialized) return sdk;
@@ -34,6 +68,18 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
 
     initialized = true;
     console.log("[Breez] SDK initialized successfully");
+
+    // Register event listener and trigger sync
+    await addSdkListener(sdk);
+
+    // Force sync to pick up any payments that arrived while offline
+    try {
+      await sdk.sync();
+      console.log("[Breez] Initial sync complete");
+    } catch (syncErr) {
+      console.warn("[Breez] Initial sync warning:", syncErr);
+    }
+
     return sdk;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -42,6 +88,13 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
     initialized = true;
     return null;
   }
+}
+
+export async function syncWallet(): Promise<void> {
+  const breez = await getBreezSdk();
+  if (!breez) throw new Error("Wallet not initialized");
+  await breez.sync();
+  console.log("[Breez] Manual sync complete");
 }
 
 export async function getBalance(): Promise<{
