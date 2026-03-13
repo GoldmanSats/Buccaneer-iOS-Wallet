@@ -218,6 +218,9 @@ importers:
 
   artifacts/mobile:
     dependencies:
+      '@expo-google-fonts/chewy':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@expo-google-fonts/pirata-one':
         specifier: ^0.4.1
         version: 0.4.1
@@ -1138,6 +1141,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [linux]
+
+  '@expo-google-fonts/chewy@0.4.0':
+    resolution: {integrity: sha512-xDeMnRVyvb4Zb0ptSqNc2XNnVPz13yyeAMNObHbymnktpHJgKkbgILevdZIs0tcxK6oKKGQCR6XG3MxXJjSGtQ==}
 
   '@expo-google-fonts/inter@0.4.2':
     resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
@@ -6289,6 +6295,8 @@ snapshots:
 
   '@esbuild/linux-x64@0.27.3':
     optional: true
+
+  '@expo-google-fonts/chewy@0.4.0': {}
 
   '@expo-google-fonts/inter@0.4.2': {}
 

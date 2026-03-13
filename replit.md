@@ -43,7 +43,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 │       ├── contexts/
 │       │   ├── WalletContext.tsx  # balance, txs, send/receive, parse, memo via API
 │       │   └── SettingsContext.tsx # AsyncStorage + server sync
-│       └── constants/colors.ts   # MIDNIGHT/DAYLIGHT themes
+│       └── constants/colors.ts   # MIDNIGHT/DAYLIGHT themes (matched to original web app)
 ├── lib/
 │   ├── api-spec/            # OpenAPI 3.1 spec + Orval config
 │   ├── api-client-react/    # Generated React Query hooks

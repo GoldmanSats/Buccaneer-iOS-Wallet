@@ -6,6 +6,7 @@ import {
   useFonts as useInterFonts,
 } from "@expo-google-fonts/inter";
 import { PirataOne_400Regular, useFonts as usePirateFonts } from "@expo-google-fonts/pirata-one";
+import { Chewy_400Regular, useFonts as useChewyFonts } from "@expo-google-fonts/chewy";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -54,8 +55,12 @@ export default function RootLayout() {
     PirataOne_400Regular,
   });
 
-  const fontsLoaded = interLoaded && pirateLoaded;
-  const fontError = interError || pirateError;
+  const [chewyLoaded, chewyError] = useChewyFonts({
+    Chewy_400Regular,
+  });
+
+  const fontsLoaded = interLoaded && pirateLoaded && chewyLoaded;
+  const fontError = interError || pirateError || chewyError;
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
