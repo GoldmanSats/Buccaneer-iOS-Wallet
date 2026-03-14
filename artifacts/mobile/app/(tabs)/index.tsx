@@ -115,8 +115,8 @@ function TransactionItem({
   const iconBg = isPendingDeposit
     ? "rgba(234,179,8,0.15)"
     : isReceive
-    ? colors.receiveIconBg
-    : colors.sendIconBg;
+    ? "rgba(23,162,184,0.10)"
+    : "rgba(232,106,51,0.10)";
   const iconColor = isPendingDeposit
     ? "#EAB308"
     : isReceive
@@ -132,8 +132,12 @@ function TransactionItem({
     <Pressable
       style={({ pressed }) => [
         txStyles.row,
-        { borderBottomColor: colors.border + "40" },
-        pressed && { opacity: 0.7, backgroundColor: colors.bgCard + "60" },
+        isPendingDeposit && {
+          backgroundColor: "rgba(234,179,8,0.05)",
+          borderWidth: 1,
+          borderColor: "rgba(234,179,8,0.2)",
+        },
+        pressed && { opacity: 0.7, backgroundColor: colors.bgCard + "80" },
       ]}
       onPress={() => onPress(tx)}
       testID={`tx-item-${tx.id}`}
@@ -201,9 +205,8 @@ const txStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
     borderRadius: 16,
-    borderBottomWidth: 0,
     gap: 16,
   },
   iconCircle: {
@@ -227,7 +230,7 @@ const txStyles = StyleSheet.create({
   },
   meta: { flex: 1, gap: 2 },
   desc: { fontFamily: "Inter_700Bold", fontSize: 14, lineHeight: 18 },
-  time: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  time: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
   amountCol: { alignItems: "flex-end", gap: 2 },
   amount: { fontFamily: "Inter_700Bold", fontSize: 14 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 4 },
@@ -322,22 +325,24 @@ export default function HomeScreen() {
 
   const formatted = formatSats(sats);
   const digitCount = formatted.replace(/,/g, "").length;
-  const balanceFontSize = digitCount <= 3 ? 64 : digitCount <= 5 ? 52 : digitCount <= 7 ? 44 : 36;
+  const balanceFontSize = digitCount <= 3 ? 72 : digitCount <= 5 ? 60 : digitCount <= 7 ? 48 : 36;
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
+  const symbolMarginBottom = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
-  const topPad = insets.top + 8;
+  const topPad = insets.top + 14;
   const bottomPad = insets.bottom + 16;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 20 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 32 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
         }
       >
+        {/* Header — original: flex items-center justify-between mb-8 (mb-8=32px), inside px-6 pt-14 */}
         <View style={[styles.header, { paddingTop: topPad }]}>
           <Pressable
             testID="settings-button"
@@ -364,12 +369,13 @@ export default function HomeScreen() {
                 pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
               ]}
             >
-              <Ionicons name="shield-outline" size={14} color="#FB923C" />
+              <Ionicons name="shield-outline" size={16} color="#FB923C70" />
               <Text style={styles.backupText}>Backup!</Text>
             </Pressable>
           )}
         </View>
 
+        {/* Balance — original: flex-col items-center justify-center flex-1 min-h-[30vh] */}
         <View style={styles.balanceSection}>
           <Pressable
             onPress={handleBalanceTap}
@@ -383,13 +389,13 @@ export default function HomeScreen() {
               {isFiatPrimary ? (
                 <>
                   <View style={styles.balanceRow}>
-                    <Text style={[styles.fiatSymbol, { color: colors.text, fontSize: 32 }]}>
+                    <Text style={[styles.fiatSymbol, { color: colors.text, fontSize: 36 }]}>
                       {fiatSymbol}
                     </Text>
                     <Text
                       style={[
                         styles.balanceText,
-                        { color: colors.text, fontSize: 64 },
+                        { color: colors.text, fontSize: 72 },
                       ]}
                     >
                       {settings.balanceHidden
@@ -412,7 +418,7 @@ export default function HomeScreen() {
                     <Text
                       style={[
                         styles.btcSymbol,
-                        { color: colors.text, fontSize: symbolFontSize },
+                        { color: colors.text, fontSize: symbolFontSize, marginBottom: symbolMarginBottom },
                       ]}
                     >
                       ₿
@@ -442,6 +448,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/* Action buttons — original: grid grid-cols-2 gap-4 mb-10 (gap=16, mb=40) */}
         <View style={styles.actionRow}>
           <Pressable
             testID="receive-button"
@@ -455,15 +462,15 @@ export default function HomeScreen() {
                 backgroundColor: colors.bgCard,
                 borderColor: colors.border + "80",
               },
-              pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },
+              pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: colors.receiveIconBg }]}>
+            <View style={[styles.actionIconCircle, { backgroundColor: "rgba(23,162,184,0.10)" }]}>
               <Ionicons
                 name="arrow-down-outline"
                 size={24}
                 color={colors.teal}
-                style={{ transform: [{ rotate: "-45deg" }] }}
+                style={{ transform: [{ rotate: "-45deg" }], strokeWidth: 3 }}
               />
             </View>
             <Text style={[styles.actionLabel, { color: colors.teal }]}>Receive</Text>
@@ -481,21 +488,23 @@ export default function HomeScreen() {
                 backgroundColor: colors.bgCard,
                 borderColor: colors.border + "80",
               },
-              pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },
+              pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: colors.sendIconBg }]}>
+            <View style={[styles.actionIconCircle, { backgroundColor: "rgba(232,106,51,0.10)" }]}>
               <Ionicons
                 name="arrow-up-outline"
                 size={24}
                 color={colors.coral}
-                style={{ transform: [{ rotate: "45deg" }] }}
+                style={{ transform: [{ rotate: "45deg" }], strokeWidth: 3 }}
               />
             </View>
             <Text style={[styles.actionLabel, { color: colors.coral }]}>Send</Text>
           </Pressable>
         </View>
 
+        {/* Transaction Log — original: bg-card/80 backdrop-blur-xl border-t border-border
+            flex-1 rounded-t-[2.5rem] -mx-6 px-6 pt-8 mt-4 */}
         <View
           style={[
             styles.txPanel,
@@ -513,7 +522,7 @@ export default function HomeScreen() {
             }}
             style={styles.txHeaderRow}
           >
-            <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+            <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
             <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
           </Pressable>
 
@@ -549,6 +558,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
+      {/* Transaction Detail Sheet */}
       <Modal
         visible={!!selectedTx}
         transparent
@@ -571,8 +581,8 @@ export default function HomeScreen() {
               const iconBg = isPendingDeposit
                 ? "rgba(234,179,8,0.15)"
                 : isReceive
-                ? colors.receiveIconBg
-                : colors.sendIconBg;
+                ? "rgba(23,162,184,0.10)"
+                : "rgba(232,106,51,0.10)";
               const iconColor = isPendingDeposit
                 ? "#EAB308"
                 : isReceive
@@ -698,6 +708,7 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* Celebration overlay */}
       {celebration && (
         <Modal visible transparent animationType="fade" onRequestClose={() => setCelebration(null)}>
           <Pressable
@@ -732,8 +743,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingBottom: 8,
-    marginBottom: 8,
+    marginBottom: 32,
   },
   settingsBtn: {
     width: 40,
@@ -746,8 +756,9 @@ const styles = StyleSheet.create({
   backupBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
@@ -755,17 +766,17 @@ const styles = StyleSheet.create({
   backupText: {
     fontFamily: "Inter_700Bold",
     fontSize: 12,
-    color: "#FB923C",
-    letterSpacing: 1,
+    color: "rgba(251,147,60,0.7)",
+    letterSpacing: 1.5,
     textTransform: "uppercase",
   },
 
   balanceSection: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 32,
+    flex: 1,
+    minHeight: SCREEN_HEIGHT * 0.25,
     paddingHorizontal: 24,
-    minHeight: 160,
   },
   balanceCenter: {
     alignItems: "center",
@@ -777,21 +788,18 @@ const styles = StyleSheet.create({
   },
   btcSymbol: {
     fontFamily: "Chewy_400Regular",
-    marginBottom: 4,
   },
   fiatSymbol: {
     fontFamily: "Chewy_400Regular",
-    marginBottom: 4,
   },
   balanceText: {
     fontFamily: "Chewy_400Regular",
     letterSpacing: -1,
-    lineHeight: undefined,
   },
   subBalance: {
     fontFamily: "Inter_700Bold",
     fontSize: 14,
-    marginTop: 8,
+    marginTop: 12,
     opacity: 0.8,
   },
 
@@ -799,12 +807,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 16,
     paddingHorizontal: 24,
-    marginBottom: 32,
+    marginBottom: 40,
   },
   actionCard: {
     flex: 1,
     borderRadius: 24,
-    paddingVertical: 20,
+    paddingVertical: 16,
     alignItems: "center",
     gap: 12,
     borderWidth: 1,
@@ -816,6 +824,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 4,
   },
   actionLabel: {
     fontFamily: "Inter_700Bold",
@@ -826,16 +835,17 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     borderTopWidth: 1,
-    marginHorizontal: -0,
+    marginHorizontal: 0,
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 32,
+    marginTop: 16,
     flex: 1,
   },
   txHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 24,
   },
   txHeaderText: {
     fontFamily: "Inter_700Bold",
@@ -848,8 +858,8 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: 48,
-    gap: 8,
+    paddingVertical: 32,
+    gap: 4,
   },
   emptyTitle: {
     fontFamily: "Inter_700Bold",
@@ -858,6 +868,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
+    marginTop: 4,
   },
 
   modalOverlay: {
@@ -871,18 +882,21 @@ const styles = StyleSheet.create({
   txDetailSheet: {
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingHorizontal: 24,
   },
   sheetHandle: {
     width: 48,
-    height: 5,
+    height: 6,
     borderRadius: 3,
     alignSelf: "center",
+    marginTop: 16,
     marginBottom: 20,
   },
   txDetailContent: {
     alignItems: "center",
+    paddingHorizontal: 0,
+    paddingBottom: 48,
   },
   txDetailIcon: {
     width: 80,
@@ -890,7 +904,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   txDetailAmountRow: {
     flexDirection: "row",
@@ -903,12 +917,12 @@ const styles = StyleSheet.create({
   },
   txDetailSats: {
     fontFamily: "Inter_400Regular",
-    fontSize: 20,
+    fontSize: 24,
   },
   txDetailDate: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   pendingBanner: {
     flexDirection: "row",
@@ -925,7 +939,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     width: "100%",
   },
@@ -938,21 +952,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   memoSection: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     width: "100%",
     gap: 8,
   },
   memoInput: {
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontFamily: "Inter_400Regular",
     fontSize: 14,
-    borderWidth: 1,
   },
   hashSection: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     width: "100%",
     gap: 4,
   },
@@ -973,7 +986,7 @@ const styles = StyleSheet.create({
   },
   celebrationEmoji: {
     fontSize: 80,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   celebrationTitle: {
     fontFamily: "Chewy_400Regular",
@@ -992,7 +1005,7 @@ const styles = StyleSheet.create({
   },
   celebrationAmount: {
     fontFamily: "Chewy_400Regular",
-    fontSize: 56,
+    fontSize: 60,
     color: "#FBBF24",
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 2 },
