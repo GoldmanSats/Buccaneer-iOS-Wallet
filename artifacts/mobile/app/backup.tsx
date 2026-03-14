@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 
 const NAVY = "#0B1426";
-const NAVY_CARD = "#111D35";
+const NAVY_CARD = "#151f35";
 const GOLD = "#c9a24d";
 
 type Stage = "choose" | "seed" | "verify" | "done";
@@ -41,8 +41,13 @@ const iconStyles = StyleSheet.create({
     backgroundColor: "rgba(201,162,77,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(201,162,77,0.3)",
+    borderWidth: 2,
+    borderColor: "rgba(201,162,77,0.25)",
+    shadowColor: "#c9a24d",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });
 
@@ -324,7 +329,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",
@@ -334,7 +339,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, paddingTop: 16, gap: 20 },
   stageContainer: { alignItems: "center", gap: 20 },
   stageTitle: {
-    fontFamily: "PirataOne_400Regular",
+    fontFamily: "Chewy_400Regular",
     fontSize: 34,
     color: "#FFFFFF",
     textAlign: "center",

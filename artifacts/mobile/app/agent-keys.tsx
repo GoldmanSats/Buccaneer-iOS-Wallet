@@ -19,7 +19,7 @@ import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 
 const NAVY = "#0B1426";
-const NAVY_CARD = "#111D35";
+const NAVY_CARD = "#151f35";
 const GOLD = "#c9a24d";
 const API = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/agent-keys`;
 
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",

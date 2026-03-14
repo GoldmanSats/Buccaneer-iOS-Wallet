@@ -59,7 +59,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 
 ### Theme
 - **Colors**: MIDNIGHT dark theme (Navy `#0B1426`, Gold `#c9a24d`, Teal `#2A9D8F`, Coral `#E76F51`)
-- **Fonts**: PirataOne_400Regular (headings), Inter family (body)
+- **Fonts**: Chewy_400Regular (headings/display), Inter family (body)
 - **Pirate vocabulary**: "Transaction Log", "Captain's Quarters", "Protect Your Treasure", "Loading plunder...", "Sail the Lightning seas"
 
 ### Navigation

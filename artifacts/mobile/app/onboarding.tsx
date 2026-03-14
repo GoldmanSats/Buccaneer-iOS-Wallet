@@ -27,7 +27,7 @@ const { width, height } = Dimensions.get("window");
 
 const GOLD = "#c9a24d";
 const NAVY = "#0B1426";
-const NAVY2 = "#111D35";
+const NAVY2 = "#151f35";
 
 function GalleonSVG() {
   return (
@@ -286,8 +286,8 @@ const styles = StyleSheet.create({
   },
   logoContainer: { alignItems: "center", justifyContent: "center" },
   titleGroup: { alignItems: "center", gap: 2 },
-  appName: { fontFamily: "PirataOne_400Regular", fontSize: 52, color: "#FFFFFF", letterSpacing: 2, lineHeight: 60 },
-  appSubtitle: { fontFamily: "PirataOne_400Regular", fontSize: 36, color: GOLD, letterSpacing: 4, lineHeight: 40 },
+  appName: { fontFamily: "Chewy_400Regular", fontSize: 52, color: "#FFFFFF", letterSpacing: 2, lineHeight: 60 },
+  appSubtitle: { fontFamily: "Chewy_400Regular", fontSize: 36, color: GOLD, letterSpacing: 4, lineHeight: 40 },
   tagline: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#8FA3C8", marginTop: 8, letterSpacing: 1 },
   features: { gap: 12, width: "100%" },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   loadingTitle: {
-    fontFamily: "PirataOne_400Regular",
+    fontFamily: "Chewy_400Regular",
     fontSize: 36,
     color: "#FFFFFF",
     marginTop: 20,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: NAVY2,
     alignItems: "center",
     justifyContent: "center",
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     borderColor: "#1E2D50",
   },
   restoreTitle: {
-    fontFamily: "PirataOne_400Regular",
+    fontFamily: "Chewy_400Regular",
     fontSize: 28,
     color: "#FFFFFF",
   },

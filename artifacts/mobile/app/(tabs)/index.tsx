@@ -125,8 +125,8 @@ function TransactionItem({
   const amountColor = isPendingDeposit
     ? "#EAB308"
     : isReceive
-    ? colors.tealDark
-    : colors.coralDark;
+    ? colors.teal
+    : colors.coral;
 
   return (
     <Pressable
@@ -158,7 +158,7 @@ function TransactionItem({
             txStyles.desc,
             { color: isPendingDeposit ? "#EAB308" : colors.text },
           ]}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {displayText}
         </Text>
@@ -452,7 +452,7 @@ export default function HomeScreen() {
             style={({ pressed }) => [
               styles.actionCard,
               {
-                backgroundColor: colors.receiveBg,
+                backgroundColor: colors.bgCard,
                 borderColor: colors.border + "80",
               },
               pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },
@@ -478,7 +478,7 @@ export default function HomeScreen() {
             style={({ pressed }) => [
               styles.actionCard,
               {
-                backgroundColor: colors.sendBg,
+                backgroundColor: colors.bgCard,
                 borderColor: colors.border + "80",
               },
               pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },

@@ -22,7 +22,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useWallet } from "@/contexts/WalletContext";
 
 const NAVY = "#0B1426";
-const NAVY_CARD = "#111D35";
+const NAVY_CARD = "#151f35";
 const GOLD = "#c9a24d";
 
 type Stage = "scan" | "review" | "sending" | "success" | "error";
@@ -50,8 +50,8 @@ export default function SendScreen() {
     transform: [{ scale: successScale.value }],
   }));
 
-  const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
-  const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const topPad = insets.top;
+  const bottomPad = insets.bottom + 16;
 
   useEffect(() => {
     if (!permission?.granted && permission?.canAskAgain) {
@@ -102,10 +102,7 @@ export default function SendScreen() {
           setIsDecoding(false);
           return;
         }
-        setDecodedInvoice({
-          ...decoded,
-          type: "bolt11",
-        });
+        setDecodedInvoice({ ...decoded, type: "bolt11" });
         setInvoiceInput(parsed.invoice);
         setStage("review");
       } else if (parsed.type === "lightning_address") {
@@ -186,7 +183,7 @@ export default function SendScreen() {
 
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} testID="send-back-button">
-          <Ionicons name="arrow-back" size={22} color="#8FA3C8" />
+          <Ionicons name="chevron-back" size={22} color="#8FA3C8" />
         </Pressable>
         <Text style={styles.title}>Send</Text>
         <View style={{ width: 44 }} />
@@ -201,7 +198,7 @@ export default function SendScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {(stage === "scan") && (
+          {stage === "scan" && (
             <Animated.View entering={FadeIn} style={{ gap: 20 }}>
               <View style={styles.scannerBox}>
                 {permission?.granted && cameraActive && Platform.OS !== "web" ? (
@@ -221,24 +218,9 @@ export default function SendScreen() {
                     <Text style={styles.cameraPermText}>Tap to enable camera</Text>
                   </Pressable>
                 )}
-                {(permission?.granted && cameraActive) && (
+                {permission?.granted && cameraActive && (
                   <Text style={styles.scanningText}>SCANNING FOR QR CODE...</Text>
                 )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <TextInput
-                  testID="invoice-input"
-                  style={styles.input}
-                  placeholder="Paste invoice, address, or LNURL..."
-                  placeholderTextColor="#4A6080"
-                  value={invoiceInput}
-                  onChangeText={setInvoiceInput}
-                  multiline
-                  numberOfLines={3}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
               </View>
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -246,22 +228,20 @@ export default function SendScreen() {
               <Pressable
                 testID="paste-invoice-button"
                 style={styles.dashedBtn}
-                onPress={invoiceInput ? () => handleDecodeInput(invoiceInput) : handlePasteInvoice}
+                onPress={handlePasteInvoice}
               >
                 {isDecoding ? (
                   <ActivityIndicator color={GOLD} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="clipboard-outline" size={18} color="#8FA3C8" />
-                    <Text style={styles.dashedBtnText}>
-                      {invoiceInput ? "Confirm Invoice" : "Paste from Clipboard"}
-                    </Text>
+                    <Ionicons name="clipboard-outline" size={18} color="#CDDAED" />
+                    <Text style={styles.dashedBtnText}>Paste Invoice</Text>
                   </>
                 )}
               </Pressable>
 
               <Pressable testID="import-photos-button" style={styles.dashedBtn} onPress={handlePickImage}>
-                <MaterialCommunityIcons name="image-plus" size={18} color="#8FA3C8" />
+                <MaterialCommunityIcons name="image-plus" size={18} color="#CDDAED" />
                 <Text style={styles.dashedBtnText}>Import from Photos</Text>
               </Pressable>
             </Animated.View>
@@ -370,7 +350,7 @@ export default function SendScreen() {
                 style={styles.retryBtn}
                 onPress={() => { setStage("scan"); setError(""); setCameraActive(true); }}
               >
-                <Text style={styles.doneBtnText}>Try Again</Text>
+                <Text style={styles.retryBtnText}>Try Again</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -392,7 +372,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 22,
     backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",
@@ -402,7 +382,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: "Inter_700Bold", fontSize: 20, color: "#FFFFFF" },
   content: { padding: 20, gap: 16, flexGrow: 1 },
   scannerBox: {
-    height: 280,
+    height: 300,
     backgroundColor: "#000",
     borderRadius: 20,
     alignItems: "center",
@@ -410,54 +390,33 @@ const styles = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
   },
-  cornerTL: { position: "absolute", top: 16, left: 16, width: 28, height: 28, borderTopWidth: 3, borderLeftWidth: 3, borderColor: "#FFF", borderRadius: 4 },
-  cornerTR: { position: "absolute", top: 16, right: 16, width: 28, height: 28, borderTopWidth: 3, borderRightWidth: 3, borderColor: "#FFF", borderRadius: 4 },
-  cornerBL: { position: "absolute", bottom: 16, left: 16, width: 28, height: 28, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: "#FFF", borderRadius: 4 },
-  cornerBR: { position: "absolute", bottom: 16, right: 16, width: 28, height: 28, borderBottomWidth: 3, borderRightWidth: 3, borderColor: "#FFF", borderRadius: 4 },
-  cameraPermBtn: {
-    alignItems: "center",
-    gap: 8,
-  },
-  cameraPermText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: "#8FA3C8",
-  },
+  cornerTL: { position: "absolute", top: 20, left: 20, width: 32, height: 32, borderTopWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderTopLeftRadius: 8 },
+  cornerTR: { position: "absolute", top: 20, right: 20, width: 32, height: 32, borderTopWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderTopRightRadius: 8 },
+  cornerBL: { position: "absolute", bottom: 20, left: 20, width: 32, height: 32, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomLeftRadius: 8 },
+  cornerBR: { position: "absolute", bottom: 20, right: 20, width: 32, height: 32, borderBottomWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomRightRadius: 8 },
+  cameraPermBtn: { alignItems: "center", gap: 8 },
+  cameraPermText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#8FA3C8" },
   scanningText: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
-    color: "rgba(255,255,255,0.4)",
-    letterSpacing: 1.5,
+    color: "rgba(255,255,255,0.35)",
+    letterSpacing: 2,
     position: "absolute",
-    bottom: 24,
-  },
-  inputGroup: {
-    borderWidth: 1,
-    borderColor: "#1E2D50",
-    borderRadius: 12,
-    backgroundColor: NAVY_CARD,
-    overflow: "hidden",
-  },
-  input: {
-    padding: 14,
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: "#CDDAED",
-    minHeight: 80,
-    textAlignVertical: "top",
+    bottom: 28,
+    textTransform: "uppercase",
   },
   dashedBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 18,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#1E2D50",
+    borderColor: "rgba(255,255,255,0.15)",
   },
-  dashedBtnText: { fontFamily: "Inter_500Medium", fontSize: 15, color: "#8FA3C8" },
+  dashedBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#CDDAED" },
   errorText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
   reviewCard: {
     backgroundColor: NAVY_CARD,
@@ -565,4 +524,5 @@ const styles = StyleSheet.create({
     borderColor: "#1E2D50",
   },
   doneBtnText: { fontFamily: "Inter_700Bold", fontSize: 16, color: NAVY },
+  retryBtnText: { fontFamily: "Inter_700Bold", fontSize: 16, color: "#CDDAED" },
 });

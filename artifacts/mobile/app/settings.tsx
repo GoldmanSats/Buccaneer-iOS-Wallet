@@ -22,10 +22,14 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 
 const NAVY = "#0B1426";
-const NAVY_CARD = "#111D35";
+const NAVY_CARD = "#151f35";
 const GOLD = "#c9a24d";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "NZD", "AUD", "CAD", "JPY", "CHF"];
+const FIAT_LABELS: Record<string, string> = {
+  USD: "USD ($)", EUR: "EUR (€)", GBP: "GBP (£)", NZD: "NZD (NZ$)",
+  AUD: "AUD (A$)", CAD: "CAD (C$)", JPY: "JPY (¥)", CHF: "CHF",
+};
 
 function SectionHeader({ label }: { label: string }) {
   return <Text style={styles.sectionHeader}>{label}</Text>;
@@ -258,7 +262,7 @@ export default function SettingsScreen() {
               <Text style={styles.rowSubtitle}>Select local currency</Text>
             </View>
             <View style={styles.currencyBadge}>
-              <Text style={styles.currencyText}>{settings.fiatCurrency}</Text>
+              <Text style={styles.currencyText}>{FIAT_LABELS[settings.fiatCurrency] || settings.fiatCurrency}</Text>
               <Ionicons name={showCurrencies ? "chevron-up" : "chevron-down"} size={14} color="#8FA3C8" />
             </View>
           </Pressable>
@@ -427,14 +431,14 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#1E2D50",
   },
-  title: { fontFamily: "PirataOne_400Regular", fontSize: 28, color: "#FFFFFF" },
+  title: { fontFamily: "Chewy_400Regular", fontSize: 30, color: "#FFFFFF" },
   content: { paddingHorizontal: 20, gap: 8 },
   sectionHeader: {
     fontFamily: "Inter_600SemiBold",

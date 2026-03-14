@@ -4,7 +4,19 @@ import router from "./routes";
 
 const app: Express = express();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === "production" ? false : true,
+  credentials: true,
+}));
+if (process.env.NODE_ENV !== "production") {
+  app.use((_req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (_req.method === "OPTIONS") { res.sendStatus(200); return; }
+    next();
+  });
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
