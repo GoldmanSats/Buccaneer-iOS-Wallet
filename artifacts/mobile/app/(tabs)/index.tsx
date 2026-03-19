@@ -231,7 +231,7 @@ export default function HomeScreen() {
     transform: [{ scale: balanceScale.value }],
   }));
 
-  const TX_COLLAPSED_HEIGHT = 340;
+  const TX_COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.35;
   const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
   const txPanelHeight = useSharedValue(TX_COLLAPSED_HEIGHT);
 
@@ -295,7 +295,7 @@ export default function HomeScreen() {
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
   const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
-  const topPad = insets.top + 4;
+  const topPad = insets.top + 2;
   const bottomPad = insets.bottom + 16;
 
   const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
@@ -371,7 +371,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 320 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: SCREEN_HEIGHT * 0.38 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />}
       >
@@ -502,8 +502,7 @@ export default function HomeScreen() {
           styles.txPanelOverlay,
           {
             backgroundColor: colors.bgCard,
-            borderTopColor: colors.border,
-            paddingBottom: bottomPad + 8,
+            paddingBottom: bottomPad,
           },
           txPanelAnimStyle,
         ]}
@@ -850,7 +849,7 @@ const styles = StyleSheet.create({
 
   balanceSection: {
     alignItems: "center", justifyContent: "center",
-    flex: 1, minHeight: SCREEN_HEIGHT * 0.30, paddingHorizontal: 24,
+    flex: 1, minHeight: SCREEN_HEIGHT * 0.25, paddingHorizontal: 24,
   },
   balanceCenter: { alignItems: "center" },
   balanceRow: {
@@ -861,7 +860,7 @@ const styles = StyleSheet.create({
   balanceText: { fontFamily: "Chewy_400Regular", letterSpacing: -1 },
   subBalance: { fontFamily: "Inter_700Bold", fontSize: 14, marginTop: 12, opacity: 0.8 },
 
-  actionRow: { flexDirection: "row", gap: 16, paddingHorizontal: 24, marginBottom: 32 },
+  actionRow: { flexDirection: "row", gap: 16, paddingHorizontal: 24, marginBottom: 24 },
   actionCard: {
     flex: 1, borderRadius: 24, paddingVertical: 16,
     alignItems: "center", gap: 12, borderWidth: 1, overflow: "hidden",
@@ -874,8 +873,8 @@ const styles = StyleSheet.create({
 
   txPanelOverlay: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: 40, borderTopRightRadius: 40,
-    borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 28,
+    borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    paddingHorizontal: 24, paddingTop: 24,
     overflow: "hidden",
   },
   txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
