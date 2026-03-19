@@ -278,7 +278,7 @@ export default function HomeScreen() {
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
   const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
-  const topPad = insets.top + 14;
+  const topPad = insets.top + 24;
   const bottomPad = insets.bottom + 16;
 
   const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
@@ -507,9 +507,29 @@ export default function HomeScreen() {
                 )}
               </View>
             ) : (
-              transactions.map((tx: any) => (
+              (isLogExpanded ? transactions : transactions.slice(0, 3)).map((tx: any) => (
                 <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
               ))
+            )}
+            {!isLogExpanded && transactions.length > 3 && (
+              <Pressable
+                onPress={() => setIsLogExpanded(true)}
+                style={styles.viewAllBtn}
+              >
+                <Text style={[styles.viewAllText, { color: colors.textMuted }]}>
+                  View all {transactions.length} transactions
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+              </Pressable>
+            )}
+            {isLogExpanded && transactions.length > 3 && (
+              <Pressable
+                onPress={() => setIsLogExpanded(false)}
+                style={styles.viewAllBtn}
+              >
+                <Text style={[styles.viewAllText, { color: colors.textMuted }]}>Show less</Text>
+                <Ionicons name="chevron-up" size={14} color={colors.textMuted} />
+              </Pressable>
             )}
           </View>
         </View>
@@ -819,7 +839,7 @@ const styles = StyleSheet.create({
 
   balanceSection: {
     alignItems: "center", justifyContent: "center",
-    flex: 1, minHeight: SCREEN_HEIGHT * 0.25, paddingHorizontal: 24,
+    flex: 1, minHeight: SCREEN_HEIGHT * 0.28, paddingHorizontal: 24,
   },
   balanceCenter: { alignItems: "center" },
   balanceRow: {
@@ -830,7 +850,7 @@ const styles = StyleSheet.create({
   balanceText: { fontFamily: "Chewy_400Regular", letterSpacing: -1 },
   subBalance: { fontFamily: "Inter_700Bold", fontSize: 14, marginTop: 12, opacity: 0.8 },
 
-  actionRow: { flexDirection: "row", gap: 16, paddingHorizontal: 24, marginBottom: 40 },
+  actionRow: { flexDirection: "row", gap: 16, paddingHorizontal: 24, marginBottom: 32 },
   actionCard: {
     flex: 1, borderRadius: 24, paddingVertical: 16,
     alignItems: "center", gap: 12, borderWidth: 1, overflow: "hidden",
@@ -849,6 +869,11 @@ const styles = StyleSheet.create({
   txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 },
   txHeaderText: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1 },
   txList: { gap: 4, paddingBottom: 16 },
+  viewAllBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 12, marginTop: 4,
+  },
+  viewAllText: { fontFamily: "Inter_500Medium", fontSize: 13 },
   emptyState: { alignItems: "center", paddingVertical: 32, gap: 4 },
   emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
   emptySubtitle: { fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 4 },
