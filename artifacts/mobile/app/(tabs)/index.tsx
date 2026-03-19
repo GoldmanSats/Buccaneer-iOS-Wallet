@@ -21,8 +21,10 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   FadeInDown,
   FadeIn,
+  Easing,
 } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -229,6 +231,21 @@ export default function HomeScreen() {
     transform: [{ scale: balanceScale.value }],
   }));
 
+  const TX_COLLAPSED_HEIGHT = 300;
+  const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
+  const txPanelHeight = useSharedValue(TX_COLLAPSED_HEIGHT);
+
+  useEffect(() => {
+    txPanelHeight.value = withTiming(
+      isLogExpanded ? TX_EXPANDED_HEIGHT : TX_COLLAPSED_HEIGHT,
+      { duration: 350, easing: Easing.out(Easing.cubic) }
+    );
+  }, [isLogExpanded]);
+
+  const txPanelAnimStyle = useAnimatedStyle(() => ({
+    height: txPanelHeight.value,
+  }));
+
   const handleBalanceTap = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     balanceScale.value = withSpring(0.95, {}, () => { balanceScale.value = withSpring(1); });
@@ -354,7 +371,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 32 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 320 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />}
       >
@@ -477,93 +494,58 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {!isLogExpanded && (
-          <View
-            style={[
-              styles.txPanel,
-              { backgroundColor: colors.bgCard + "CC", borderTopColor: colors.border },
-            ]}
-          >
-            <Pressable
-              onPress={() => {
-                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsLogExpanded(true);
-              }}
-              style={styles.txHeaderRow}
-            >
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
-              <Ionicons name="chevron-up" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            <View style={styles.txList}>
-              {transactions.length === 0 ? (
-                <View style={styles.emptyState}>
-                  {!isTransactionsLoading ? (
-                    <>
-                      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
-                      <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
-                    </>
-                  ) : (
-                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
-                  )}
-                </View>
-              ) : (
-                transactions.slice(0, 3).map((tx: any) => (
-                  <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
-                ))
-              )}
-            </View>
-          </View>
-        )}
       </ScrollView>
 
-      {/* Expanded Transaction Log */}
-      <Modal visible={isLogExpanded} transparent animationType="slide" onRequestClose={() => setIsLogExpanded(false)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setIsLogExpanded(false)} />
-          <View style={[styles.txExpandedSheet, { backgroundColor: colors.bg, paddingTop: topPad }]}>
-            <Pressable
-              onPress={() => {
-                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsLogExpanded(false);
-              }}
-              style={styles.txExpandedHeader}
-            >
-              <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
-              <View style={styles.txHeaderRow}>
-                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-                <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
-                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-              </View>
-            </Pressable>
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomPad + 24 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {transactions.length === 0 ? (
-                <View style={styles.emptyState}>
-                  {!isTransactionsLoading ? (
-                    <>
-                      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
-                      <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
-                    </>
-                  ) : (
-                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
-                  )}
-                </View>
+      {/* Transaction Log — anchored to bottom, expands upward */}
+      <Animated.View
+        style={[
+          styles.txPanelOverlay,
+          {
+            backgroundColor: colors.bgCard,
+            borderTopColor: colors.border,
+            paddingBottom: bottomPad + 8,
+          },
+          txPanelAnimStyle,
+        ]}
+      >
+        <Pressable
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setIsLogExpanded(!isLogExpanded);
+          }}
+          style={styles.txHeaderRow}
+        >
+          <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+          <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
+          <Ionicons name={isLogExpanded ? "chevron-down" : "chevron-up"} size={18} color={colors.textMuted} />
+        </Pressable>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 8 }}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={isLogExpanded}
+        >
+          {transactions.length === 0 ? (
+            <View style={styles.emptyState}>
+              {!isTransactionsLoading ? (
+                <>
+                  <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
+                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
+                </>
               ) : (
-                <View style={styles.txList}>
-                  {transactions.map((tx: any) => (
-                    <TransactionItem key={tx.id} tx={tx as TxType} onPress={(t) => { setIsLogExpanded(false); setTimeout(() => handleTxPress(t), 300); }} colors={colors} />
-                  ))}
-                </View>
+                <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
               )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+            </View>
+          ) : (
+            <View style={styles.txList}>
+              {(isLogExpanded ? transactions : transactions.slice(0, 3)).map((tx: any) => (
+                <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
 
       {/* Transaction Detail Sheet */}
       <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
@@ -891,20 +873,15 @@ const styles = StyleSheet.create({
   },
   actionLabel: { fontFamily: "Inter_700Bold", fontSize: 18 },
 
-  txPanel: {
+  txPanelOverlay: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
     borderTopLeftRadius: 40, borderTopRightRadius: 40,
     borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 28,
-    marginTop: 8,
+    overflow: "hidden",
   },
   txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   txHeaderText: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1 },
-  txList: { gap: 4, paddingBottom: 16 },
-  txExpandedSheet: {
-    flex: 1, borderTopLeftRadius: 40, borderTopRightRadius: 40,
-  },
-  txExpandedHeader: {
-    alignItems: "center", paddingHorizontal: 24, paddingBottom: 8,
-  },
+  txList: { gap: 4, paddingBottom: 8 },
   emptyState: { alignItems: "center", paddingVertical: 32, gap: 4 },
   emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
   emptySubtitle: { fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 4 },
