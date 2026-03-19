@@ -501,17 +501,26 @@ export async function listPayments(): Promise<any[]> {
     const payments = await sdk.listPayments({ limit: 50, offset: 0 });
     const sanitized = sanitizeBigInt(payments);
     const allPayments = Array.isArray(sanitized) ? sanitized : (sanitized?.payments || []);
-    return allPayments.map((p: any) => ({
-      id: p.id || p.details?.txId || String(p.timestamp),
-      type: p.paymentType === "send" ? "send" : "receive",
-      amountSats: p.amount || p.amountSat || 0,
-      feeSats: p.fee || p.feesSat || 0,
-      description: p.details?.description || p.description || "",
-      timestamp: p.timestamp ? new Date(p.timestamp * 1000).toISOString() : new Date().toISOString(),
-      status: p.status === "complete" ? "completed" : p.status === "pending" ? "pending" : "failed",
-      paymentHash: p.details?.htlcDetails?.paymentHash || p.details?.txId || p.id || "",
-      method: p.method || undefined,
-    }));
+    return allPayments.map((p: any) => {
+      let status = "failed";
+      const rawStatus = typeof p.status === "string" ? p.status.toLowerCase() : String(p.status ?? "");
+      if (rawStatus === "complete" || rawStatus === "completed" || rawStatus === "succeeded" || rawStatus === "success") {
+        status = "completed";
+      } else if (rawStatus === "pending" || rawStatus === "created") {
+        status = "pending";
+      }
+      return {
+        id: p.id || p.details?.txId || String(p.timestamp),
+        type: p.paymentType === "send" ? "send" : "receive",
+        amountSats: p.amount || p.amountSat || 0,
+        feeSats: p.fee || p.feesSat || 0,
+        description: p.details?.description || p.description || "",
+        timestamp: p.timestamp ? new Date(p.timestamp * 1000).toISOString() : new Date().toISOString(),
+        status,
+        paymentHash: p.details?.htlcDetails?.paymentHash || p.details?.txId || p.id || "",
+        method: p.method || undefined,
+      };
+    });
   } catch (err: any) {
     console.error(`[Breez] listPayments error: ${err.message}`);
     return [];

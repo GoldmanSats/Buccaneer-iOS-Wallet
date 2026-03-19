@@ -231,7 +231,7 @@ export default function HomeScreen() {
     transform: [{ scale: balanceScale.value }],
   }));
 
-  const TX_COLLAPSED_HEIGHT = 300;
+  const TX_COLLAPSED_HEIGHT = 340;
   const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
   const txPanelHeight = useSharedValue(TX_COLLAPSED_HEIGHT);
 
@@ -295,7 +295,7 @@ export default function HomeScreen() {
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
   const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
-  const topPad = Math.max(insets.top, 44) + 8;
+  const topPad = insets.top + 4;
   const bottomPad = insets.bottom + 16;
 
   const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
@@ -524,7 +524,6 @@ export default function HomeScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 8 }}
           showsVerticalScrollIndicator={false}
-          scrollEnabled={isLogExpanded}
         >
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
@@ -539,7 +538,7 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.txList}>
-              {(isLogExpanded ? transactions : transactions.slice(0, 3)).map((tx: any) => (
+              {transactions.map((tx: any) => (
                 <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
               ))}
             </View>
