@@ -59,6 +59,9 @@ export async function getBreezSdk(): Promise<breezSdk.BindingLiquidSdk | null> {
 
   try {
     const config = breezSdk.defaultConfig("mainnet", apiKey);
+    const path = await import("path");
+    config.workingDir = path.resolve(process.cwd(), "breez-data");
+    console.log("[Breez] Using working dir:", config.workingDir);
 
     sdk = await breezSdk.connect({
       mnemonic,
@@ -109,6 +112,7 @@ export async function getBalance(): Promise<{
 
   try {
     const info = await breez.getInfo();
+    console.log("[Breez] getInfo raw:", JSON.stringify(info));
     const w = info.walletInfo;
     return {
       balanceSats: w.balanceSat,
