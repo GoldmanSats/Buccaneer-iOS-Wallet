@@ -278,7 +278,7 @@ export default function HomeScreen() {
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
   const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
-  const topPad = insets.top + 24;
+  const topPad = Math.max(insets.top, 44) + 8;
   const bottomPad = insets.bottom + 16;
 
   const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
@@ -477,63 +477,93 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View
-          style={[
-            styles.txPanel,
-            { backgroundColor: colors.bgCard + "CC", borderTopColor: colors.border },
-          ]}
-        >
-          <Pressable
-            onPress={() => {
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsLogExpanded(!isLogExpanded);
-            }}
-            style={styles.txHeaderRow}
+        {!isLogExpanded && (
+          <View
+            style={[
+              styles.txPanel,
+              { backgroundColor: colors.bgCard + "CC", borderTopColor: colors.border },
+            ]}
           >
-            <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-            <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsLogExpanded(true);
+              }}
+              style={styles.txHeaderRow}
+            >
+              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
+              <Ionicons name="chevron-up" size={18} color={colors.textMuted} />
+            </Pressable>
 
-          <View style={styles.txList}>
-            {transactions.length === 0 ? (
-              <View style={styles.emptyState}>
-                {!isTransactionsLoading ? (
-                  <>
-                    <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
-                  </>
-                ) : (
-                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
-                )}
+            <View style={styles.txList}>
+              {transactions.length === 0 ? (
+                <View style={styles.emptyState}>
+                  {!isTransactionsLoading ? (
+                    <>
+                      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
+                      <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
+                  )}
+                </View>
+              ) : (
+                transactions.slice(0, 3).map((tx: any) => (
+                  <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
+                ))
+              )}
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Expanded Transaction Log */}
+      <Modal visible={isLogExpanded} transparent animationType="slide" onRequestClose={() => setIsLogExpanded(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setIsLogExpanded(false)} />
+          <View style={[styles.txExpandedSheet, { backgroundColor: colors.bg, paddingTop: topPad }]}>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsLogExpanded(false);
+              }}
+              style={styles.txExpandedHeader}
+            >
+              <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
+              <View style={styles.txHeaderRow}>
+                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
+                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </View>
-            ) : (
-              (isLogExpanded ? transactions : transactions.slice(0, 3)).map((tx: any) => (
-                <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
-              ))
-            )}
-            {!isLogExpanded && transactions.length > 3 && (
-              <Pressable
-                onPress={() => setIsLogExpanded(true)}
-                style={styles.viewAllBtn}
-              >
-                <Text style={[styles.viewAllText, { color: colors.textMuted }]}>
-                  View all {transactions.length} transactions
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
-              </Pressable>
-            )}
-            {isLogExpanded && transactions.length > 3 && (
-              <Pressable
-                onPress={() => setIsLogExpanded(false)}
-                style={styles.viewAllBtn}
-              >
-                <Text style={[styles.viewAllText, { color: colors.textMuted }]}>Show less</Text>
-                <Ionicons name="chevron-up" size={14} color={colors.textMuted} />
-              </Pressable>
-            )}
+            </Pressable>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomPad + 24 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {transactions.length === 0 ? (
+                <View style={styles.emptyState}>
+                  {!isTransactionsLoading ? (
+                    <>
+                      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
+                      <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.txList}>
+                  {transactions.map((tx: any) => (
+                    <TransactionItem key={tx.id} tx={tx as TxType} onPress={(t) => { setIsLogExpanded(false); setTimeout(() => handleTxPress(t), 300); }} colors={colors} />
+                  ))}
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
-      </ScrollView>
+      </Modal>
 
       {/* Transaction Detail Sheet */}
       <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
@@ -839,7 +869,7 @@ const styles = StyleSheet.create({
 
   balanceSection: {
     alignItems: "center", justifyContent: "center",
-    flex: 1, minHeight: SCREEN_HEIGHT * 0.28, paddingHorizontal: 24,
+    flex: 1, minHeight: SCREEN_HEIGHT * 0.30, paddingHorizontal: 24,
   },
   balanceCenter: { alignItems: "center" },
   balanceRow: {
@@ -863,17 +893,18 @@ const styles = StyleSheet.create({
 
   txPanel: {
     borderTopLeftRadius: 40, borderTopRightRadius: 40,
-    borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 32,
-    marginTop: 16,
+    borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 28,
+    marginTop: 8,
   },
-  txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 },
+  txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   txHeaderText: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1 },
   txList: { gap: 4, paddingBottom: 16 },
-  viewAllBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, paddingVertical: 12, marginTop: 4,
+  txExpandedSheet: {
+    flex: 1, borderTopLeftRadius: 40, borderTopRightRadius: 40,
   },
-  viewAllText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  txExpandedHeader: {
+    alignItems: "center", paddingHorizontal: 24, paddingBottom: 8,
+  },
   emptyState: { alignItems: "center", paddingVertical: 32, gap: 4 },
   emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
   emptySubtitle: { fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 4 },
