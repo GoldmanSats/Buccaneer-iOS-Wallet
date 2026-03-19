@@ -10,6 +10,10 @@ import {
   TextInput,
   Dimensions,
   Modal,
+  Image,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Share,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,25 +22,20 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   FadeInDown,
+  FadeIn,
 } from "react-native-reanimated";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { MIDNIGHT } from "@/constants/colors";
 import Svg, { Circle, Line, G } from "react-native-svg";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const FIAT_SYMBOLS: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  JPY: "¥",
-  GBP: "£",
-  AUD: "A$",
-  NZD: "NZ$",
-  CAD: "C$",
-  CHF: "CHF",
+  USD: "$", EUR: "€", JPY: "¥", GBP: "£", AUD: "A$", NZD: "NZ$", CAD: "C$", CHF: "CHF",
 };
 
 function formatDate(date: Date | string | null): string {
@@ -97,9 +96,7 @@ interface TxType {
 }
 
 function TransactionItem({
-  tx,
-  onPress,
-  colors,
+  tx, onPress, colors,
 }: {
   tx: TxType;
   onPress: (tx: TxType) => void;
@@ -114,29 +111,15 @@ function TransactionItem({
 
   const iconBg = isPendingDeposit
     ? "rgba(234,179,8,0.15)"
-    : isReceive
-    ? "rgba(23,162,184,0.10)"
-    : "rgba(232,106,51,0.10)";
-  const iconColor = isPendingDeposit
-    ? "#EAB308"
-    : isReceive
-    ? colors.teal
-    : colors.coral;
-  const amountColor = isPendingDeposit
-    ? "#EAB308"
-    : isReceive
-    ? colors.teal
-    : colors.coral;
+    : isReceive ? "rgba(23,162,184,0.10)" : "rgba(232,106,51,0.10)";
+  const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
+  const amountColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
 
   return (
     <Pressable
       style={({ pressed }) => [
         txStyles.row,
-        isPendingDeposit && {
-          backgroundColor: "rgba(234,179,8,0.05)",
-          borderWidth: 1,
-          borderColor: "rgba(234,179,8,0.2)",
-        },
+        isPendingDeposit && { backgroundColor: "rgba(234,179,8,0.05)", borderWidth: 1, borderColor: "rgba(234,179,8,0.2)" },
         pressed && { opacity: 0.7, backgroundColor: colors.bgCard + "80" },
       ]}
       onPress={() => onPress(tx)}
@@ -157,13 +140,7 @@ function TransactionItem({
       </View>
 
       <View style={txStyles.meta}>
-        <Text
-          style={[
-            txStyles.desc,
-            { color: isPendingDeposit ? "#EAB308" : colors.text },
-          ]}
-          numberOfLines={2}
-        >
+        <Text style={[txStyles.desc, { color: isPendingDeposit ? "#EAB308" : colors.text }]} numberOfLines={2}>
           {displayText}
         </Text>
         <Text style={[txStyles.time, { color: colors.textMuted }]}>
@@ -173,14 +150,11 @@ function TransactionItem({
 
       <View style={txStyles.amountCol}>
         <Text style={[txStyles.amount, { color: amountColor }]}>
-          {isReceive ? "+" : "-"}
-          {formatSats(tx.amountSats)} sats
+          {isReceive ? "+" : "-"}{formatSats(tx.amountSats)} sats
         </Text>
         <View style={txStyles.statusRow}>
           {(tx.feeSats ?? 0) > 0 && (
-            <Text style={[txStyles.feeText, { color: colors.textMuted }]}>
-              Fee: {tx.feeSats}
-            </Text>
+            <Text style={[txStyles.feeText, { color: colors.textMuted }]}>Fee: {tx.feeSats}</Text>
           )}
           {isPendingDeposit ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
@@ -201,33 +175,9 @@ function TransactionItem({
 }
 
 const txStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    gap: 16,
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pendingBadge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#EAB308",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1,
-  },
+  row: { flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 8, borderRadius: 16, gap: 16 },
+  iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  pendingBadge: { position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: "#EAB308", alignItems: "center", justifyContent: "center", zIndex: 1 },
   meta: { flex: 1, gap: 2 },
   desc: { fontFamily: "Inter_700Bold", fontSize: 14, lineHeight: 18 },
   time: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
@@ -237,24 +187,34 @@ const txStyles = StyleSheet.create({
   feeText: { fontFamily: "Inter_400Regular", fontSize: 10 },
 });
 
+function makeQrUrl(data: string, size = 280) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&color=000000&bgcolor=FFFFFF&qzone=2`;
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { settings, isLoading: settingsLoading, toggleBalanceHidden, toggleDisplayMode } = useSettings();
   const {
-    balance,
-    transactions,
-    btcPrice,
-    isBalanceLoading,
-    isTransactionsLoading,
-    refetchBalance,
-    refetchTransactions,
-    updateMemo,
+    balance, transactions, btcPrice,
+    isBalanceLoading, isTransactionsLoading,
+    refetchBalance, refetchTransactions,
+    updateMemo, createInvoice,
   } = useWallet();
 
   const [isLogExpanded, setIsLogExpanded] = useState(false);
   const [selectedTx, setSelectedTx] = useState<TxType | null>(null);
   const [editingMemo, setEditingMemo] = useState("");
   const [celebration, setCelebration] = useState<{ amount: number; description: string } | null>(null);
+
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receiveMode, setReceiveMode] = useState<"default" | "amount" | "generated">("default");
+  const [receiveAmountInput, setReceiveAmountInput] = useState("");
+  const [receiveDescInput, setReceiveDescInput] = useState("");
+  const [receiveInvoice, setReceiveInvoice] = useState<string | null>(null);
+  const [receiveError, setReceiveError] = useState("");
+  const [receiveGenerating, setReceiveGenerating] = useState(false);
+  const [receiveCopied, setReceiveCopied] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
 
   const colors = MIDNIGHT;
 
@@ -270,12 +230,8 @@ export default function HomeScreen() {
   }));
 
   const handleBalanceTap = async () => {
-    if (Platform.OS !== "web") {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    balanceScale.value = withSpring(0.95, {}, () => {
-      balanceScale.value = withSpring(1);
-    });
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    balanceScale.value = withSpring(0.95, {}, () => { balanceScale.value = withSpring(1); });
     await toggleBalanceHidden();
   };
 
@@ -286,17 +242,12 @@ export default function HomeScreen() {
 
   const handleSaveMemo = async () => {
     if (!selectedTx) return;
-    try {
-      await updateMemo(selectedTx.id, editingMemo);
-    } catch {}
+    try { await updateMemo(selectedTx.id, editingMemo); } catch {}
     setSelectedTx(null);
   };
 
   const refreshing = isBalanceLoading || isTransactionsLoading;
-  const onRefresh = useCallback(() => {
-    refetchBalance();
-    refetchTransactions();
-  }, [refetchBalance, refetchTransactions]);
+  const onRefresh = useCallback(() => { refetchBalance(); refetchTransactions(); }, [refetchBalance, refetchTransactions]);
 
   const sats = balance?.balanceSats ?? 0;
   const isFiatPrimary = settings.primaryDisplay === "fiat";
@@ -313,9 +264,7 @@ export default function HomeScreen() {
       const receivedTxs = newTxs.filter((tx: any) => tx.type === "receive" && tx.status === "completed");
       if (receivedTxs.length > 0) {
         const totalAmount = receivedTxs.reduce((sum: number, tx: any) => sum + (tx.amountSats || 0), 0);
-        const desc = receivedTxs.length > 1
-          ? `${receivedTxs.length} incoming payments`
-          : (receivedTxs[0] as any).description || "Incoming payment";
+        const desc = receivedTxs.length > 1 ? `${receivedTxs.length} incoming payments` : (receivedTxs[0] as any).description || "Incoming payment";
         setCelebration({ amount: totalAmount, description: desc });
         setTimeout(() => setCelebration(null), 5500);
       }
@@ -327,10 +276,79 @@ export default function HomeScreen() {
   const digitCount = formatted.replace(/,/g, "").length;
   const balanceFontSize = digitCount <= 3 ? 72 : digitCount <= 5 ? 60 : digitCount <= 7 ? 48 : 36;
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
-  const symbolMarginBottom = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
+  const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
   const topPad = insets.top + 14;
   const bottomPad = insets.bottom + 16;
+
+  const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
+
+  const resetReceiveState = () => {
+    setReceiveInvoice(null);
+    setReceiveAmountInput("");
+    setReceiveDescInput("");
+    setReceiveError("");
+    setReceiveMode("default");
+    setReceiveCopied(false);
+    setAddressCopied(false);
+  };
+
+  const openReceiveDrawer = async () => {
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    resetReceiveState();
+    setReceiveOpen(true);
+  };
+
+  const closeReceiveDrawer = () => {
+    setReceiveOpen(false);
+    resetReceiveState();
+  };
+
+  const handleReceiveGenerate = async () => {
+    const satsVal = parseInt(receiveAmountInput);
+    if (!satsVal || satsVal <= 0) {
+      setReceiveError("Enter an amount in sats");
+      return;
+    }
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setReceiveGenerating(true);
+    setReceiveError("");
+    try {
+      const result = await createInvoice(satsVal, receiveDescInput || "Buccaneer Wallet");
+      setReceiveInvoice(result.bolt11);
+      setReceiveMode("generated");
+    } catch (e) {
+      setReceiveError(e instanceof Error ? e.message : "Failed to generate invoice");
+    } finally {
+      setReceiveGenerating(false);
+    }
+  };
+
+  const handleReceiveCopy = async (text: string) => {
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await Clipboard.setStringAsync(text);
+    }
+    setReceiveCopied(true);
+    setTimeout(() => setReceiveCopied(false), 2000);
+  };
+
+  const handleCopyAddress = async () => {
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await Clipboard.setStringAsync(lightningAddress);
+    }
+    setAddressCopied(true);
+    setTimeout(() => setAddressCopied(false), 2000);
+  };
+
+  const handleReceiveShare = async (text: string) => {
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try { await Share.share({ message: text, title: "Buccaneer Wallet" }); } catch {}
+  };
+
+  const receiveQrData = receiveInvoice || `lightning:${lightningAddress}`;
+  const receiveQrSize = receiveMode === "amount" ? 180 : 280;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -338,11 +356,8 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 32 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />}
       >
-        {/* Header — original: flex items-center justify-between mb-8 (mb-8=32px), inside px-6 pt-14 */}
         <View style={[styles.header, { paddingTop: topPad }]}>
           <Pressable
             testID="settings-button"
@@ -362,10 +377,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/backup")}
               style={({ pressed }) => [
                 styles.backupBtn,
-                {
-                  backgroundColor: colors.bgCard,
-                  borderColor: colors.border + "80",
-                },
+                { backgroundColor: colors.bgCard, borderColor: colors.border + "80" },
                 pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
               ]}
             >
@@ -375,7 +387,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Balance — original: flex-col items-center justify-center flex-1 min-h-[30vh] */}
         <View style={styles.balanceSection}>
           <Pressable
             onPress={handleBalanceTap}
@@ -389,22 +400,10 @@ export default function HomeScreen() {
               {isFiatPrimary ? (
                 <>
                   <View style={styles.balanceRow}>
-                    <Text style={[styles.fiatSymbol, { color: colors.text, fontSize: 36 }]}>
-                      {fiatSymbol}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.balanceText,
-                        { color: colors.text, fontSize: 72 },
-                      ]}
-                    >
-                      {settings.balanceHidden
-                        ? "•••"
-                        : hasFiatPrice
-                        ? fiatAmount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
+                    <Text style={[styles.fiatSymbol, { color: colors.text, fontSize: 36 }]}>{fiatSymbol}</Text>
+                    <Text style={[styles.balanceText, { color: colors.text, fontSize: 72 }]}>
+                      {settings.balanceHidden ? "•••" : hasFiatPrice
+                        ? fiatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                         : "···"}
                     </Text>
                   </View>
@@ -418,28 +417,23 @@ export default function HomeScreen() {
                     <Text
                       style={[
                         styles.btcSymbol,
-                        { color: colors.text, fontSize: symbolFontSize, marginBottom: symbolMarginBottom },
+                        {
+                          color: colors.text,
+                          fontSize: symbolFontSize,
+                          lineHeight: balanceFontSize,
+                        },
                       ]}
                     >
                       ₿
                     </Text>
-                    <Text
-                      style={[
-                        styles.balanceText,
-                        { color: colors.text, fontSize: balanceFontSize },
-                      ]}
-                    >
+                    <Text style={[styles.balanceText, { color: colors.text, fontSize: balanceFontSize }]}>
                       {settings.balanceHidden ? "•••" : formatted}
                     </Text>
                   </View>
                   <Text style={[styles.subBalance, { color: colors.textMuted }]}>
-                    {settings.balanceHidden
-                      ? "Tap to reveal"
+                    {settings.balanceHidden ? "Tap to reveal"
                       : hasFiatPrice
-                      ? `≈ ${fiatSymbol}${fiatAmount.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })} ${fiatCurrency}`
+                      ? `≈ ${fiatSymbol}${fiatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${fiatCurrency}`
                       : "Loading price…"}
                   </Text>
                 </>
@@ -448,30 +442,18 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Action buttons — original: grid grid-cols-2 gap-4 mb-10 (gap=16, mb=40) */}
         <View style={styles.actionRow}>
           <Pressable
             testID="receive-button"
-            onPress={async () => {
-              if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push("/receive");
-            }}
+            onPress={openReceiveDrawer}
             style={({ pressed }) => [
               styles.actionCard,
-              {
-                backgroundColor: colors.bgCard,
-                borderColor: colors.border + "80",
-              },
+              { backgroundColor: colors.bgCard, borderColor: colors.border + "80" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: "rgba(23,162,184,0.10)" }]}>
-              <Ionicons
-                name="arrow-down-outline"
-                size={24}
-                color={colors.teal}
-                style={{ transform: [{ rotate: "-45deg" }], strokeWidth: 3 }}
-              />
+              <Ionicons name="arrow-down-outline" size={24} color={colors.teal} style={{ transform: [{ rotate: "-45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.teal }]}>Receive</Text>
           </Pressable>
@@ -484,35 +466,21 @@ export default function HomeScreen() {
             }}
             style={({ pressed }) => [
               styles.actionCard,
-              {
-                backgroundColor: colors.bgCard,
-                borderColor: colors.border + "80",
-              },
+              { backgroundColor: colors.bgCard, borderColor: colors.border + "80" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: "rgba(232,106,51,0.10)" }]}>
-              <Ionicons
-                name="arrow-up-outline"
-                size={24}
-                color={colors.coral}
-                style={{ transform: [{ rotate: "45deg" }], strokeWidth: 3 }}
-              />
+              <Ionicons name="arrow-up-outline" size={24} color={colors.coral} style={{ transform: [{ rotate: "45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.coral }]}>Send</Text>
           </Pressable>
         </View>
 
-        {/* Transaction Log — original: bg-card/80 backdrop-blur-xl border-t border-border
-            flex-1 rounded-t-[2.5rem] -mx-6 px-6 pt-8 mt-4 */}
         <View
           style={[
             styles.txPanel,
-            {
-              backgroundColor: colors.bgCard + "CC",
-              borderTopColor: colors.border,
-              minHeight: isLogExpanded ? SCREEN_HEIGHT - 120 : 240,
-            },
+            { backgroundColor: colors.bgCard + "CC", borderTopColor: colors.border },
           ]}
         >
           <Pressable
@@ -531,27 +499,16 @@ export default function HomeScreen() {
               <View style={styles.emptyState}>
                 {!isTransactionsLoading ? (
                   <>
-                    <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
-                      No transactions yet
-                    </Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                      Your voyage log is empty
-                    </Text>
+                    <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
+                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
                   </>
                 ) : (
-                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                    Loading plunder…
-                  </Text>
+                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
                 )}
               </View>
             ) : (
               transactions.map((tx: any) => (
-                <TransactionItem
-                  key={tx.id}
-                  tx={tx as TxType}
-                  onPress={handleTxPress}
-                  colors={colors}
-                />
+                <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
               ))
             )}
           </View>
@@ -559,43 +516,22 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Transaction Detail Sheet */}
-      <Modal
-        visible={!!selectedTx}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedTx(null)}
-      >
+      <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
-          <View
-            style={[
-              styles.txDetailSheet,
-              { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 },
-            ]}
-          >
+          <View style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }]}>
             <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
-
             {selectedTx && (() => {
               const isReceive = selectedTx.type === "receive";
               const isPendingDeposit = selectedTx.status === "pending" && selectedTx.method === "deposit";
-              const iconBg = isPendingDeposit
-                ? "rgba(234,179,8,0.15)"
-                : isReceive
-                ? "rgba(23,162,184,0.10)"
-                : "rgba(232,106,51,0.10)";
-              const iconColor = isPendingDeposit
-                ? "#EAB308"
-                : isReceive
-                ? colors.teal
-                : colors.coral;
-
+              const iconBg = isPendingDeposit ? "rgba(234,179,8,0.15)" : isReceive ? "rgba(23,162,184,0.10)" : "rgba(232,106,51,0.10)";
+              const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
               return (
                 <View style={styles.txDetailContent}>
                   <View style={[styles.txDetailIcon, { backgroundColor: iconBg }]}>
                     <Ionicons
                       name={isReceive ? "arrow-down-outline" : "arrow-up-outline"}
-                      size={40}
-                      color={iconColor}
+                      size={40} color={iconColor}
                       style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
                     />
                     {isPendingDeposit && (
@@ -604,79 +540,53 @@ export default function HomeScreen() {
                       </View>
                     )}
                   </View>
-
                   <View style={styles.txDetailAmountRow}>
                     <Text style={[styles.txDetailAmount, { color: isPendingDeposit ? "#EAB308" : colors.text }]}>
                       {isReceive ? "+" : "-"}{formatSats(selectedTx.amountSats)}
                     </Text>
                     <Text style={[styles.txDetailSats, { color: colors.textMuted }]}> sats</Text>
                   </View>
-
                   <Text style={[styles.txDetailDate, { color: colors.textMuted }]}>
                     {isPendingDeposit ? "On-chain deposit" : formatDate(selectedTx.timestamp)}
                   </Text>
-
                   {isPendingDeposit && (
                     <View style={[styles.pendingBanner, { backgroundColor: "rgba(234,179,8,0.1)", borderColor: "rgba(234,179,8,0.2)" }]}>
                       <Ionicons name="reload" size={16} color="#EAB308" />
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#EAB308" }}>
-                          Waiting for on-chain confirmation
-                        </Text>
-                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#EAB308", opacity: 0.8 }}>
-                          Your sats are on the way. This typically takes 10-30 minutes.
-                        </Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#EAB308" }}>Waiting for on-chain confirmation</Text>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#EAB308", opacity: 0.8 }}>Your sats are on the way. This typically takes 10-30 minutes.</Text>
                       </View>
                     </View>
                   )}
-
                   <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
                     <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Status</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       {selectedTx.status === "completed" && <Ionicons name="checkmark-circle" size={16} color={colors.green} />}
                       {selectedTx.status === "pending" && <Ionicons name="reload" size={16} color="#EAB308" />}
-                      <Text
-                        style={[
-                          styles.detailValue,
-                          {
-                            color:
-                              selectedTx.status === "completed" ? colors.green :
-                              selectedTx.status === "pending" ? "#EAB308" :
-                              selectedTx.status === "failed" ? colors.red : colors.text,
-                          },
-                        ]}
-                      >
+                      <Text style={[styles.detailValue, {
+                        color: selectedTx.status === "completed" ? colors.green : selectedTx.status === "pending" ? "#EAB308" : selectedTx.status === "failed" ? colors.red : colors.text,
+                      }]}>
                         {isPendingDeposit ? "Confirming on-chain" : selectedTx.status}
                       </Text>
                     </View>
                   </View>
-
                   {selectedTx.method === "deposit" && (
                     <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
                       <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Method</Text>
                       <Text style={[styles.detailValue, { color: "#FB923C" }]}>On-chain (Bitcoin)</Text>
                     </View>
                   )}
-
                   {(selectedTx.feeSats ?? 0) > 0 && (
                     <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
                       <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Fee</Text>
                       <Text style={[styles.detailValue, { color: colors.text }]}>{selectedTx.feeSats} sats</Text>
                     </View>
                   )}
-
                   {!isPendingDeposit && (
                     <View style={[styles.memoSection, { borderBottomColor: colors.border + "80" }]}>
                       <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Memo</Text>
                       <TextInput
-                        style={[
-                          styles.memoInput,
-                          {
-                            backgroundColor: colors.bgElevated,
-                            color: colors.text,
-                            borderColor: colors.border + "60",
-                          },
-                        ]}
+                        style={[styles.memoInput, { backgroundColor: colors.bgElevated, color: colors.text, borderColor: colors.border + "60" }]}
                         value={editingMemo}
                         onChangeText={setEditingMemo}
                         placeholder="Add a note..."
@@ -687,18 +597,10 @@ export default function HomeScreen() {
                       />
                     </View>
                   )}
-
                   {selectedTx.paymentHash && (
                     <View style={styles.hashSection}>
-                      <Text style={[styles.detailLabel, { color: colors.textMuted }]}>
-                        {isPendingDeposit ? "Transaction ID" : "Payment Hash"}
-                      </Text>
-                      <Text
-                        style={[styles.hashText, { color: colors.text + "80" }]}
-                        selectable
-                      >
-                        {selectedTx.paymentHash}
-                      </Text>
+                      <Text style={[styles.detailLabel, { color: colors.textMuted }]}>{isPendingDeposit ? "Transaction ID" : "Payment Hash"}</Text>
+                      <Text style={[styles.hashText, { color: colors.text + "80" }]} selectable>{selectedTx.paymentHash}</Text>
                     </View>
                   )}
                 </View>
@@ -708,14 +610,170 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* Receive Drawer */}
+      <Modal visible={receiveOpen} transparent animationType="slide" onRequestClose={closeReceiveDrawer}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
+            <View style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }]}>
+              <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
+              <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled">
+                <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
+                  <Image
+                    source={{ uri: makeQrUrl(receiveQrData, receiveQrSize) }}
+                    style={{ width: receiveQrSize, height: receiveQrSize, borderRadius: 8 }}
+                    resizeMode="contain"
+                  />
+                  {receiveMode !== "amount" && (
+                    <View style={styles.receiveQrOverlay}>
+                      <Text style={styles.receiveQrText}>₿uccaneer</Text>
+                      <View style={styles.receiveQrBadgeRow}>
+                        <View style={[styles.receiveQrBadge, { backgroundColor: "#FBBF24" }]}>
+                          <Text style={styles.receiveQrBadgeText}>⚡</Text>
+                        </View>
+                        <View style={[styles.receiveQrBadge, { backgroundColor: "#F7931A" }]}>
+                          <Text style={styles.receiveQrBadgeText}>₿</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {receiveMode === "default" && (
+                  <View style={styles.receiveDefaultContent}>
+                    <Pressable onPress={handleCopyAddress} style={styles.receiveAddressRow}>
+                      <Text style={styles.receiveAddressText}>{lightningAddress}</Text>
+                      <Ionicons name={addressCopied ? "checkmark-circle" : "copy-outline"} size={18} color={addressCopied ? "#2DC653" : "#EAB308"} />
+                    </Pressable>
+                    <Text style={[styles.receiveAddressLabel, { color: colors.textMuted }]}>Lightning Address · tap to copy</Text>
+
+                    <View style={styles.receiveProtocolRow}>
+                      <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(251,191,36,0.12)" }]}>
+                        <Text style={{ fontSize: 12 }}>⚡</Text>
+                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, color: "#FBBF24" }}>Lightning</Text>
+                      </View>
+                      <Text style={{ color: colors.textMuted, fontSize: 12 }}>+</Text>
+                      <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(247,147,26,0.12)" }]}>
+                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, color: "#F7931A" }}>₿ On-chain</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.receiveInfoRow}>
+                      <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>Unified QR: works with any Bitcoin wallet.</Text>
+                    </View>
+
+                    <View style={styles.receiveButtonRow}>
+                      <Pressable style={styles.receiveDashedBtn} onPress={() => setReceiveMode("amount")}>
+                        <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Request Amount</Text>
+                      </Pressable>
+                      <Pressable style={styles.receiveGoldBtn} onPress={() => handleReceiveShare(lightningAddress)}>
+                        <Ionicons name="share-outline" size={18} color={colors.bg} />
+                        <Text style={[styles.receiveGoldBtnText, { color: colors.bg }]}>Share</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+
+                {receiveMode === "amount" && (
+                  <View style={styles.receiveAmountContent}>
+                    <View style={[styles.receiveAmountCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+                      <View style={styles.receiveAmountInputRow}>
+                        <Text style={[styles.receiveAmountCurrency, { color: colors.textMuted }]}>₿</Text>
+                        <TextInput
+                          testID="receive-amount-input"
+                          style={[styles.receiveAmountInput, { color: colors.text }]}
+                          placeholder="0"
+                          placeholderTextColor={colors.textMuted + "60"}
+                          value={receiveAmountInput}
+                          onChangeText={setReceiveAmountInput}
+                          keyboardType="number-pad"
+                          returnKeyType="done"
+                          autoFocus
+                        />
+                        <Text style={[styles.receiveAmountUnit, { color: colors.textMuted }]}>sats</Text>
+                      </View>
+                      <View style={{ height: 1, backgroundColor: colors.border }} />
+                      <TextInput
+                        style={[styles.receiveDescInput, { color: colors.textSecondary }]}
+                        placeholder="Description (optional)"
+                        placeholderTextColor={colors.textMuted}
+                        value={receiveDescInput}
+                        onChangeText={setReceiveDescInput}
+                        returnKeyType="done"
+                      />
+                    </View>
+
+                    {receiveError ? <Text style={styles.receiveErrorText}>{receiveError}</Text> : null}
+                    {receiveGenerating && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <ActivityIndicator color={colors.gold} size="small" />
+                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 14, color: colors.textSecondary }}>Generating invoice…</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.receiveButtonRow}>
+                      <Pressable style={styles.receiveDashedBtn} onPress={() => setReceiveMode("default")}>
+                        <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                      </Pressable>
+                      <Pressable testID="generate-invoice-button" style={styles.receiveGoldBtn} onPress={handleReceiveGenerate}>
+                        <MaterialCommunityIcons name="lightning-bolt" size={18} color={colors.bg} />
+                        <Text style={[styles.receiveGoldBtnText, { color: colors.bg }]}>Generate</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+
+                {receiveMode === "generated" && receiveInvoice && (
+                  <View style={styles.receiveGeneratedContent}>
+                    <View style={[styles.receiveInvoiceRow, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+                      <Text style={{ flex: 1, fontFamily: "Inter_400Regular", fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+                        {receiveInvoice.slice(0, 24)}…{receiveInvoice.slice(-8)}
+                      </Text>
+                      <Pressable onPress={() => handleReceiveCopy(receiveInvoice)} style={{ padding: 4 }}>
+                        <Ionicons name={receiveCopied ? "checkmark" : "copy-outline"} size={16} color={receiveCopied ? "#2DC653" : colors.textMuted} />
+                      </Pressable>
+                    </View>
+
+                    {receiveAmountInput && (
+                      <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 15, color: colors.text }}>
+                        Requesting {parseInt(receiveAmountInput).toLocaleString()} sats
+                      </Text>
+                    )}
+
+                    <View style={styles.receiveButtonRow}>
+                      <Pressable style={styles.receiveDashedBtn} onPress={() => handleReceiveCopy(receiveInvoice)}>
+                        <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
+                        <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Copy</Text>
+                      </Pressable>
+                      <Pressable style={styles.receiveGoldBtn} onPress={() => handleReceiveShare(receiveInvoice)}>
+                        <Ionicons name="share-outline" size={18} color={colors.bg} />
+                        <Text style={[styles.receiveGoldBtnText, { color: colors.bg }]}>Share</Text>
+                      </Pressable>
+                    </View>
+
+                    <Pressable onPress={resetReceiveState} style={{ paddingVertical: 8 }}>
+                      <Text style={{ fontFamily: "Inter_500Medium", fontSize: 14, color: colors.textMuted }}>New Invoice</Text>
+                    </Pressable>
+
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Ionicons name="time-outline" size={13} color={colors.textMuted} />
+                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.textMuted }}>Expires in 1 hour</Text>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
       {/* Celebration overlay */}
       {celebration && (
         <Modal visible transparent animationType="fade" onRequestClose={() => setCelebration(null)}>
-          <Pressable
-            style={styles.celebrationOverlay}
-            onPress={() => setCelebration(null)}
-            testID="celebration-overlay"
-          >
+          <Pressable style={styles.celebrationOverlay} onPress={() => setCelebration(null)} testID="celebration-overlay">
             <Animated.View entering={FadeInDown.springify().damping(15)} style={styles.celebrationContent}>
               <Text style={styles.celebrationEmoji}>🏴‍☠️</Text>
               <Text style={styles.celebrationTitle}>Treasure Received!</Text>
@@ -746,286 +804,153 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   settingsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: "center", justifyContent: "center", borderWidth: 1,
   },
   backupBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingLeft: 12,
-    paddingRight: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingLeft: 12, paddingRight: 16, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1,
   },
   backupText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 12,
-    color: "rgba(251,147,60,0.7)",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+    fontFamily: "Inter_700Bold", fontSize: 12,
+    color: "rgba(251,147,60,0.7)", letterSpacing: 1.5, textTransform: "uppercase",
   },
 
   balanceSection: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    minHeight: SCREEN_HEIGHT * 0.25,
-    paddingHorizontal: 24,
+    alignItems: "center", justifyContent: "center",
+    flex: 1, minHeight: SCREEN_HEIGHT * 0.25, paddingHorizontal: 24,
   },
-  balanceCenter: {
-    alignItems: "center",
-  },
+  balanceCenter: { alignItems: "center" },
   balanceRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 6,
+    flexDirection: "row", alignItems: "baseline", gap: 6,
   },
-  btcSymbol: {
-    fontFamily: "Chewy_400Regular",
-  },
-  fiatSymbol: {
-    fontFamily: "Chewy_400Regular",
-  },
-  balanceText: {
-    fontFamily: "Chewy_400Regular",
-    letterSpacing: -1,
-  },
-  subBalance: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-    marginTop: 12,
-    opacity: 0.8,
-  },
+  btcSymbol: { fontFamily: "Chewy_400Regular" },
+  fiatSymbol: { fontFamily: "Chewy_400Regular" },
+  balanceText: { fontFamily: "Chewy_400Regular", letterSpacing: -1 },
+  subBalance: { fontFamily: "Inter_700Bold", fontSize: 14, marginTop: 12, opacity: 0.8 },
 
-  actionRow: {
-    flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 24,
-    marginBottom: 40,
-  },
+  actionRow: { flexDirection: "row", gap: 16, paddingHorizontal: 24, marginBottom: 40 },
   actionCard: {
-    flex: 1,
-    borderRadius: 24,
-    paddingVertical: 16,
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    overflow: "hidden",
+    flex: 1, borderRadius: 24, paddingVertical: 16,
+    alignItems: "center", gap: 12, borderWidth: 1, overflow: "hidden",
   },
   actionIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: "center", justifyContent: "center", marginBottom: 4,
   },
-  actionLabel: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-  },
+  actionLabel: { fontFamily: "Inter_700Bold", fontSize: 18 },
 
   txPanel: {
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    borderTopWidth: 1,
-    marginHorizontal: 0,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    borderTopLeftRadius: 40, borderTopRightRadius: 40,
+    borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 32,
     marginTop: 16,
-    flex: 1,
   },
-  txHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 24,
-  },
-  txHeaderText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-    flex: 1,
-  },
-  txList: {
-    flex: 1,
-    gap: 4,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 32,
-    gap: 4,
-  },
-  emptyTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-  },
-  emptySubtitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    marginTop: 4,
-  },
+  txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 },
+  txHeaderText: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1 },
+  txList: { gap: 4, paddingBottom: 16 },
+  emptyState: { alignItems: "center", paddingVertical: 32, gap: 4 },
+  emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
+  emptySubtitle: { fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 4 },
 
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" },
+
   txDetailSheet: {
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    paddingTop: 16,
-    paddingHorizontal: 24,
+    borderTopLeftRadius: 40, borderTopRightRadius: 40,
+    paddingTop: 16, paddingHorizontal: 24,
   },
-  sheetHandle: {
-    width: 48,
-    height: 6,
-    borderRadius: 3,
-    alignSelf: "center",
-    marginTop: 16,
-    marginBottom: 20,
-  },
-  txDetailContent: {
-    alignItems: "center",
-    paddingHorizontal: 0,
-    paddingBottom: 48,
-  },
-  txDetailIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-  },
-  txDetailAmountRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    marginBottom: 4,
-  },
-  txDetailAmount: {
-    fontFamily: "Chewy_400Regular",
-    fontSize: 36,
-  },
-  txDetailSats: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 24,
-  },
-  txDetailDate: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    marginBottom: 8,
-  },
+  sheetHandle: { width: 48, height: 6, borderRadius: 3, alignSelf: "center", marginTop: 16, marginBottom: 20 },
+  txDetailContent: { alignItems: "center", paddingBottom: 48 },
+  txDetailIcon: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  txDetailAmountRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 4 },
+  txDetailAmount: { fontFamily: "Chewy_400Regular", fontSize: 36 },
+  txDetailSats: { fontFamily: "Inter_400Regular", fontSize: 24 },
+  txDetailDate: { fontFamily: "Inter_400Regular", fontSize: 14, marginBottom: 8 },
   pendingBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 16,
-    width: "100%",
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16,
+    borderWidth: 1, marginBottom: 16, width: "100%",
   },
   detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    width: "100%",
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingVertical: 12, borderBottomWidth: 1, width: "100%",
   },
-  detailLabel: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
+  detailLabel: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  detailValue: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  memoSection: { paddingVertical: 12, borderBottomWidth: 1, width: "100%", gap: 8 },
+  memoInput: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontFamily: "Inter_400Regular", fontSize: 14 },
+  hashSection: { paddingVertical: 12, width: "100%", gap: 4 },
+  hashText: { fontFamily: "Inter_400Regular", fontSize: 11 },
+
+  receiveSheet: {
+    borderTopLeftRadius: 40, borderTopRightRadius: 40,
+    paddingTop: 8, paddingHorizontal: 24,
+    maxHeight: SCREEN_HEIGHT * 0.9,
   },
-  detailValue: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
+  receiveTitle: { fontFamily: "Chewy_400Regular", fontSize: 30, textAlign: "center", marginTop: 8, marginBottom: 16 },
+  receiveScrollContent: { alignItems: "center", paddingBottom: 20 },
+  receiveQrContainer: {
+    backgroundColor: "#FFFFFF", borderRadius: 16,
+    alignItems: "center", justifyContent: "center", marginBottom: 16,
   },
-  memoSection: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    width: "100%",
-    gap: 8,
+  receiveQrOverlay: {
+    position: "absolute", flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
-  memoInput: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
+  receiveQrText: { fontFamily: "Inter_700Bold", fontSize: 13, color: "#0B1426" },
+  receiveQrBadgeRow: { flexDirection: "row", gap: 3 },
+  receiveQrBadge: { width: 20, height: 20, borderRadius: 4, alignItems: "center", justifyContent: "center" },
+  receiveQrBadgeText: { fontSize: 11 },
+
+  receiveDefaultContent: { width: "100%", alignItems: "center", gap: 10 },
+  receiveAddressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  receiveAddressText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#EAB308" },
+  receiveAddressLabel: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  receiveProtocolRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  receiveProtocolBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  receiveInfoRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  receiveInfoText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  receiveButtonRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 16 },
+  receiveDashedBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", borderColor: "#1E2D50",
   },
-  hashSection: {
-    paddingVertical: 12,
-    width: "100%",
-    gap: 4,
+  receiveDashedBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  receiveGoldBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 16, borderRadius: 16, backgroundColor: "#c9a24d",
   },
-  hashText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
+  receiveGoldBtnText: { fontFamily: "Inter_700Bold", fontSize: 15 },
+
+  receiveAmountContent: { width: "100%", alignItems: "center", gap: 12 },
+  receiveAmountCard: { width: "100%", borderRadius: 20, overflow: "hidden", borderWidth: 1 },
+  receiveAmountInputRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 24, gap: 8 },
+  receiveAmountCurrency: { fontFamily: "Inter_400Regular", fontSize: 32 },
+  receiveAmountInput: { flex: 1, fontFamily: "Inter_700Bold", fontSize: 44, textAlign: "center", letterSpacing: -2 },
+  receiveAmountUnit: { fontFamily: "Inter_400Regular", fontSize: 16 },
+  receiveDescInput: { padding: 16, fontFamily: "Inter_400Regular", fontSize: 15 },
+  receiveErrorText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
+
+  receiveGeneratedContent: { width: "100%", alignItems: "center", gap: 12 },
+  receiveInvoiceRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, width: "100%",
   },
 
-  celebrationOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  celebrationContent: {
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  celebrationEmoji: {
-    fontSize: 80,
-    marginBottom: 24,
-  },
+  celebrationOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
+  celebrationContent: { alignItems: "center", paddingHorizontal: 32 },
+  celebrationEmoji: { fontSize: 80, marginBottom: 24 },
   celebrationTitle: {
-    fontFamily: "Chewy_400Regular",
-    fontSize: 36,
-    color: "#FFFFFF",
-    marginBottom: 8,
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontFamily: "Chewy_400Regular", fontSize: 36, color: "#FFFFFF", marginBottom: 8,
+    textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
   },
-  celebrationAmountRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-    marginBottom: 12,
-  },
+  celebrationAmountRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 12 },
   celebrationAmount: {
-    fontFamily: "Chewy_400Regular",
-    fontSize: 60,
-    color: "#FBBF24",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontFamily: "Chewy_400Regular", fontSize: 60, color: "#FBBF24",
+    textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
   },
-  celebrationSats: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 24,
-    color: "rgba(251,191,36,0.8)",
-    marginBottom: 8,
-  },
-  celebrationDesc: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-    color: "rgba(255,255,255,0.6)",
-    marginBottom: 32,
-  },
-  celebrationDismiss: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.3)",
-  },
+  celebrationSats: { fontFamily: "Inter_700Bold", fontSize: 24, color: "rgba(251,191,36,0.8)", marginBottom: 8 },
+  celebrationDesc: { fontFamily: "Inter_500Medium", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 32 },
+  celebrationDismiss: { fontFamily: "Inter_400Regular", fontSize: 12, color: "rgba(255,255,255,0.3)" },
 });

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses Breez SDK Liquid (nodeless backend), Expo React Native, Express.js API server with PostgreSQL, and NWC (Nostr Wallet Connect / NIP-47) for AI agent access.
+Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses Breez SDK Spark (`@breeztech/breez-sdk-spark`), Expo React Native, Express.js API server with PostgreSQL, and NWC (Nostr Wallet Connect / NIP-47) for AI agent access.
 
 **Lightning address:** `buccaneeradiciw@breez.tips`
 
@@ -17,7 +17,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
-- **Lightning**: Breez SDK Liquid (`@breeztech/breez-sdk-liquid`)
+- **Lightning**: Breez SDK Spark (`@breeztech/breez-sdk-spark`)
 - **NWC**: nostr-tools, @noble/secp256k1, ws (Nostr Wallet Connect relay)
 
 ## Structure
@@ -77,7 +77,9 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - `POST /wallet/decode-invoice` — Breez parseInvoice()
 - `POST /wallet/parse` — parse any input (bolt11, lnurl, lightning address, bitcoin URI)
 - `GET /wallet/btc-price?currency=USD` — CoinGecko price
-- `GET /wallet/lightning-address` — returns hardcoded address
+- `GET /wallet/lightning-address` — returns dynamic address from Breez SDK
+- `GET /wallet/btc-address` — generate on-chain Bitcoin address
+- `GET /wallet/unclaimed-deposits` — list unclaimed on-chain deposits
 - `GET /wallet/seed-phrase` — returns WALLET_MNEMONIC words
 - `GET /wallet/node-info` — node pubkey, block height, balance
 - `GET /wallet/status` — SDK initialization status
@@ -111,7 +113,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - `EXPO_PUBLIC_DOMAIN` — set to `https://$REPLIT_DEV_DOMAIN` for API access from Expo web
 
 ### Breez SDK Init
-Lazy: first API call triggers `getBreezSdk()`. If env vars missing, gracefully falls back to zeros. SDK uses `LiquidNetwork.MAINNET`.
+Lazy: first API call triggers `initBreezSdk()`. Uses `SdkBuilder.new(config, seed).withDefaultStorage(storageDir).build()` pattern. SDK connects to mainnet. Requires `better-sqlite3` native module for local storage (rebuild with `npx prebuild-install` in the `better-sqlite3` package dir if missing). Receive screen is a bottom sheet modal on the home screen (like original web app's Drawer).
 
 ## TypeScript & Composite Projects
 

@@ -13,6 +13,11 @@ import {
   getNodeInfo,
   getSdkStatus,
   getNewPayments,
+  getLightningAddress,
+  ensureLightningAddress,
+  createBitcoinAddress,
+  listUnclaimedDeposits,
+  initBreezSdk,
 } from "../lib/breez.js";
 
 const router: IRouter = Router();
@@ -118,12 +123,45 @@ router.post("/receive", async (req, res) => {
   }
 });
 
-router.get("/lightning-address", (_req, res) => {
-  const address = "buccaneeradiciw@breez.tips";
-  res.json({
-    address,
-    lnurlp: `https://breez.tips/.well-known/lnurlp/${address.split("@")[0]}`,
-  });
+router.get("/lightning-address", async (_req, res) => {
+  try {
+    const info = await getLightningAddress();
+    if (info) {
+      res.json({
+        address: info.lightningAddress,
+        lnurlp: `https://breez.tips/.well-known/lnurlp/${info.lightningAddress.split("@")[0]}`,
+      });
+    } else {
+      const ensured = await ensureLightningAddress();
+      res.json({
+        address: ensured.lightningAddress,
+        lnurlp: `https://breez.tips/.well-known/lnurlp/${ensured.lightningAddress.split("@")[0]}`,
+      });
+    }
+  } catch (err) {
+    res.json({
+      address: "unknown@breez.tips",
+      lnurlp: "",
+    });
+  }
+});
+
+router.get("/btc-address", async (_req, res) => {
+  try {
+    const result = await createBitcoinAddress();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "btc_address_failed", message: String(err) });
+  }
+});
+
+router.get("/unclaimed-deposits", async (_req, res) => {
+  try {
+    const deposits = await listUnclaimedDeposits();
+    res.json({ deposits });
+  } catch (err) {
+    res.status(500).json({ error: "deposits_error", message: String(err) });
+  }
 });
 
 router.get("/btc-price", async (req, res) => {
