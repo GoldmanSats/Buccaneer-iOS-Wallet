@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   titleGroup: { alignItems: "center", gap: 2 },
   appName: { fontFamily: "Chewy_400Regular", fontSize: 52, color: "#FFFFFF", letterSpacing: 2, lineHeight: 60 },
   appSubtitle: { fontFamily: "Chewy_400Regular", fontSize: 36, color: GOLD, letterSpacing: 4, lineHeight: 40 },
-  tagline: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#8FA3C8", marginTop: 8, letterSpacing: 1 },
+  tagline: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#8FA3C8", marginTop: 8, letterSpacing: 1 },
   features: { gap: 12, width: "100%" },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   featureIcon: {
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  featureText: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#CDDAED" },
+  featureText: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#CDDAED" },
   buttonWrap: { width: "100%" },
   button: {
     borderRadius: 16,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 32,
   },
-  buttonText: { fontFamily: "Inter_700Bold", fontSize: 18, color: NAVY, letterSpacing: 0.5 },
+  buttonText: { fontFamily: "Nunito_700Bold", fontSize: 18, color: NAVY, letterSpacing: 0.5 },
   restoreLink: {
     flexDirection: "row",
     alignItems: "center",
@@ -326,11 +326,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   restoreLinkText: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Nunito_500Medium",
     fontSize: 14,
     color: "#8FA3C8",
   },
-  disclaimer: { fontFamily: "Inter_400Regular", fontSize: 11, color: "#4A6080", letterSpacing: 0.5 },
+  disclaimer: { fontFamily: "Nunito_400Regular", fontSize: 11, color: "#4A6080", letterSpacing: 0.5 },
   loadingContent: {
     flex: 1,
     alignItems: "center",
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   loadingSubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 14,
     color: "#8FA3C8",
   },
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   restoreSubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 14,
     color: "#8FA3C8",
     textAlign: "center",
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY2,
     borderRadius: 16,
     padding: 18,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 15,
     color: "#CDDAED",
     minHeight: 120,
@@ -407,13 +407,13 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   restoreError: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 13,
     color: "#E63946",
     textAlign: "center",
   },
   wordCount: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Nunito_500Medium",
     fontSize: 13,
     color: "#4A6080",
     textAlign: "center",
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   restoreBtnText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
     fontSize: 17,
     color: NAVY,
   },

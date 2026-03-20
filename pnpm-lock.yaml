@@ -224,6 +224,9 @@ importers:
       '@expo-google-fonts/chewy':
         specifier: ^0.4.0
         version: 0.4.0
+      '@expo-google-fonts/nunito':
+        specifier: ^0.4.2
+        version: 0.4.2
       '@expo-google-fonts/pirata-one':
         specifier: ^0.4.1
         version: 0.4.1
@@ -1154,6 +1157,9 @@ packages:
 
   '@expo-google-fonts/inter@0.4.2':
     resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
+
+  '@expo-google-fonts/nunito@0.4.2':
+    resolution: {integrity: sha512-1KCWphw/I2ugqfs9iRHUCkPTnomNgGPtF4AvqVquoEKxr0EL+mcLNLgeixsslbaSFevRR6/KJAE3sc8g0VaY0Q==}
 
   '@expo-google-fonts/pirata-one@0.4.1':
     resolution: {integrity: sha512-8wMlG7I58S1vwSJOtu/aDr3ZuDFwvvf+WnGRMcbs/gqEv65l7R4YOCxqUxE6jc7WUJYPr0zM0Pnxox9Pjs48Ow==}
@@ -6381,6 +6387,8 @@ snapshots:
   '@expo-google-fonts/chewy@0.4.0': {}
 
   '@expo-google-fonts/inter@0.4.2': {}
+
+  '@expo-google-fonts/nunito@0.4.2': {}
 
   '@expo-google-fonts/pirata-one@0.4.1': {}
 

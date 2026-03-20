@@ -14,6 +14,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
 - **Mobile**: Expo SDK 54 + React Native (Expo Router)
+- **Fonts**: Chewy (display/headings/balance), Nunito (body/UI text — 400, 500, 600, 700, 800)
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)

@@ -161,14 +161,14 @@ function TransactionItem({
           {isPendingDeposit ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
               <Ionicons name="reload" size={8} color="#EAB308" />
-              <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: "#EAB308" }}>PENDING</Text>
+              <Text style={{ fontSize: 9, fontFamily: "Nunito_700Bold", color: "#EAB308" }}>PENDING</Text>
             </View>
           ) : tx.status === "completed" ? (
             <Ionicons name="checkmark-circle" size={12} color={colors.green} />
           ) : tx.status === "pending" ? (
             <Ionicons name="reload" size={12} color="#EAB308" />
           ) : tx.status === "failed" ? (
-            <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: colors.red }}>FAILED</Text>
+            <Text style={{ fontSize: 9, fontFamily: "Nunito_700Bold", color: colors.red }}>FAILED</Text>
           ) : null}
         </View>
       </View>
@@ -181,12 +181,12 @@ const txStyles = StyleSheet.create({
   iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   pendingBadge: { position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: "#EAB308", alignItems: "center", justifyContent: "center", zIndex: 1 },
   meta: { flex: 1, gap: 2 },
-  desc: { fontFamily: "Inter_700Bold", fontSize: 14, lineHeight: 18 },
-  time: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  desc: { fontFamily: "Nunito_700Bold", fontSize: 14, lineHeight: 18 },
+  time: { fontFamily: "Nunito_400Regular", fontSize: 12, marginTop: 2 },
   amountCol: { alignItems: "flex-end", gap: 2 },
-  amount: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  amount: { fontFamily: "Nunito_700Bold", fontSize: 14 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  feeText: { fontFamily: "Inter_400Regular", fontSize: 10 },
+  feeText: { fontFamily: "Nunito_400Regular", fontSize: 10 },
 });
 
 function makeQrUrl(data: string, size = 280) {
@@ -580,8 +580,8 @@ export default function HomeScreen() {
                     <View style={[styles.pendingBanner, { backgroundColor: "rgba(234,179,8,0.1)", borderColor: "rgba(234,179,8,0.2)" }]}>
                       <Ionicons name="reload" size={16} color="#EAB308" />
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#EAB308" }}>Waiting for on-chain confirmation</Text>
-                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#EAB308", opacity: 0.8 }}>Your sats are on the way. This typically takes 10-30 minutes.</Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Nunito_700Bold", color: "#EAB308" }}>Waiting for on-chain confirmation</Text>
+                        <Text style={{ fontSize: 11, fontFamily: "Nunito_400Regular", color: "#EAB308", opacity: 0.8 }}>Your sats are on the way. This typically takes 10-30 minutes.</Text>
                       </View>
                     </View>
                   )}
@@ -679,11 +679,11 @@ export default function HomeScreen() {
                     <View style={styles.receiveProtocolRow}>
                       <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(251,191,36,0.12)" }]}>
                         <Text style={{ fontSize: 12 }}>⚡</Text>
-                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, color: "#FBBF24" }}>Lightning</Text>
+                        <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 10, color: "#FBBF24" }}>Lightning</Text>
                       </View>
                       <Text style={{ color: colors.textMuted, fontSize: 12 }}>+</Text>
                       <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(247,147,26,0.12)" }]}>
-                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, color: "#F7931A" }}>₿ On-chain</Text>
+                        <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 10, color: "#F7931A" }}>₿ On-chain</Text>
                       </View>
                     </View>
 
@@ -737,7 +737,7 @@ export default function HomeScreen() {
                     {receiveGenerating && (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <ActivityIndicator color={colors.gold} size="small" />
-                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 14, color: colors.textSecondary }}>Generating invoice…</Text>
+                        <Text style={{ fontFamily: "Nunito_400Regular", fontSize: 14, color: colors.textSecondary }}>Generating invoice…</Text>
                       </View>
                     )}
 
@@ -756,7 +756,7 @@ export default function HomeScreen() {
                 {receiveMode === "generated" && receiveInvoice && (
                   <View style={styles.receiveGeneratedContent}>
                     <View style={[styles.receiveInvoiceRow, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-                      <Text style={{ flex: 1, fontFamily: "Inter_400Regular", fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+                      <Text style={{ flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
                         {receiveInvoice.slice(0, 24)}…{receiveInvoice.slice(-8)}
                       </Text>
                       <Pressable onPress={() => handleReceiveCopy(receiveInvoice)} style={{ padding: 4 }}>
@@ -765,7 +765,7 @@ export default function HomeScreen() {
                     </View>
 
                     {receiveAmountInput && (
-                      <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 15, color: colors.text }}>
+                      <Text style={{ fontFamily: "Nunito_600SemiBold", fontSize: 15, color: colors.text }}>
                         Requesting {parseInt(receiveAmountInput).toLocaleString()} sats
                       </Text>
                     )}
@@ -782,12 +782,12 @@ export default function HomeScreen() {
                     </View>
 
                     <Pressable onPress={resetReceiveState} style={{ paddingVertical: 8 }}>
-                      <Text style={{ fontFamily: "Inter_500Medium", fontSize: 14, color: colors.textMuted }}>New Invoice</Text>
+                      <Text style={{ fontFamily: "Nunito_500Medium", fontSize: 14, color: colors.textMuted }}>New Invoice</Text>
                     </Pressable>
 
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                       <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.textMuted }}>Expires in 1 hour</Text>
+                      <Text style={{ fontFamily: "Nunito_400Regular", fontSize: 12, color: colors.textMuted }}>Expires in 1 hour</Text>
                     </View>
                   </View>
                 )}
@@ -840,7 +840,7 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1,
   },
   backupText: {
-    fontFamily: "Inter_700Bold", fontSize: 12,
+    fontFamily: "Nunito_700Bold", fontSize: 12,
     color: "rgba(251,147,60,0.7)", letterSpacing: 1.5, textTransform: "uppercase",
   },
 
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
   btcSymbol: { fontFamily: "Chewy_400Regular" },
   fiatSymbol: { fontFamily: "Chewy_400Regular" },
   balanceText: { fontFamily: "Chewy_400Regular", letterSpacing: -1 },
-  subBalance: { fontFamily: "Inter_700Bold", fontSize: 14, marginTop: 12, opacity: 0.8 },
+  subBalance: { fontFamily: "Nunito_700Bold", fontSize: 14, marginTop: 12, opacity: 0.8 },
 
   actionRow: { flexDirection: "row", gap: 16, paddingHorizontal: 24, marginBottom: 24 },
   actionCard: {
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28,
     alignItems: "center", justifyContent: "center", marginBottom: 4,
   },
-  actionLabel: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  actionLabel: { fontFamily: "Nunito_700Bold", fontSize: 18 },
 
   txPanelOverlay: {
     position: "absolute", bottom: 0, left: 0, right: 0,
@@ -875,11 +875,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-  txHeaderText: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1 },
+  txHeaderText: { fontFamily: "Nunito_700Bold", fontSize: 18, flex: 1 },
   txList: { gap: 4, paddingBottom: 8 },
   emptyState: { alignItems: "center", paddingVertical: 32, gap: 4 },
-  emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
-  emptySubtitle: { fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 4 },
+  emptyTitle: { fontFamily: "Nunito_700Bold", fontSize: 16 },
+  emptySubtitle: { fontFamily: "Nunito_400Regular", fontSize: 14, marginTop: 4 },
 
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" },
@@ -893,8 +893,8 @@ const styles = StyleSheet.create({
   txDetailIcon: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 24 },
   txDetailAmountRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 4 },
   txDetailAmount: { fontFamily: "Chewy_400Regular", fontSize: 36 },
-  txDetailSats: { fontFamily: "Inter_400Regular", fontSize: 24 },
-  txDetailDate: { fontFamily: "Inter_400Regular", fontSize: 14, marginBottom: 8 },
+  txDetailSats: { fontFamily: "Nunito_400Regular", fontSize: 24 },
+  txDetailDate: { fontFamily: "Nunito_400Regular", fontSize: 14, marginBottom: 8 },
   pendingBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16,
@@ -904,12 +904,12 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingVertical: 12, borderBottomWidth: 1, width: "100%",
   },
-  detailLabel: { fontFamily: "Inter_700Bold", fontSize: 14 },
-  detailValue: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  detailLabel: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+  detailValue: { fontFamily: "Nunito_700Bold", fontSize: 14 },
   memoSection: { paddingVertical: 12, borderBottomWidth: 1, width: "100%", gap: 8 },
-  memoInput: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontFamily: "Inter_400Regular", fontSize: 14 },
+  memoInput: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontFamily: "Nunito_400Regular", fontSize: 14 },
   hashSection: { paddingVertical: 12, width: "100%", gap: 4 },
-  hashText: { fontFamily: "Inter_400Regular", fontSize: 11 },
+  hashText: { fontFamily: "Nunito_400Regular", fontSize: 11 },
 
   receiveSheet: {
     borderTopLeftRadius: 40, borderTopRightRadius: 40,
@@ -926,39 +926,39 @@ const styles = StyleSheet.create({
     position: "absolute", flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
-  receiveQrText: { fontFamily: "Inter_700Bold", fontSize: 13, color: "#0B1426" },
+  receiveQrText: { fontFamily: "Nunito_700Bold", fontSize: 13, color: "#0B1426" },
   receiveQrBadgeRow: { flexDirection: "row", gap: 3 },
   receiveQrBadge: { width: 20, height: 20, borderRadius: 4, alignItems: "center", justifyContent: "center" },
   receiveQrBadgeText: { fontSize: 11 },
 
   receiveDefaultContent: { width: "100%", alignItems: "center", gap: 10 },
   receiveAddressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  receiveAddressText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#EAB308" },
-  receiveAddressLabel: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  receiveAddressText: { fontFamily: "Nunito_600SemiBold", fontSize: 15, color: "#EAB308" },
+  receiveAddressLabel: { fontFamily: "Nunito_400Regular", fontSize: 12 },
   receiveProtocolRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   receiveProtocolBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   receiveInfoRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  receiveInfoText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  receiveInfoText: { fontFamily: "Nunito_400Regular", fontSize: 12 },
   receiveButtonRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 16 },
   receiveDashedBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", borderColor: "#1E2D50",
   },
-  receiveDashedBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  receiveDashedBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 15 },
   receiveGoldBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     paddingVertical: 16, borderRadius: 16, backgroundColor: "#c9a24d",
   },
-  receiveGoldBtnText: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  receiveGoldBtnText: { fontFamily: "Nunito_700Bold", fontSize: 15 },
 
   receiveAmountContent: { width: "100%", alignItems: "center", gap: 12 },
   receiveAmountCard: { width: "100%", borderRadius: 20, overflow: "hidden", borderWidth: 1 },
   receiveAmountInputRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 24, gap: 8 },
-  receiveAmountCurrency: { fontFamily: "Inter_400Regular", fontSize: 32 },
-  receiveAmountInput: { flex: 1, fontFamily: "Inter_700Bold", fontSize: 44, textAlign: "center", letterSpacing: -2 },
-  receiveAmountUnit: { fontFamily: "Inter_400Regular", fontSize: 16 },
-  receiveDescInput: { padding: 16, fontFamily: "Inter_400Regular", fontSize: 15 },
-  receiveErrorText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
+  receiveAmountCurrency: { fontFamily: "Nunito_400Regular", fontSize: 32 },
+  receiveAmountInput: { flex: 1, fontFamily: "Nunito_700Bold", fontSize: 44, textAlign: "center", letterSpacing: -2 },
+  receiveAmountUnit: { fontFamily: "Nunito_400Regular", fontSize: 16 },
+  receiveDescInput: { padding: 16, fontFamily: "Nunito_400Regular", fontSize: 15 },
+  receiveErrorText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
 
   receiveGeneratedContent: { width: "100%", alignItems: "center", gap: 12 },
   receiveInvoiceRow: {
@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
     fontFamily: "Chewy_400Regular", fontSize: 60, color: "#FBBF24",
     textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
   },
-  celebrationSats: { fontFamily: "Inter_700Bold", fontSize: 24, color: "rgba(251,191,36,0.8)", marginBottom: 8 },
-  celebrationDesc: { fontFamily: "Inter_500Medium", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 32 },
-  celebrationDismiss: { fontFamily: "Inter_400Regular", fontSize: 12, color: "rgba(255,255,255,0.3)" },
+  celebrationSats: { fontFamily: "Nunito_700Bold", fontSize: 24, color: "rgba(251,191,36,0.8)", marginBottom: 8 },
+  celebrationDesc: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 32 },
+  celebrationDismiss: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "rgba(255,255,255,0.3)" },
 });

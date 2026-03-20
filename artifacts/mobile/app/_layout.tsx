@@ -1,10 +1,11 @@
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts as useInterFonts,
-} from "@expo-google-fonts/inter";
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  useFonts as useNunitoFonts,
+} from "@expo-google-fonts/nunito";
 import { PirataOne_400Regular, useFonts as usePirateFonts } from "@expo-google-fonts/pirata-one";
 import { Chewy_400Regular, useFonts as useChewyFonts } from "@expo-google-fonts/chewy";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -44,11 +45,12 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [interLoaded, interError] = useInterFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+  const [nunitoLoaded, nunitoError] = useNunitoFonts({
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
   });
 
   const [pirateLoaded, pirateError] = usePirateFonts({
@@ -59,8 +61,8 @@ export default function RootLayout() {
     Chewy_400Regular,
   });
 
-  const fontsLoaded = interLoaded && pirateLoaded && chewyLoaded;
-  const fontError = interError || pirateError || chewyError;
+  const fontsLoaded = nunitoLoaded && pirateLoaded && chewyLoaded;
+  const fontError = nunitoError || pirateError || chewyError;
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   stageSubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 14,
     color: "#8FA3C8",
     textAlign: "center",
@@ -371,12 +371,12 @@ const styles = StyleSheet.create({
   },
   optionText: { flex: 1, gap: 3 },
   optionTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
     fontSize: 16,
     color: "#FFFFFF",
   },
   optionSubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 12,
     color: "#4A6080",
   },
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   recommendedText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Nunito_600SemiBold",
     fontSize: 11,
     color: GOLD,
   },
@@ -409,13 +409,13 @@ const styles = StyleSheet.create({
     borderColor: "#1E2D50",
   },
   seedIndex: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Nunito_500Medium",
     fontSize: 11,
     color: "#4A6080",
     minWidth: 16,
   },
   seedText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Nunito_600SemiBold",
     fontSize: 13,
     color: "#FFFFFF",
   },
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     flex: 1,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 13,
     color: "#CDDAED",
     lineHeight: 20,
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   goldBtnText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
     fontSize: 17,
     color: NAVY,
   },
@@ -468,13 +468,13 @@ const styles = StyleSheet.create({
     borderColor: "#1E2D50",
   },
   verifyOptionText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Nunito_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
   },
   retryBtn: { marginTop: 8 },
   retryText: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Nunito_500Medium",
     fontSize: 14,
     color: "#4A6080",
   },

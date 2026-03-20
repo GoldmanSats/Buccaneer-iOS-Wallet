@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   qrCenterText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
     fontSize: 13,
     color: "#0B1426",
   },
@@ -379,8 +379,8 @@ const styles = StyleSheet.create({
 
   defaultSection: { width: "100%", alignItems: "center", gap: 12 },
   addressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  addressText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#EAB308" },
-  addressLabel: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#4A6080" },
+  addressText: { fontFamily: "Nunito_600SemiBold", fontSize: 15, color: "#EAB308" },
+  addressLabel: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080" },
 
   protocolBadges: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   protocolBadge: {
@@ -392,11 +392,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  protocolText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
-  protocolPlus: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#4A6080" },
+  protocolText: { fontFamily: "Nunito_600SemiBold", fontSize: 12 },
+  protocolPlus: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#4A6080" },
 
   infoRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  infoText: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#4A6080" },
+  infoText: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080" },
 
   bottomButtons: { flexDirection: "row", gap: 12, width: "100%", marginTop: 16 },
   dashedBtn: {
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderColor: "#1E2D50",
   },
-  dashedBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#8FA3C8" },
+  dashedBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 15, color: "#8FA3C8" },
   shareBtn: { flex: 1, borderRadius: 16, overflow: "hidden" },
   shareBtnGradient: {
     flexDirection: "row",
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
   },
-  shareBtnText: { fontFamily: "Inter_700Bold", fontSize: 15, color: NAVY },
+  shareBtnText: { fontFamily: "Nunito_700Bold", fontSize: 15, color: NAVY },
 
   amountSection: { width: "100%", alignItems: "center", gap: 12 },
   amountCard: {
@@ -438,26 +438,26 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     gap: 8,
   },
-  amountCurrency: { fontFamily: "Inter_400Regular", fontSize: 32, color: "#4A6080" },
+  amountCurrency: { fontFamily: "Nunito_400Regular", fontSize: 32, color: "#4A6080" },
   amountInput: {
     flex: 1,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
     fontSize: 44,
     color: "#FFFFFF",
     textAlign: "center",
     letterSpacing: -2,
   },
-  amountUnit: { fontFamily: "Inter_400Regular", fontSize: 16, color: "#4A6080" },
+  amountUnit: { fontFamily: "Nunito_400Regular", fontSize: 16, color: "#4A6080" },
   divider: { height: 1, backgroundColor: "#1E2D50" },
   descInput: {
     padding: 16,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Nunito_400Regular",
     fontSize: 15,
     color: "#CDDAED",
   },
-  errorText: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
+  errorText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  loadingText: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#8FA3C8" },
+  loadingText: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#8FA3C8" },
 
   generatedSection: { width: "100%", alignItems: "center", gap: 12 },
   invoiceStringRow: {
@@ -472,11 +472,11 @@ const styles = StyleSheet.create({
     borderColor: "#1E2D50",
     width: "100%",
   },
-  invoiceString: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 12, color: "#4A6080", letterSpacing: 0.5 },
+  invoiceString: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080", letterSpacing: 0.5 },
   copyBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  invoiceAmountText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#FFFFFF" },
+  invoiceAmountText: { fontFamily: "Nunito_600SemiBold", fontSize: 15, color: "#FFFFFF" },
   newInvoiceLink: { paddingVertical: 8 },
-  newInvoiceLinkText: { fontFamily: "Inter_500Medium", fontSize: 14, color: "#4A6080" },
+  newInvoiceLinkText: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "#4A6080" },
   expiryRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  expiryText: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#4A6080" },
+  expiryText: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080" },
 });
