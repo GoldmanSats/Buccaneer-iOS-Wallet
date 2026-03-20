@@ -700,13 +700,13 @@ export default function HomeScreen() {
               <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled">
-                <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
-                  <Image
-                    source={{ uri: makeQrUrl(receiveQrData, receiveQrSize) }}
-                    style={{ width: receiveQrSize, height: receiveQrSize, borderRadius: 8 }}
-                    resizeMode="contain"
-                  />
-                  {receiveMode !== "amount" && (
+                {receiveMode !== "amount" && (
+                  <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
+                    <Image
+                      source={{ uri: makeQrUrl(receiveQrData, receiveQrSize) }}
+                      style={{ width: receiveQrSize, height: receiveQrSize, borderRadius: 8 }}
+                      resizeMode="contain"
+                    />
                     <View style={styles.receiveQrOverlay}>
                       <Text style={styles.receiveQrText}>₿uccaneer</Text>
                       <View style={styles.receiveQrBadgeRow}>
@@ -718,8 +718,8 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </View>
-                  )}
-                </View>
+                  </View>
+                )}
 
                 {receiveMode === "default" && (
                   <View style={styles.receiveDefaultContent}>
