@@ -694,12 +694,12 @@ export default function HomeScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
             <Animated.View
               {...receivePanGesture.panHandlers}
-              style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
+              style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: receiveMode === "amount" ? 40 : bottomPad + 20 }, receiveSheetAnimStyle]}
             >
               <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
               <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled">
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.receiveScrollContent, receiveMode === "amount" && { paddingBottom: 60 }]} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
                 {receiveMode !== "amount" && (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
                     <Image
