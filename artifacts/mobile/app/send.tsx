@@ -199,51 +199,59 @@ export default function SendScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {stage === "scan" && (
-            <Animated.View entering={FadeIn} style={{ gap: 20 }}>
-              <View style={styles.scannerBox}>
-                {permission?.granted && cameraActive && Platform.OS !== "web" ? (
-                  <CameraView
-                    style={StyleSheet.absoluteFill}
-                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                    onBarcodeScanned={(result) => handleBarCodeScanned(result.data)}
-                  />
-                ) : null}
-                <View style={styles.cornerTL} />
-                <View style={styles.cornerTR} />
-                <View style={styles.cornerBL} />
-                <View style={styles.cornerBR} />
-                {!permission?.granted && (
-                  <Pressable onPress={requestPermission} style={styles.cameraPermBtn}>
-                    <Ionicons name="camera" size={24} color="#8FA3C8" />
-                    <Text style={styles.cameraPermText}>Tap to enable camera</Text>
-                  </Pressable>
-                )}
-                {permission?.granted && cameraActive && (
-                  <Text style={styles.scanningText}>SCANNING FOR QR CODE...</Text>
-                )}
+            <Animated.View entering={FadeIn} style={styles.scanStage}>
+              <View style={styles.invoiceCard}>
+                <View style={styles.invoiceCardHeader}>
+                  <Ionicons name="key-outline" size={16} color="#8FA3C8" />
+                  <Text style={styles.invoiceCardLabel}>INVOICE DETAILS</Text>
+                </View>
+                <TextInput
+                  testID="invoice-input"
+                  style={styles.invoiceTextArea}
+                  placeholder="Paste lightning invoice, Bitcoin address, or LNURL..."
+                  placeholderTextColor="#4A608080"
+                  value={invoiceInput}
+                  onChangeText={setInvoiceInput}
+                  multiline
+                  textAlignVertical="top"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-              <Pressable
-                testID="paste-invoice-button"
-                style={styles.dashedBtn}
-                onPress={handlePasteInvoice}
-              >
-                {isDecoding ? (
-                  <ActivityIndicator color={GOLD} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="clipboard-outline" size={18} color="#CDDAED" />
-                    <Text style={styles.dashedBtnText}>Paste Invoice</Text>
-                  </>
-                )}
-              </Pressable>
+              <View style={{ flex: 1 }} />
 
-              <Pressable testID="import-photos-button" style={styles.dashedBtn} onPress={handlePickImage}>
-                <MaterialCommunityIcons name="image-plus" size={18} color="#CDDAED" />
-                <Text style={styles.dashedBtnText}>Import from Photos</Text>
-              </Pressable>
+              <View style={styles.scanActions}>
+                <Pressable
+                  testID="paste-invoice-button"
+                  style={styles.dashedBtn}
+                  onPress={handlePasteInvoice}
+                >
+                  {isDecoding ? (
+                    <ActivityIndicator color={GOLD} size="small" />
+                  ) : (
+                    <Text style={styles.dashedBtnText}>Paste Invoice</Text>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  testID="send-invoice-button"
+                  style={styles.sendCoralBtn}
+                  onPress={() => handleDecodeInput(invoiceInput)}
+                  disabled={!invoiceInput.trim() || isDecoding}
+                >
+                  {isDecoding ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="arrow-forward-outline" size={18} color="#FFF" style={{ transform: [{ rotate: "-45deg" }] }} />
+                      <Text style={styles.sendCoralBtnText}>Send</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
             </Animated.View>
           )}
 
@@ -381,30 +389,48 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: "Nunito_700Bold", fontSize: 20, color: "#FFFFFF" },
   content: { padding: 20, gap: 16, flexGrow: 1 },
-  scannerBox: {
-    height: 300,
-    backgroundColor: "#000",
+  scanStage: { flex: 1, gap: 16 },
+  invoiceCard: {
+    backgroundColor: NAVY_CARD,
     borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#1E2D50",
+    gap: 12,
+  },
+  invoiceCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  invoiceCardLabel: {
+    fontFamily: "Nunito_700Bold",
+    fontSize: 13,
+    color: "#8FA3C8",
+    letterSpacing: 1.5,
+  },
+  invoiceTextArea: {
+    backgroundColor: "rgba(11,20,38,0.5)",
+    borderRadius: 12,
+    padding: 16,
+    minHeight: 100,
+    fontFamily: "Nunito_400Regular",
+    fontSize: 15,
+    color: "#CDDAED",
+    borderWidth: 1,
+    borderColor: "#1E2D5060",
+  },
+  scanActions: { gap: 12 },
+  sendCoralBtn: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
-    overflow: "hidden",
+    gap: 8,
+    paddingVertical: 18,
+    borderRadius: 16,
+    backgroundColor: "#C45A3D",
   },
-  cornerTL: { position: "absolute", top: 20, left: 20, width: 32, height: 32, borderTopWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderTopLeftRadius: 8 },
-  cornerTR: { position: "absolute", top: 20, right: 20, width: 32, height: 32, borderTopWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderTopRightRadius: 8 },
-  cornerBL: { position: "absolute", bottom: 20, left: 20, width: 32, height: 32, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomLeftRadius: 8 },
-  cornerBR: { position: "absolute", bottom: 20, right: 20, width: 32, height: 32, borderBottomWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomRightRadius: 8 },
-  cameraPermBtn: { alignItems: "center", gap: 8 },
-  cameraPermText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#8FA3C8" },
-  scanningText: {
-    fontFamily: "Nunito_500Medium",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.35)",
-    letterSpacing: 2,
-    position: "absolute",
-    bottom: 28,
-    textTransform: "uppercase",
-  },
+  sendCoralBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFF" },
   dashedBtn: {
     flexDirection: "row",
     alignItems: "center",
