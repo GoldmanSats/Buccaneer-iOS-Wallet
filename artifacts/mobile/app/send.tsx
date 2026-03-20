@@ -25,7 +25,7 @@ const NAVY = "#0B1426";
 const NAVY_CARD = "#151f35";
 const GOLD = "#c9a24d";
 
-type Stage = "scan" | "review" | "sending" | "success" | "error";
+type Stage = "scan" | "paste" | "review" | "sending" | "success" | "error";
 
 export default function SendScreen() {
   const insets = useSafeAreaInsets();
@@ -66,14 +66,14 @@ export default function SendScreen() {
     await handleDecodeInput(data);
   };
 
-  const handlePasteInvoice = async () => {
-    try {
-      const text = await Clipboard.getStringAsync();
-      if (text) {
-        setInvoiceInput(text);
-        await handleDecodeInput(text);
-      }
-    } catch (_e) {}
+  const handlePasteInvoice = () => {
+    setCameraActive(false);
+    setStage("paste");
+    Clipboard.getStringAsync()
+      .then((text) => {
+        if (text) setInvoiceInput((prev) => prev || text);
+      })
+      .catch(() => {});
   };
 
   const handlePickImage = async () => {
@@ -199,6 +199,49 @@ export default function SendScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {stage === "scan" && (
+            <Animated.View entering={FadeIn} style={{ gap: 20 }}>
+              <View style={styles.scannerBox}>
+                {permission?.granted && cameraActive && Platform.OS !== "web" ? (
+                  <CameraView
+                    style={StyleSheet.absoluteFill}
+                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                    onBarcodeScanned={(result) => handleBarCodeScanned(result.data)}
+                  />
+                ) : null}
+                <View style={styles.cornerTL} />
+                <View style={styles.cornerTR} />
+                <View style={styles.cornerBL} />
+                <View style={styles.cornerBR} />
+                {!permission?.granted && (
+                  <Pressable onPress={requestPermission} style={styles.cameraPermBtn}>
+                    <Ionicons name="camera" size={24} color="#8FA3C8" />
+                    <Text style={styles.cameraPermText}>Tap to enable camera</Text>
+                  </Pressable>
+                )}
+                {permission?.granted && cameraActive && (
+                  <Text style={styles.scanningText}>SCANNING FOR QR CODE...</Text>
+                )}
+              </View>
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              <Pressable
+                testID="paste-invoice-button"
+                style={styles.dashedBtn}
+                onPress={handlePasteInvoice}
+              >
+                <Ionicons name="clipboard-outline" size={18} color="#CDDAED" />
+                <Text style={styles.dashedBtnText}>Paste Invoice</Text>
+              </Pressable>
+
+              <Pressable testID="import-photos-button" style={styles.dashedBtn} onPress={handlePickImage}>
+                <MaterialCommunityIcons name="image-plus" size={18} color="#CDDAED" />
+                <Text style={styles.dashedBtnText}>Import from Photos</Text>
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {stage === "paste" && (
             <Animated.View entering={FadeIn} style={styles.scanStage}>
               <View style={styles.invoiceCard}>
                 <View style={styles.invoiceCardHeader}>
@@ -225,18 +268,6 @@ export default function SendScreen() {
 
               <View style={styles.scanActions}>
                 <Pressable
-                  testID="paste-invoice-button"
-                  style={styles.dashedBtn}
-                  onPress={handlePasteInvoice}
-                >
-                  {isDecoding ? (
-                    <ActivityIndicator color={GOLD} size="small" />
-                  ) : (
-                    <Text style={styles.dashedBtnText}>Paste Invoice</Text>
-                  )}
-                </Pressable>
-
-                <Pressable
                   testID="send-invoice-button"
                   style={styles.sendCoralBtn}
                   onPress={() => handleDecodeInput(invoiceInput)}
@@ -247,9 +278,13 @@ export default function SendScreen() {
                   ) : (
                     <>
                       <Ionicons name="arrow-forward-outline" size={18} color="#FFF" style={{ transform: [{ rotate: "-45deg" }] }} />
-                      <Text style={styles.sendCoralBtnText}>Send</Text>
+                      <Text style={styles.sendCoralBtnText}>Continue</Text>
                     </>
                   )}
+                </Pressable>
+
+                <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); }} style={styles.cancelBtn}>
+                  <Text style={styles.cancelText}>Back to Scanner</Text>
                 </Pressable>
               </View>
             </Animated.View>
@@ -389,6 +424,30 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: "Nunito_700Bold", fontSize: 20, color: "#FFFFFF" },
   content: { padding: 20, gap: 16, flexGrow: 1 },
+  scannerBox: {
+    height: 300,
+    backgroundColor: "#000",
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  cornerTL: { position: "absolute", top: 20, left: 20, width: 32, height: 32, borderTopWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderTopLeftRadius: 8 },
+  cornerTR: { position: "absolute", top: 20, right: 20, width: 32, height: 32, borderTopWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderTopRightRadius: 8 },
+  cornerBL: { position: "absolute", bottom: 20, left: 20, width: 32, height: 32, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomLeftRadius: 8 },
+  cornerBR: { position: "absolute", bottom: 20, right: 20, width: 32, height: 32, borderBottomWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomRightRadius: 8 },
+  cameraPermBtn: { alignItems: "center", gap: 8 },
+  cameraPermText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#8FA3C8" },
+  scanningText: {
+    fontFamily: "Nunito_500Medium",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.35)",
+    letterSpacing: 2,
+    position: "absolute",
+    bottom: 28,
+    textTransform: "uppercase",
+  },
   scanStage: { flex: 1, gap: 16 },
   invoiceCard: {
     backgroundColor: NAVY_CARD,
