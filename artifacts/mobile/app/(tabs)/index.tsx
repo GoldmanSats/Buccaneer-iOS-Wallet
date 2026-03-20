@@ -500,10 +500,7 @@ export default function HomeScreen() {
       <Animated.View
         style={[
           styles.txPanelOverlay,
-          {
-            backgroundColor: colors.bgCard,
-            paddingBottom: bottomPad,
-          },
+          { backgroundColor: colors.bgCard },
           txPanelAnimStyle,
         ]}
       >
@@ -521,7 +518,7 @@ export default function HomeScreen() {
 
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 8 }}
+          contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
           showsVerticalScrollIndicator={false}
         >
           {transactions.length === 0 ? (
