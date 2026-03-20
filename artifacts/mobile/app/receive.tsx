@@ -21,10 +21,7 @@ import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
-
-const NAVY = "#0B1426";
-const NAVY_CARD = "#151f35";
-const GOLD = "#c9a24d";
+import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 
 function makeQrUrl(data: string, size = 280) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&color=000000&bgcolor=FFFFFF&qzone=2`;
@@ -36,6 +33,8 @@ export default function ReceiveScreen() {
   const insets = useSafeAreaInsets();
   const { createInvoice } = useWallet();
   const { settings } = useSettings();
+  const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
+  const isDark = settings.isDarkMode;
 
   const [mode, setMode] = useState<Mode>("default");
   const [amountInput, setAmountInput] = useState("");
@@ -109,11 +108,11 @@ export default function ReceiveScreen() {
   const qrSize = mode === "amount" ? 180 : 280;
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
-      <LinearGradient colors={[NAVY, "#0A1020"]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
+      {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
 
       <View style={styles.headerHandle}>
-        <View style={styles.handleBar} />
+        <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
       </View>
 
       <KeyboardAvoidingView
@@ -125,7 +124,7 @@ export default function ReceiveScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.pageTitle}>Receive</Text>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Receive</Text>
 
           <View style={[styles.qrContainer, { width: qrSize + 24, height: qrSize + 24 }]}>
             <Image
@@ -153,7 +152,7 @@ export default function ReceiveScreen() {
                 <Ionicons
                   name={addressCopied ? "checkmark-circle" : "copy-outline"}
                   size={18}
-                  color={addressCopied ? "#2DC653" : GOLD}
+                  color={addressCopied ? "#2DC653" : colors.gold}
                 />
               </Pressable>
               <Text style={styles.addressLabel}>Lightning Address · tap to copy</Text>
@@ -171,17 +170,17 @@ export default function ReceiveScreen() {
               </View>
 
               <View style={styles.infoRow}>
-                <Ionicons name="information-circle-outline" size={14} color="#4A6080" />
-                <Text style={styles.infoText}>Unified QR: works with any Bitcoin wallet.</Text>
+                <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+                <Text style={[styles.infoText, { color: colors.textMuted }]}>Unified QR: works with any Bitcoin wallet.</Text>
               </View>
 
               <View style={styles.bottomButtons}>
                 <Pressable
                   testID="request-amount-button"
-                  style={styles.dashedBtn}
+                  style={[styles.dashedBtn, { borderColor: colors.border }]}
                   onPress={() => setMode("amount")}
                 >
-                  <Text style={styles.dashedBtnText}>Request Amount</Text>
+                  <Text style={[styles.dashedBtnText, { color: colors.textMuted }]}>Request Amount</Text>
                 </Pressable>
                 <Pressable
                   testID="share-button"
@@ -189,13 +188,13 @@ export default function ReceiveScreen() {
                   onPress={() => handleShare(lightningAddress)}
                 >
                   <LinearGradient
-                    colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
+                    colors={isDark ? ["#d4ad5a", "#c9a24d", "#a07c35"] : [colors.gold, colors.goldDark]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.shareBtnGradient}
                   >
-                    <Ionicons name="share-outline" size={18} color={NAVY} />
-                    <Text style={styles.shareBtnText}>Share</Text>
+                    <Ionicons name="share-outline" size={18} color={isDark ? "#0B1426" : "#172331"} />
+                    <Text style={[styles.shareBtnText, { color: isDark ? "#0B1426" : "#172331" }]}>Share</Text>
                   </LinearGradient>
                 </Pressable>
               </View>
@@ -204,27 +203,27 @@ export default function ReceiveScreen() {
 
           {mode === "amount" && (
             <Animated.View entering={FadeInDown} style={styles.amountSection}>
-              <View style={styles.amountCard}>
+              <View style={[styles.amountCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
                 <View style={styles.amountInputRow}>
-                  <Text style={styles.amountCurrency}>₿</Text>
+                  <Text style={[styles.amountCurrency, { color: colors.textMuted }]}>₿</Text>
                   <TextInput
                     testID="amount-input"
-                    style={styles.amountInput}
+                    style={[styles.amountInput, { color: colors.text }]}
                     placeholder="0"
-                    placeholderTextColor="#243354"
+                    placeholderTextColor={colors.textMuted + "60"}
                     value={amountInput}
                     onChangeText={setAmountInput}
                     keyboardType="number-pad"
                     returnKeyType="done"
                     autoFocus
                   />
-                  <Text style={styles.amountUnit}>sats</Text>
+                  <Text style={[styles.amountUnit, { color: colors.textMuted }]}>sats</Text>
                 </View>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <TextInput
-                  style={styles.descInput}
+                  style={[styles.descInput, { color: colors.textSecondary }]}
                   placeholder="Description (optional)"
-                  placeholderTextColor="#4A6080"
+                  placeholderTextColor={colors.textMuted}
                   value={descInput}
                   onChangeText={setDescInput}
                   returnKeyType="done"
@@ -234,14 +233,14 @@ export default function ReceiveScreen() {
               {invoiceError ? <Text style={styles.errorText}>{invoiceError}</Text> : null}
               {isGenerating && (
                 <View style={styles.loadingRow}>
-                  <ActivityIndicator color={GOLD} size="small" />
-                  <Text style={styles.loadingText}>Generating invoice…</Text>
+                  <ActivityIndicator color={colors.gold} size="small" />
+                  <Text style={[styles.loadingText, { color: colors.textMuted }]}>Generating invoice…</Text>
                 </View>
               )}
 
               <View style={styles.bottomButtons}>
-                <Pressable style={styles.dashedBtn} onPress={() => setMode("default")}>
-                  <Text style={styles.dashedBtnText}>Cancel</Text>
+                <Pressable style={[styles.dashedBtn, { borderColor: colors.border }]} onPress={() => setMode("default")}>
+                  <Text style={[styles.dashedBtnText, { color: colors.textMuted }]}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   testID="generate-invoice-button"
@@ -249,13 +248,13 @@ export default function ReceiveScreen() {
                   onPress={handleGenerate}
                 >
                   <LinearGradient
-                    colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
+                    colors={isDark ? ["#d4ad5a", "#c9a24d", "#a07c35"] : [colors.gold, colors.goldDark]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.shareBtnGradient}
                   >
-                    <MaterialCommunityIcons name="lightning-bolt" size={18} color={NAVY} />
-                    <Text style={styles.shareBtnText}>Generate</Text>
+                    <MaterialCommunityIcons name="lightning-bolt" size={18} color={isDark ? "#0B1426" : "#172331"} />
+                    <Text style={[styles.shareBtnText, { color: isDark ? "#0B1426" : "#172331" }]}>Generate</Text>
                   </LinearGradient>
                 </Pressable>
               </View>
@@ -264,8 +263,8 @@ export default function ReceiveScreen() {
 
           {mode === "generated" && invoice && (
             <Animated.View entering={FadeInDown} style={styles.generatedSection}>
-              <View style={styles.invoiceStringRow}>
-                <Text style={styles.invoiceString} numberOfLines={1}>
+              <View style={[styles.invoiceStringRow, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+                <Text style={[styles.invoiceString, { color: colors.textMuted }]} numberOfLines={1}>
                   {invoice.slice(0, 24)}…{invoice.slice(-8)}
                 </Text>
                 <Pressable
@@ -276,13 +275,13 @@ export default function ReceiveScreen() {
                   <Ionicons
                     name={copied ? "checkmark" : "copy-outline"}
                     size={16}
-                    color={copied ? "#2DC653" : "#8FA3C8"}
+                    color={copied ? "#2DC653" : colors.textMuted}
                   />
                 </Pressable>
               </View>
 
               {amountInput && (
-                <Text style={styles.invoiceAmountText}>
+                <Text style={[styles.invoiceAmountText, { color: colors.text }]}>
                   Requesting {parseInt(amountInput).toLocaleString()} sats
                 </Text>
               )}
@@ -290,11 +289,11 @@ export default function ReceiveScreen() {
               <View style={styles.bottomButtons}>
                 <Pressable
                   testID="copy-full-button"
-                  style={styles.dashedBtn}
+                  style={[styles.dashedBtn, { borderColor: colors.border }]}
                   onPress={() => handleCopy(invoice)}
                 >
-                  <Ionicons name="copy-outline" size={16} color="#8FA3C8" />
-                  <Text style={styles.dashedBtnText}>Copy</Text>
+                  <Ionicons name="copy-outline" size={16} color={colors.textMuted} />
+                  <Text style={[styles.dashedBtnText, { color: colors.textMuted }]}>Copy</Text>
                 </Pressable>
                 <Pressable
                   testID="share-invoice-button"
@@ -302,24 +301,24 @@ export default function ReceiveScreen() {
                   onPress={() => handleShare(invoice)}
                 >
                   <LinearGradient
-                    colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
+                    colors={isDark ? ["#d4ad5a", "#c9a24d", "#a07c35"] : [colors.gold, colors.goldDark]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.shareBtnGradient}
                   >
-                    <Ionicons name="share-outline" size={18} color={NAVY} />
-                    <Text style={styles.shareBtnText}>Share</Text>
+                    <Ionicons name="share-outline" size={18} color={isDark ? "#0B1426" : "#172331"} />
+                    <Text style={[styles.shareBtnText, { color: isDark ? "#0B1426" : "#172331" }]}>Share</Text>
                   </LinearGradient>
                 </Pressable>
               </View>
 
               <Pressable testID="new-invoice-button" onPress={handleReset} style={styles.newInvoiceLink}>
-                <Text style={styles.newInvoiceLinkText}>New Invoice</Text>
+                <Text style={[styles.newInvoiceLinkText, { color: colors.textMuted }]}>New Invoice</Text>
               </Pressable>
 
               <View style={styles.expiryRow}>
-                <Ionicons name="time-outline" size={13} color="#4A6080" />
-                <Text style={styles.expiryText}>Expires in 1 hour</Text>
+                <Ionicons name="time-outline" size={13} color={colors.textMuted} />
+                <Text style={[styles.expiryText, { color: colors.textMuted }]}>Expires in 1 hour</Text>
               </View>
             </Animated.View>
           )}
@@ -330,9 +329,9 @@ export default function ReceiveScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: NAVY },
+  container: { flex: 1 },
   headerHandle: { alignItems: "center", paddingVertical: 10 },
-  handleBar: { width: 40, height: 4, backgroundColor: "#1E2D50", borderRadius: 2 },
+  handleBar: { width: 40, height: 4, borderRadius: 2 },
   content: { paddingHorizontal: 24, alignItems: "center" },
   pageTitle: {
     fontFamily: "Chewy_400Regular",
@@ -420,12 +419,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
   },
-  shareBtnText: { fontFamily: "Nunito_700Bold", fontSize: 15, color: NAVY },
+  shareBtnText: { fontFamily: "Nunito_700Bold", fontSize: 15 },
 
   amountSection: { width: "100%", alignItems: "center", gap: 12 },
   amountCard: {
     width: "100%",
-    backgroundColor: NAVY_CARD,
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
@@ -464,12 +462,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: NAVY_CARD,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "#1E2D50",
     width: "100%",
   },
   invoiceString: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080", letterSpacing: 0.5 },

@@ -20,15 +20,16 @@ import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useWallet } from "@/contexts/WalletContext";
-
-const NAVY = "#0B1426";
-const NAVY_CARD = "#151f35";
-const GOLD = "#c9a24d";
+import { useSettings } from "@/contexts/SettingsContext";
+import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 
 type Stage = "scan" | "paste" | "review" | "sending" | "success" | "error";
 
 export default function SendScreen() {
   const insets = useSafeAreaInsets();
+  const { settings } = useSettings();
+  const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
+  const isDark = settings.isDarkMode;
   const { sendPayment, decodeInvoice, parseInput, btcPrice } = useWallet();
   const [stage, setStage] = useState<Stage>("scan");
   const [invoiceInput, setInvoiceInput] = useState("");
@@ -199,14 +200,14 @@ export default function SendScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
-      <LinearGradient colors={[NAVY, "#0A1020"]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
+      {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
 
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} testID="send-back-button">
-          <Ionicons name="chevron-back" size={22} color="#8FA3C8" />
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]} testID="send-back-button">
+          <Ionicons name="chevron-back" size={22} color={colors.textMuted} />
         </Pressable>
-        <Text style={styles.title}>Send</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Send</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -235,8 +236,8 @@ export default function SendScreen() {
                 <View style={styles.cornerBR} />
                 {!permission?.granted && (
                   <Pressable onPress={requestPermission} style={styles.cameraPermBtn}>
-                    <Ionicons name="camera" size={24} color="#8FA3C8" />
-                    <Text style={styles.cameraPermText}>Tap to enable camera</Text>
+                    <Ionicons name="camera" size={24} color={colors.textMuted} />
+                    <Text style={[styles.cameraPermText, { color: colors.textMuted }]}>Tap to enable camera</Text>
                   </Pressable>
                 )}
                 {permission?.granted && cameraActive && (
@@ -248,32 +249,32 @@ export default function SendScreen() {
 
               <Pressable
                 testID="paste-invoice-button"
-                style={styles.dashedBtn}
+                style={[styles.dashedBtn, { borderColor: isDark ? "rgba(255,255,255,0.15)" : colors.border }]}
                 onPress={handlePasteInvoice}
               >
-                <Ionicons name="clipboard-outline" size={18} color="#CDDAED" />
-                <Text style={styles.dashedBtnText}>Paste Invoice</Text>
+                <Ionicons name="clipboard-outline" size={18} color={colors.textSecondary} />
+                <Text style={[styles.dashedBtnText, { color: colors.textSecondary }]}>Paste Invoice</Text>
               </Pressable>
 
-              <Pressable testID="import-photos-button" style={styles.dashedBtn} onPress={handlePickImage}>
-                <MaterialCommunityIcons name="image-plus" size={18} color="#CDDAED" />
-                <Text style={styles.dashedBtnText}>Import from Photos</Text>
+              <Pressable testID="import-photos-button" style={[styles.dashedBtn, { borderColor: isDark ? "rgba(255,255,255,0.15)" : colors.border }]} onPress={handlePickImage}>
+                <MaterialCommunityIcons name="image-plus" size={18} color={colors.textSecondary} />
+                <Text style={[styles.dashedBtnText, { color: colors.textSecondary }]}>Import from Photos</Text>
               </Pressable>
             </Animated.View>
           )}
 
           {stage === "paste" && (
             <Animated.View entering={FadeIn} style={styles.scanStage}>
-              <View style={styles.invoiceCard}>
+              <View style={[styles.invoiceCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
                 <View style={styles.invoiceCardHeader}>
-                  <Ionicons name="key-outline" size={16} color="#8FA3C8" />
-                  <Text style={styles.invoiceCardLabel}>INVOICE DETAILS</Text>
+                  <Ionicons name="key-outline" size={16} color={colors.textMuted} />
+                  <Text style={[styles.invoiceCardLabel, { color: colors.textMuted }]}>INVOICE DETAILS</Text>
                 </View>
                 <TextInput
                   testID="invoice-input"
-                  style={styles.invoiceTextArea}
+                  style={[styles.invoiceTextArea, { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, color: colors.text, borderColor: colors.border + "60" }]}
                   placeholder="Paste lightning invoice, Bitcoin address, or LNURL..."
-                  placeholderTextColor="#4A608080"
+                  placeholderTextColor={colors.textMuted + "80"}
                   value={invoiceInput}
                   onChangeText={setInvoiceInput}
                   multiline
@@ -305,44 +306,44 @@ export default function SendScreen() {
                 </Pressable>
 
                 <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); }} style={styles.cancelBtn}>
-                  <Text style={styles.cancelText}>Back to Scanner</Text>
+                  <Text style={[styles.cancelText, { color: colors.textMuted }]}>Back to Scanner</Text>
                 </Pressable>
               </View>
             </Animated.View>
           )}
 
           {stage === "review" && decodedInvoice && (
-            <Animated.View entering={FadeInDown} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <MaterialCommunityIcons name="lightning-bolt" size={24} color={GOLD} />
-                <Text style={styles.reviewTitle}>Confirm Payment</Text>
+            <Animated.View entering={FadeInDown} style={[styles.reviewCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+              <View style={[styles.reviewHeader, { borderBottomColor: colors.border }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={24} color={colors.gold} />
+                <Text style={[styles.reviewTitle, { color: colors.text }]}>Confirm Payment</Text>
               </View>
 
               <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Amount</Text>
+                <Text style={[styles.reviewLabel, { color: colors.textMuted }]}>Amount</Text>
                 <View style={styles.reviewValueCol}>
-                  <Text style={styles.reviewAmount}>
+                  <Text style={[styles.reviewAmount, { color: colors.text }]}>
                     {decodedInvoice.amountSats
                       ? `${decodedInvoice.amountSats.toLocaleString()} sats`
                       : "Variable amount"}
                   </Text>
                   {decodedInvoice.amountSats && satsToFiat(decodedInvoice.amountSats) ? (
-                    <Text style={styles.reviewFiat}>≈ {satsToFiat(decodedInvoice.amountSats)}</Text>
+                    <Text style={[styles.reviewFiat, { color: colors.textMuted }]}>≈ {satsToFiat(decodedInvoice.amountSats)}</Text>
                   ) : null}
                 </View>
               </View>
 
               {decodedInvoice.description ? (
                 <View style={styles.reviewRow}>
-                  <Text style={styles.reviewLabel}>Note</Text>
-                  <Text style={styles.reviewValue} numberOfLines={2}>
+                  <Text style={[styles.reviewLabel, { color: colors.textMuted }]}>Note</Text>
+                  <Text style={[styles.reviewValue, { color: colors.textSecondary }]} numberOfLines={2}>
                     {decodedInvoice.description}
                   </Text>
                 </View>
               ) : null}
 
               <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Network</Text>
+                <Text style={[styles.reviewLabel, { color: colors.textMuted }]}>Network</Text>
                 <View style={styles.badge}>
                   <MaterialCommunityIcons name="lightning-bolt" size={12} color="#4A90D9" />
                   <Text style={styles.badgeText}>{getPaymentTypeLabel()}</Text>
@@ -350,9 +351,9 @@ export default function SendScreen() {
               </View>
 
               {decodedInvoice.type === "bitcoin" && (
-                <View style={styles.warningBanner}>
-                  <Ionicons name="warning-outline" size={16} color={GOLD} />
-                  <Text style={styles.warningText}>
+                <View style={[styles.warningBanner, { backgroundColor: isDark ? "rgba(201,162,77,0.1)" : "rgba(250,186,26,0.08)", borderColor: isDark ? "rgba(201,162,77,0.3)" : "rgba(250,186,26,0.3)" }]}>
+                  <Ionicons name="warning-outline" size={16} color={colors.gold} />
+                  <Text style={[styles.warningText, { color: colors.textSecondary }]}>
                     On-chain payments use submarine swaps and may take longer with additional fees.
                   </Text>
                 </View>
@@ -375,15 +376,15 @@ export default function SendScreen() {
               </Pressable>
 
               <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); }} style={styles.cancelBtn}>
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
               </Pressable>
             </Animated.View>
           )}
 
           {stage === "sending" && (
             <Animated.View entering={FadeIn} style={styles.centerState}>
-              <ActivityIndicator color={GOLD} size="large" />
-              <Text style={styles.stateTitle}>Firing the cannons…</Text>
+              <ActivityIndicator color={colors.gold} size="large" />
+              <Text style={[styles.stateTitle, { color: colors.text }]}>Firing the cannons…</Text>
             </Animated.View>
           )}
 
@@ -392,15 +393,15 @@ export default function SendScreen() {
               <Animated.View style={[styles.successCircle, successStyle]}>
                 <Ionicons name="checkmark" size={48} color="#2DC653" />
               </Animated.View>
-              <Text style={styles.successTitle}>Sent Successfully!</Text>
-              <Text style={styles.stateSubtitle}>
+              <Text style={[styles.successTitle, { color: colors.text }]}>Sent Successfully!</Text>
+              <Text style={[styles.stateSubtitle, { color: colors.textMuted }]}>
                 {result.amountSats.toLocaleString()} sats have been sent across the seas.
               </Text>
               {result.feeSats > 0 && (
-                <Text style={styles.feeNote}>Fee: {result.feeSats} sats</Text>
+                <Text style={[styles.feeNote, { color: colors.textMuted }]}>Fee: {result.feeSats} sats</Text>
               )}
-              <Pressable testID="send-done-button" style={styles.returnBtn} onPress={() => router.back()}>
-                <Text style={styles.returnBtnText}>Return to Port</Text>
+              <Pressable testID="send-done-button" style={[styles.returnBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]} onPress={() => router.back()}>
+                <Text style={[styles.returnBtnText, { color: colors.textSecondary }]}>Return to Port</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -410,13 +411,13 @@ export default function SendScreen() {
               <View style={styles.errorCircle}>
                 <Ionicons name="close" size={48} color="#E63946" />
               </View>
-              <Text style={styles.stateTitle}>Payment failed</Text>
-              <Text style={styles.stateSubtitle} numberOfLines={3}>{error}</Text>
+              <Text style={[styles.stateTitle, { color: colors.text }]}>Payment failed</Text>
+              <Text style={[styles.stateSubtitle, { color: colors.textMuted }]} numberOfLines={3}>{error}</Text>
               <Pressable
-                style={styles.retryBtn}
+                style={[styles.retryBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
                 onPress={() => { setStage("scan"); setError(""); setCameraActive(true); }}
               >
-                <Text style={styles.retryBtnText}>Try Again</Text>
+                <Text style={[styles.retryBtnText, { color: colors.textSecondary }]}>Try Again</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -427,7 +428,7 @@ export default function SendScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: NAVY },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -439,13 +440,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
-  title: { fontFamily: "Nunito_700Bold", fontSize: 20, color: "#FFFFFF" },
+  title: { fontFamily: "Nunito_700Bold", fontSize: 20 },
   content: { padding: 20, gap: 16, flexGrow: 1 },
   scannerBox: {
     height: 300,
@@ -461,7 +460,7 @@ const styles = StyleSheet.create({
   cornerBL: { position: "absolute", bottom: 20, left: 20, width: 32, height: 32, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomLeftRadius: 8 },
   cornerBR: { position: "absolute", bottom: 20, right: 20, width: 32, height: 32, borderBottomWidth: 3, borderRightWidth: 3, borderColor: "rgba(255,255,255,0.6)", borderBottomRightRadius: 8 },
   cameraPermBtn: { alignItems: "center", gap: 8 },
-  cameraPermText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#8FA3C8" },
+  cameraPermText: { fontFamily: "Nunito_400Regular", fontSize: 13 },
   scanningText: {
     fontFamily: "Nunito_500Medium",
     fontSize: 12,
@@ -473,11 +472,9 @@ const styles = StyleSheet.create({
   },
   scanStage: { flex: 1, gap: 16 },
   invoiceCard: {
-    backgroundColor: NAVY_CARD,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#1E2D50",
     gap: 12,
   },
   invoiceCardHeader: {
@@ -488,19 +485,15 @@ const styles = StyleSheet.create({
   invoiceCardLabel: {
     fontFamily: "Nunito_700Bold",
     fontSize: 13,
-    color: "#8FA3C8",
     letterSpacing: 1.5,
   },
   invoiceTextArea: {
-    backgroundColor: "rgba(11,20,38,0.5)",
     borderRadius: 12,
     padding: 16,
     minHeight: 100,
     fontFamily: "Nunito_400Regular",
     fontSize: 15,
-    color: "#CDDAED",
     borderWidth: 1,
-    borderColor: "#1E2D5060",
   },
   scanActions: { gap: 12 },
   sendCoralBtn: {
@@ -522,17 +515,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.15)",
   },
-  dashedBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 15, color: "#CDDAED" },
+  dashedBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 15 },
   errorText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
   reviewCard: {
-    backgroundColor: NAVY_CARD,
     borderRadius: 20,
     padding: 24,
     gap: 20,
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   reviewHeader: {
     flexDirection: "row",
@@ -540,20 +530,19 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E2D50",
   },
-  reviewTitle: { fontFamily: "Nunito_700Bold", fontSize: 18, color: "#FFFFFF" },
+  reviewTitle: { fontFamily: "Nunito_700Bold", fontSize: 18 },
   reviewRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
   },
-  reviewLabel: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#8FA3C8" },
+  reviewLabel: { fontFamily: "Nunito_400Regular", fontSize: 14 },
   reviewValueCol: { flex: 1, alignItems: "flex-end" },
-  reviewAmount: { fontFamily: "Nunito_700Bold", fontSize: 22, color: "#FFFFFF" },
-  reviewFiat: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "#8FA3C8", marginTop: 2 },
-  reviewValue: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "#CDDAED", flex: 1, textAlign: "right" },
+  reviewAmount: { fontFamily: "Nunito_700Bold", fontSize: 22 },
+  reviewFiat: { fontFamily: "Nunito_500Medium", fontSize: 14, marginTop: 2 },
+  reviewValue: { fontFamily: "Nunito_500Medium", fontSize: 14, flex: 1, textAlign: "right" },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -568,13 +557,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: "rgba(201,162,77,0.1)",
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(201,162,77,0.3)",
   },
-  warningText: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, color: "#CDDAED", lineHeight: 18 },
+  warningText: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18 },
   confirmBtn: { borderRadius: 14, overflow: "hidden", marginTop: 8 },
   confirmGradient: {
     flexDirection: "row",
@@ -585,7 +572,7 @@ const styles = StyleSheet.create({
   },
   confirmText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFF" },
   cancelBtn: { alignItems: "center", paddingVertical: 8 },
-  cancelText: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#4A6080" },
+  cancelText: { fontFamily: "Nunito_400Regular", fontSize: 14 },
   centerState: {
     flex: 1,
     alignItems: "center",
@@ -593,10 +580,10 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingTop: 80,
   },
-  stateTitle: { fontFamily: "Nunito_700Bold", fontSize: 24, color: "#FFFFFF" },
-  successTitle: { fontFamily: "Chewy_400Regular", fontSize: 32, color: "#FFFFFF" },
-  stateSubtitle: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#8FA3C8", textAlign: "center", paddingHorizontal: 20 },
-  feeNote: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080" },
+  stateTitle: { fontFamily: "Nunito_700Bold", fontSize: 24 },
+  successTitle: { fontFamily: "Chewy_400Regular", fontSize: 32 },
+  stateSubtitle: { fontFamily: "Nunito_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 20 },
+  feeNote: { fontFamily: "Nunito_400Regular", fontSize: 12 },
   successCircle: {
     width: 100,
     height: 100,
@@ -618,33 +605,28 @@ const styles = StyleSheet.create({
     borderColor: "rgba(230,57,70,0.3)",
   },
   doneBtn: {
-    backgroundColor: GOLD,
     paddingHorizontal: 40,
     paddingVertical: 14,
     borderRadius: 14,
     marginTop: 8,
   },
   returnBtn: {
-    backgroundColor: NAVY_CARD,
     paddingHorizontal: 40,
     paddingVertical: 16,
     borderRadius: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "#1E2D50",
     width: "80%",
     alignItems: "center",
   },
-  returnBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#CDDAED" },
+  returnBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16 },
   retryBtn: {
-    backgroundColor: "#172040",
     paddingHorizontal: 40,
     paddingVertical: 14,
     borderRadius: 14,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
-  doneBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: NAVY },
-  retryBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#CDDAED" },
+  doneBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16 },
+  retryBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16 },
 });

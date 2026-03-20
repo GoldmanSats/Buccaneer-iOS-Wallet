@@ -15,18 +15,15 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
-
-const NAVY = "#0B1426";
-const NAVY_CARD = "#151f35";
-const GOLD = "#c9a24d";
+import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 
 type Stage = "choose" | "seed" | "verify" | "done";
 
-function TreasureMapIcon() {
+function TreasureMapIcon({ colors }: { colors: typeof MIDNIGHT }) {
   return (
     <View style={iconStyles.container}>
-      <View style={iconStyles.bg}>
-        <MaterialCommunityIcons name="map-legend" size={52} color={GOLD} />
+      <View style={[iconStyles.bg, { shadowColor: colors.gold }]}>
+        <MaterialCommunityIcons name="map-legend" size={52} color={colors.gold} />
       </View>
     </View>
   );
@@ -43,7 +40,6 @@ const iconStyles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "rgba(201,162,77,0.25)",
-    shadowColor: "#c9a24d",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -53,7 +49,9 @@ const iconStyles = StyleSheet.create({
 
 export default function BackupScreen() {
   const insets = useSafeAreaInsets();
-  const { updateSettings } = useSettings();
+  const { settings, updateSettings } = useSettings();
+  const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
+  const isDark = settings.isDarkMode;
   const [stage, setStage] = useState<Stage>("choose");
   const [seedWords, setSeedWords] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,17 +118,16 @@ export default function BackupScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
-      <LinearGradient colors={[NAVY, "#0A1020"]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
+      {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
 
-      {/* Header */}
       <View style={styles.header}>
         <Pressable
           testID="backup-back-button"
           onPress={() => router.back()}
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
         >
-          <Ionicons name="arrow-back" size={22} color="#8FA3C8" />
+          <Ionicons name="arrow-back" size={22} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -141,24 +138,24 @@ export default function BackupScreen() {
         {/* Choose Stage */}
         {stage === "choose" && (
           <Animated.View entering={FadeIn} style={styles.stageContainer}>
-            <TreasureMapIcon />
-            <Text style={styles.stageTitle}>Protect Your Treasure</Text>
-            <Text style={styles.stageSubtitle}>
+            <TreasureMapIcon colors={colors} />
+            <Text style={[styles.stageTitle, { color: colors.text }]}>Protect Your Treasure</Text>
+            <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
               Choose how to back up your wallet. You can always do both later.
             </Text>
 
             <View style={styles.optionList}>
               <Pressable
                 testID="cloud-backup-option"
-                style={styles.optionCard}
+                style={[styles.optionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
                 onPress={handleCloudBackup}
               >
                 <View style={[styles.optionIcon, { backgroundColor: "rgba(74,144,217,0.15)" }]}>
                   <Ionicons name="cloud-outline" size={26} color="#4A90D9" />
                 </View>
                 <View style={styles.optionText}>
-                  <Text style={styles.optionTitle}>Cloud Backup</Text>
-                  <Text style={styles.optionSubtitle}>Automatic, encrypted, easy restore</Text>
+                  <Text style={[styles.optionTitle, { color: colors.text }]}>Cloud Backup</Text>
+                  <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>Automatic, encrypted, easy restore</Text>
                 </View>
                 <View style={styles.recommendedBadge}>
                   <Text style={styles.recommendedText}>Recommended</Text>
@@ -167,19 +164,19 @@ export default function BackupScreen() {
 
               <Pressable
                 testID="write-down-option"
-                style={styles.optionCard}
+                style={[styles.optionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
                 onPress={handleWriteDown}
               >
                 {isLoading ? (
-                  <ActivityIndicator color={GOLD} />
+                  <ActivityIndicator color={colors.gold} />
                 ) : (
                   <>
                     <View style={[styles.optionIcon, { backgroundColor: "rgba(231,111,81,0.15)" }]}>
                       <MaterialCommunityIcons name="pencil" size={26} color="#E76F51" />
                     </View>
                     <View style={styles.optionText}>
-                      <Text style={styles.optionTitle}>Write It Down</Text>
-                      <Text style={styles.optionSubtitle}>12 secret words, pen & paper</Text>
+                      <Text style={[styles.optionTitle, { color: colors.text }]}>Write It Down</Text>
+                      <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>12 secret words, pen & paper</Text>
                     </View>
                   </>
                 )}
@@ -196,22 +193,22 @@ export default function BackupScreen() {
                 <MaterialCommunityIcons name="eye-off" size={40} color="#E76F51" />
               </View>
             </View>
-            <Text style={styles.stageTitle}>Your Secret Words</Text>
-            <Text style={styles.stageSubtitle}>
+            <Text style={[styles.stageTitle, { color: colors.text }]}>Your Secret Words</Text>
+            <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
               Write these 12 words in order. Keep them safe — they unlock your entire wallet.
             </Text>
 
             <View style={styles.seedGrid}>
               {seedWords.map((word, i) => (
-                <View key={i} style={styles.seedWord}>
-                  <Text style={styles.seedIndex}>{i + 1}</Text>
-                  <Text style={styles.seedText}>{word}</Text>
+                <View key={i} style={[styles.seedWord, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+                  <Text style={[styles.seedIndex, { color: colors.textMuted }]}>{i + 1}</Text>
+                  <Text style={[styles.seedText, { color: colors.text }]}>{word}</Text>
                 </View>
               ))}
             </View>
 
             <View style={styles.warningCard}>
-              <Ionicons name="warning-outline" size={18} color={GOLD} />
+              <Ionicons name="warning-outline" size={18} color={colors.gold} />
               <Text style={styles.warningText}>
                 Never share these words with anyone. Buccaneer will never ask for them.
               </Text>
@@ -239,11 +236,11 @@ export default function BackupScreen() {
           <Animated.View entering={FadeInDown} style={styles.stageContainer}>
             <View style={[iconStyles.container]}>
               <View style={[iconStyles.bg]}>
-                <MaterialCommunityIcons name="help-circle" size={40} color={GOLD} />
+                <MaterialCommunityIcons name="help-circle" size={40} color={colors.gold} />
               </View>
             </View>
-            <Text style={styles.stageTitle}>Verify Your Backup</Text>
-            <Text style={styles.stageSubtitle}>
+            <Text style={[styles.stageTitle, { color: colors.text }]}>Verify Your Backup</Text>
+            <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
               What is word #{(verifyWord.index + 1)} of your seed phrase?
             </Text>
 
@@ -257,6 +254,7 @@ export default function BackupScreen() {
                     key={word}
                     style={[
                       styles.verifyOption,
+                      { backgroundColor: colors.bgCard, borderColor: colors.border },
                       isRight && { borderColor: "#2DC653", backgroundColor: "rgba(45,198,83,0.1)" },
                       isWrong && { borderColor: "#E63946", backgroundColor: "rgba(230,57,70,0.1)" },
                     ]}
@@ -264,6 +262,7 @@ export default function BackupScreen() {
                   >
                     <Text style={[
                       styles.verifyOptionText,
+                      { color: colors.text },
                       isRight && { color: "#2DC653" },
                       isWrong && { color: "#E63946" },
                     ]}>
@@ -295,8 +294,8 @@ export default function BackupScreen() {
                 <Ionicons name="shield-checkmark" size={48} color="#2DC653" />
               </View>
             </View>
-            <Text style={styles.stageTitle}>Treasure Secured!</Text>
-            <Text style={styles.stageSubtitle}>
+            <Text style={[styles.stageTitle, { color: colors.text }]}>Treasure Secured!</Text>
+            <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
               Your wallet is backed up. Your sats are safe, Captain.
             </Text>
             <Pressable
@@ -321,7 +320,7 @@ export default function BackupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: NAVY },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 8,
@@ -330,11 +329,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   content: { paddingHorizontal: 24, paddingTop: 16, gap: 20 },
   stageContainer: { alignItems: "center", gap: 20 },
@@ -356,11 +353,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: NAVY_CARD,
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   optionIcon: {
     width: 50,
@@ -389,7 +384,7 @@ const styles = StyleSheet.create({
   recommendedText: {
     fontFamily: "Nunito_600SemiBold",
     fontSize: 11,
-    color: GOLD,
+    color: "#c9a24d",
   },
   seedGrid: {
     width: "100%",
@@ -402,11 +397,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: NAVY_CARD,
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   seedIndex: {
     fontFamily: "Nunito_500Medium",
@@ -441,7 +434,7 @@ const styles = StyleSheet.create({
     width: "100%",
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: GOLD,
+    shadowColor: "#c9a24d",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -454,18 +447,16 @@ const styles = StyleSheet.create({
   goldBtnText: {
     fontFamily: "Nunito_700Bold",
     fontSize: 17,
-    color: NAVY,
+    color: "#0B1426",
   },
   verifyOptions: { width: "100%", gap: 10 },
   verifyOption: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: NAVY_CARD,
     borderRadius: 14,
     padding: 18,
     borderWidth: 1.5,
-    borderColor: "#1E2D50",
   },
   verifyOptionText: {
     fontFamily: "Nunito_600SemiBold",

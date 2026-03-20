@@ -33,7 +33,7 @@ import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { MIDNIGHT } from "@/constants/colors";
+import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import Svg, { Circle, Line, G } from "react-native-svg";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -220,7 +220,8 @@ export default function HomeScreen() {
   const [receiveCopied, setReceiveCopied] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
 
-  const colors = MIDNIGHT;
+  const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
+  const isDark = settings.isDarkMode;
 
   useEffect(() => {
     if (!settingsLoading && !settings.onboardingDone) {
@@ -759,12 +760,12 @@ export default function HomeScreen() {
                     </View>
 
                     <View style={styles.receiveButtonRow}>
-                      <Pressable style={styles.receiveDashedBtn} onPress={() => setReceiveMode("amount")}>
+                      <Pressable style={[styles.receiveDashedBtn, { borderColor: colors.border }]} onPress={() => setReceiveMode("amount")}>
                         <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Request Amount</Text>
                       </Pressable>
-                      <Pressable style={styles.receiveGoldBtn} onPress={() => handleReceiveShare(lightningAddress)}>
-                        <Ionicons name="share-outline" size={18} color={colors.bg} />
-                        <Text style={[styles.receiveGoldBtnText, { color: colors.bg }]}>Share</Text>
+                      <Pressable style={[styles.receiveGoldBtn, { backgroundColor: colors.gold }]} onPress={() => handleReceiveShare(lightningAddress)}>
+                        <Ionicons name="share-outline" size={18} color={isDark ? colors.bg : "#172331"} />
+                        <Text style={[styles.receiveGoldBtnText, { color: isDark ? colors.bg : "#172331" }]}>Share</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -809,12 +810,12 @@ export default function HomeScreen() {
                     )}
 
                     <View style={styles.receiveButtonRow}>
-                      <Pressable style={styles.receiveDashedBtn} onPress={() => setReceiveMode("default")}>
+                      <Pressable style={[styles.receiveDashedBtn, { borderColor: colors.border }]} onPress={() => setReceiveMode("default")}>
                         <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Cancel</Text>
                       </Pressable>
-                      <Pressable testID="generate-invoice-button" style={styles.receiveGoldBtn} onPress={handleReceiveGenerate}>
-                        <MaterialCommunityIcons name="lightning-bolt" size={18} color={colors.bg} />
-                        <Text style={[styles.receiveGoldBtnText, { color: colors.bg }]}>Generate</Text>
+                      <Pressable testID="generate-invoice-button" style={[styles.receiveGoldBtn, { backgroundColor: colors.gold }]} onPress={handleReceiveGenerate}>
+                        <MaterialCommunityIcons name="lightning-bolt" size={18} color={isDark ? colors.bg : "#172331"} />
+                        <Text style={[styles.receiveGoldBtnText, { color: isDark ? colors.bg : "#172331" }]}>Generate</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -838,13 +839,13 @@ export default function HomeScreen() {
                     )}
 
                     <View style={styles.receiveButtonRow}>
-                      <Pressable style={styles.receiveDashedBtn} onPress={() => handleReceiveCopy(receiveInvoice)}>
+                      <Pressable style={[styles.receiveDashedBtn, { borderColor: colors.border }]} onPress={() => handleReceiveCopy(receiveInvoice)}>
                         <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
                         <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Copy</Text>
                       </Pressable>
-                      <Pressable style={styles.receiveGoldBtn} onPress={() => handleReceiveShare(receiveInvoice)}>
-                        <Ionicons name="share-outline" size={18} color={colors.bg} />
-                        <Text style={[styles.receiveGoldBtnText, { color: colors.bg }]}>Share</Text>
+                      <Pressable style={[styles.receiveGoldBtn, { backgroundColor: colors.gold }]} onPress={() => handleReceiveShare(receiveInvoice)}>
+                        <Ionicons name="share-outline" size={18} color={isDark ? colors.bg : "#172331"} />
+                        <Text style={[styles.receiveGoldBtnText, { color: isDark ? colors.bg : "#172331" }]}>Share</Text>
                       </Pressable>
                     </View>
 
@@ -1015,12 +1016,12 @@ const styles = StyleSheet.create({
   receiveButtonRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 16 },
   receiveDashedBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", borderColor: "#1E2D50",
+    paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed",
   },
   receiveDashedBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 15 },
   receiveGoldBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 16, borderRadius: 16, backgroundColor: "#c9a24d",
+    paddingVertical: 16, borderRadius: 16,
   },
   receiveGoldBtnText: { fontFamily: "Nunito_700Bold", fontSize: 15 },
 

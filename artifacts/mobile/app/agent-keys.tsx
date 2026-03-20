@@ -18,9 +18,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 
-const NAVY = "#0B1426";
-const NAVY_CARD = "#151f35";
-const GOLD = "#c9a24d";
+import { useSettings } from "@/contexts/SettingsContext";
+import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 const API = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/agent-keys`;
 
 interface AgentKey {
@@ -46,6 +45,9 @@ interface AgentLog {
 
 export default function AgentKeysScreen() {
   const insets = useSafeAreaInsets();
+  const { settings } = useSettings();
+  const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
+  const isDark = settings.isDarkMode;
   const [keys, setKeys] = useState<AgentKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -164,16 +166,16 @@ export default function AgentKeysScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
-      <LinearGradient colors={[NAVY, "#0A1020"]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
+      {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
 
       <View style={styles.header}>
-        <Pressable testID="agent-keys-back-button" onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#8FA3C8" />
+        <Pressable testID="agent-keys-back-button" onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+          <Ionicons name="arrow-back" size={22} color={colors.textSecondary} />
         </Pressable>
-        <Text style={styles.title}>AI Agent Keys</Text>
+        <Text style={[styles.title, { color: colors.text }]}>AI Agent Keys</Text>
         <Pressable testID="create-key-button" onPress={() => setShowCreate(!showCreate)} style={styles.addBtn}>
-          <Ionicons name={showCreate ? "close" : "add"} size={22} color={GOLD} />
+          <Ionicons name={showCreate ? "close" : "add"} size={22} color={colors.gold} />
         </Pressable>
       </View>
 
@@ -184,16 +186,16 @@ export default function AgentKeysScreen() {
       >
         <View style={styles.explainerCard}>
           <MaterialCommunityIcons name="robot" size={22} color="#9333EA" />
-          <Text style={styles.explainerText}>
+          <Text style={[styles.explainerText, { color: colors.textSecondary }]}>
             Give AI agents controlled access to your wallet via Nostr Wallet Connect (NIP-47) or API key. Set per-transaction and daily spending limits.
           </Text>
         </View>
 
         {showCreate && (
-          <Animated.View entering={FadeInDown} style={styles.createCard}>
-            <Text style={styles.createTitle}>New Agent Key</Text>
+          <Animated.View entering={FadeInDown} style={[styles.createCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+            <Text style={[styles.createTitle, { color: colors.text }]}>New Agent Key</Text>
 
-            <View style={styles.typeToggle}>
+            <View style={[styles.typeToggle, { backgroundColor: colors.bgInput, borderColor: colors.border }]}>
               {(["nwc", "api"] as const).map((t) => (
                 <Pressable
                   key={t}
@@ -214,26 +216,26 @@ export default function AgentKeysScreen() {
 
             <TextInput
               testID="agent-key-name-input"
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.bgInput, borderColor: colors.border, color: colors.text }]}
               placeholder="Agent name (e.g. Claude, GPT-4)"
-              placeholderTextColor="#4A6080"
+              placeholderTextColor={colors.textMuted}
               value={newKeyName}
               onChangeText={setNewKeyName}
               autoCapitalize="words"
             />
             <TextInput
               testID="agent-key-limit-input"
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.bgInput, borderColor: colors.border, color: colors.text }]}
               placeholder="Max per transaction (sats, optional)"
-              placeholderTextColor="#4A6080"
+              placeholderTextColor={colors.textMuted}
               value={newKeyLimit}
               onChangeText={setNewKeyLimit}
               keyboardType="number-pad"
             />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.bgInput, borderColor: colors.border, color: colors.text }]}
               placeholder="Max daily spending (sats, optional)"
-              placeholderTextColor="#4A6080"
+              placeholderTextColor={colors.textMuted}
               value={newKeyDaily}
               onChangeText={setNewKeyDaily}
               keyboardType="number-pad"
@@ -260,7 +262,7 @@ export default function AgentKeysScreen() {
 
         {isLoading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator color={GOLD} />
+            <ActivityIndicator color={colors.gold} />
             <Text style={styles.loadingText}>Loading keys…</Text>
           </View>
         ) : keys.length === 0 ? (
@@ -272,7 +274,7 @@ export default function AgentKeysScreen() {
         ) : (
           <View style={styles.keysList}>
             {keys.map((key) => (
-              <Animated.View key={key.id} entering={FadeInDown} style={styles.keyCard}>
+              <Animated.View key={key.id} entering={FadeInDown} style={[styles.keyCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
                 <Pressable style={styles.keyHeader} onPress={() => handleExpand(key.id)}>
                   <View style={styles.keyIconBg}>
                     <MaterialCommunityIcons
@@ -282,7 +284,7 @@ export default function AgentKeysScreen() {
                     />
                   </View>
                   <View style={styles.keyInfo}>
-                    <Text style={styles.keyName}>{key.name}</Text>
+                    <Text style={[styles.keyName, { color: colors.text }]}>{key.name}</Text>
                     <Text style={styles.keyDate}>
                       {key.connectionType.toUpperCase()} · Created {new Date(key.createdAt).toLocaleDateString()}
                     </Text>
@@ -299,13 +301,13 @@ export default function AgentKeysScreen() {
                 <View style={styles.limitsRow}>
                   {key.spendingLimitSats ? (
                     <View style={styles.limitBadge}>
-                      <Ionicons name="shield-outline" size={11} color={GOLD} />
+                      <Ionicons name="shield-outline" size={11} color={colors.gold} />
                       <Text style={styles.limitBadgeText}>{key.spendingLimitSats.toLocaleString()}/tx</Text>
                     </View>
                   ) : null}
                   {key.maxDailySats ? (
                     <View style={styles.limitBadge}>
-                      <Ionicons name="today-outline" size={11} color={GOLD} />
+                      <Ionicons name="today-outline" size={11} color={colors.gold} />
                       <Text style={styles.limitBadgeText}>
                         {key.spentToday.toLocaleString()}/{key.maxDailySats.toLocaleString()} daily
                       </Text>
@@ -365,7 +367,7 @@ export default function AgentKeysScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: NAVY },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -377,11 +379,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: NAVY_CARD,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   title: { fontFamily: "Nunito_700Bold", fontSize: 20, color: "#FFFFFF" },
   addBtn: {
@@ -407,12 +407,10 @@ const styles = StyleSheet.create({
   },
   explainerText: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 13, color: "#CDDAED", lineHeight: 20 },
   createCard: {
-    backgroundColor: NAVY_CARD,
     borderRadius: 16,
     padding: 20,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   createTitle: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFFFFF", marginBottom: 4 },
   typeToggle: {
@@ -460,12 +458,10 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#4A6080", textAlign: "center" },
   keysList: { gap: 12 },
   keyCard: {
-    backgroundColor: NAVY_CARD,
     borderRadius: 16,
     padding: 18,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#1E2D50",
   },
   keyHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   keyIconBg: {
@@ -491,7 +487,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(201,162,77,0.3)",
   },
-  limitBadgeText: { fontFamily: "Nunito_500Medium", fontSize: 11, color: GOLD },
+  limitBadgeText: { fontFamily: "Nunito_500Medium", fontSize: 11, color: "#c9a24d" },
   uriRow: {
     flexDirection: "row",
     alignItems: "center",
