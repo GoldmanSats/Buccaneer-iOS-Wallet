@@ -273,15 +273,15 @@ export default function HomeScreen() {
 
   const receiveSheetTranslateY = useSharedValue(0);
   const receivePanGesture = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 10 && Math.abs(gs.dy) > Math.abs(gs.dx),
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
     onPanResponderMove: (_, gs) => {
       if (gs.dy > 0) {
         receiveSheetTranslateY.value = gs.dy;
       }
     },
     onPanResponderRelease: (_, gs) => {
-      if (gs.dy > 100 || gs.vy > 0.5) {
+      if (gs.dy > 40 || gs.vy > 0.3) {
         receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 }, () => {
           runOnJS(closeReceiveDrawer)();
           receiveSheetTranslateY.value = 0;
@@ -693,11 +693,14 @@ export default function HomeScreen() {
           <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
             <Animated.View
-              {...receivePanGesture.panHandlers}
               style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
             >
-              <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
-              <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
+              <View {...receivePanGesture.panHandlers}>
+                <Pressable onPress={closeReceiveDrawer} style={styles.receiveDragZone}>
+                  <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
+                  <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
+                </Pressable>
+              </View>
 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
                 {receiveMode !== "amount" && (
@@ -968,8 +971,13 @@ const styles = StyleSheet.create({
 
   receiveSheet: {
     borderTopLeftRadius: 40, borderTopRightRadius: 40,
-    paddingTop: 8, paddingHorizontal: 24,
+    paddingHorizontal: 24,
     maxHeight: SCREEN_HEIGHT * 0.9,
+  },
+  receiveDragZone: {
+    alignItems: "center",
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   receiveTitle: { fontFamily: "Chewy_400Regular", fontSize: 30, textAlign: "center", marginTop: 8, marginBottom: 16 },
   receiveScrollContent: { alignItems: "center", paddingBottom: 20 },
