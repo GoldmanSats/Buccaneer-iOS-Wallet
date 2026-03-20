@@ -29,7 +29,7 @@ type Stage = "scan" | "paste" | "review" | "sending" | "success" | "error";
 
 export default function SendScreen() {
   const insets = useSafeAreaInsets();
-  const { sendPayment, decodeInvoice, parseInput } = useWallet();
+  const { sendPayment, decodeInvoice, parseInput, btcPrice } = useWallet();
   const [stage, setStage] = useState<Stage>("scan");
   const [invoiceInput, setInvoiceInput] = useState("");
   const [decodedInvoice, setDecodedInvoice] = useState<{
@@ -183,6 +183,12 @@ export default function SendScreen() {
     }
   };
 
+  const satsToFiat = (sats: number) => {
+    if (!btcPrice) return null;
+    const amount = (sats / 100_000_000) * btcPrice.price;
+    return `${btcPrice.symbol || "$"}${amount.toFixed(2)}`;
+  };
+
   const getPaymentTypeLabel = () => {
     switch (decodedInvoice?.type) {
       case "lightning_address": return "Lightning Address";
@@ -320,6 +326,9 @@ export default function SendScreen() {
                       ? `${decodedInvoice.amountSats.toLocaleString()} sats`
                       : "Variable amount"}
                   </Text>
+                  {decodedInvoice.amountSats && satsToFiat(decodedInvoice.amountSats) ? (
+                    <Text style={styles.reviewFiat}>≈ {satsToFiat(decodedInvoice.amountSats)}</Text>
+                  ) : null}
                 </View>
               </View>
 
@@ -375,7 +384,6 @@ export default function SendScreen() {
             <Animated.View entering={FadeIn} style={styles.centerState}>
               <ActivityIndicator color={GOLD} size="large" />
               <Text style={styles.stateTitle}>Firing the cannons…</Text>
-              <Text style={styles.stateSubtitle}>Sending your sats</Text>
             </Animated.View>
           )}
 
@@ -384,15 +392,15 @@ export default function SendScreen() {
               <Animated.View style={[styles.successCircle, successStyle]}>
                 <Ionicons name="checkmark" size={48} color="#2DC653" />
               </Animated.View>
-              <Text style={styles.stateTitle}>Sats away!</Text>
+              <Text style={styles.successTitle}>Sent Successfully!</Text>
               <Text style={styles.stateSubtitle}>
-                Sent {result.amountSats.toLocaleString()} sats
+                {result.amountSats.toLocaleString()} sats have been sent across the seas.
               </Text>
               {result.feeSats > 0 && (
                 <Text style={styles.feeNote}>Fee: {result.feeSats} sats</Text>
               )}
-              <Pressable testID="send-done-button" style={styles.doneBtn} onPress={() => router.back()}>
-                <Text style={styles.doneBtnText}>Done</Text>
+              <Pressable testID="send-done-button" style={styles.returnBtn} onPress={() => router.back()}>
+                <Text style={styles.returnBtnText}>Return to Port</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -544,6 +552,7 @@ const styles = StyleSheet.create({
   reviewLabel: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#8FA3C8" },
   reviewValueCol: { flex: 1, alignItems: "flex-end" },
   reviewAmount: { fontFamily: "Nunito_700Bold", fontSize: 22, color: "#FFFFFF" },
+  reviewFiat: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "#8FA3C8", marginTop: 2 },
   reviewValue: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "#CDDAED", flex: 1, textAlign: "right" },
   badge: {
     flexDirection: "row",
@@ -585,6 +594,7 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   stateTitle: { fontFamily: "Nunito_700Bold", fontSize: 24, color: "#FFFFFF" },
+  successTitle: { fontFamily: "Chewy_400Regular", fontSize: 32, color: "#FFFFFF" },
   stateSubtitle: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#8FA3C8", textAlign: "center", paddingHorizontal: 20 },
   feeNote: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080" },
   successCircle: {
@@ -614,6 +624,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 8,
   },
+  returnBtn: {
+    backgroundColor: NAVY_CARD,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#1E2D50",
+    width: "80%",
+    alignItems: "center",
+  },
+  returnBtnText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#CDDAED" },
   retryBtn: {
     backgroundColor: "#172040",
     paddingHorizontal: 40,
