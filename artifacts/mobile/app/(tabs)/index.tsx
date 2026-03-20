@@ -343,7 +343,7 @@ export default function HomeScreen() {
   const digitCount = formatted.replace(/,/g, "").length;
   const balanceFontSize = digitCount <= 3 ? 72 : digitCount <= 5 ? 60 : digitCount <= 7 ? 48 : 36;
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
-  const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
+  const symbolBottomOffset = digitCount <= 3 ? 20 : digitCount <= 5 ? 16 : digitCount <= 7 ? 12 : 8;
 
   const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
 
@@ -485,7 +485,7 @@ export default function HomeScreen() {
                         {
                           color: colors.text,
                           fontSize: symbolFontSize,
-                          lineHeight: balanceFontSize,
+                          marginBottom: symbolBottomOffset,
                         },
                       ]}
                     >
@@ -560,7 +560,7 @@ export default function HomeScreen() {
           }}
           style={styles.txHeaderRow}
         >
-          <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+          <Ionicons name="reload-outline" size={20} color={colors.textSecondary} />
           <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
           <Ionicons name={isLogExpanded ? "chevron-down" : "chevron-up"} size={18} color={colors.textMuted} />
         </Pressable>
