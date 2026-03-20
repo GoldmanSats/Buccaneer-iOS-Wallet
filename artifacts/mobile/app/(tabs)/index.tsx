@@ -139,7 +139,7 @@ function TransactionItem({
           name={isReceive ? "arrow-back-outline" : "arrow-forward-outline"}
           size={20}
           color={iconColor}
-          style={{ transform: [{ rotate: isReceive ? "-45deg" : "-45deg" }] }}
+          style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
         />
       </View>
 
@@ -621,7 +621,7 @@ export default function HomeScreen() {
                     <Ionicons
                       name={isReceive ? "arrow-back-outline" : "arrow-forward-outline"}
                       size={40} color={iconColor}
-                      style={{ transform: [{ rotate: isReceive ? "-45deg" : "-45deg" }] }}
+                      style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
                     />
                     {isPendingDeposit && (
                       <View style={[txStyles.pendingBadge, { width: 24, height: 24, borderRadius: 12, top: -4, right: -4 }]}>
