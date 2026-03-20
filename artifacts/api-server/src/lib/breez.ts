@@ -269,15 +269,26 @@ export async function parseInput(input: string) {
   const trimmed = normalizeInput(input);
   const result = await sdk.parse(trimmed);
   const sanitized = sanitizeBigInt(result);
+  console.log(`[Breez parseInput] type=${sanitized?.type}, keys=${JSON.stringify(Object.keys(sanitized || {}))}, full=${JSON.stringify(sanitized).slice(0, 500)}`);
 
-  if (sanitized?.type === "bolt11") {
+  if (sanitized?.type === "bolt11" || sanitized?.type === "bolt11Invoice") {
+    let amountSats: number | undefined;
+    if (typeof sanitized.amountMsat === "number" && sanitized.amountMsat > 0) {
+      amountSats = Math.floor(sanitized.amountMsat / 1000);
+    } else if (typeof sanitized.invoice?.amountMsat === "number" && sanitized.invoice.amountMsat > 0) {
+      amountSats = Math.floor(sanitized.invoice.amountMsat / 1000);
+    } else if (typeof sanitized.amountSats === "number" && sanitized.amountSats > 0) {
+      amountSats = sanitized.amountSats;
+    }
+    const bolt11Str = sanitized.invoice?.bolt11 || trimmed;
+    console.log(`[Breez parseInput bolt11] amountSats=${amountSats}, amountMsat=${sanitized.amountMsat}`);
     return {
       type: "bolt11",
-      invoice: sanitized.invoice?.bolt11 || trimmed,
-      amountSats: sanitized.invoice?.amountMsat ? Math.floor(sanitized.invoice.amountMsat / 1000) : sanitized.invoice?.amountSats,
-      description: sanitized.invoice?.description,
-      paymentHash: sanitized.invoice?.paymentHash,
-      expiry: sanitized.invoice?.expiry,
+      invoice: bolt11Str,
+      amountSats,
+      description: sanitized.description || sanitized.invoice?.description,
+      paymentHash: sanitized.paymentHash || sanitized.invoice?.paymentHash,
+      expiry: sanitized.expiry || sanitized.invoice?.expiry,
       raw: sanitized,
     };
   }
@@ -570,26 +581,28 @@ export async function decodeInvoice(bolt11: string): Promise<{
 }> {
   const sdk = await initBreezSdk();
   try {
-    const parsed = await sdk.parse(normalizeInput(bolt11));
+    const normalized = normalizeInput(bolt11);
+    const parsed = await sdk.parse(normalized);
     const sanitized = sanitizeBigInt(parsed);
     const now = Math.floor(Date.now() / 1000);
 
-    const inv = sanitized?.invoice || sanitized;
     let amountSats: number | undefined;
-    if (typeof inv.amountSats === "number" && inv.amountSats > 0) {
-      amountSats = inv.amountSats;
-    } else if (typeof inv.amountMsat === "number" && inv.amountMsat > 0) {
-      amountSats = Math.floor(inv.amountMsat / 1000);
+    if (typeof sanitized.amountMsat === "number" && sanitized.amountMsat > 0) {
+      amountSats = Math.floor(sanitized.amountMsat / 1000);
+    } else if (typeof sanitized.invoice?.amountMsat === "number" && sanitized.invoice.amountMsat > 0) {
+      amountSats = Math.floor(sanitized.invoice.amountMsat / 1000);
+    } else if (typeof sanitized.amountSats === "number" && sanitized.amountSats > 0) {
+      amountSats = sanitized.amountSats;
     }
 
-    const expiry = inv.expiry ?? 3600;
-    const timestamp = inv.timestamp || 0;
+    const expiry = sanitized.expiry ?? sanitized.invoice?.expiry ?? 3600;
+    const timestamp = sanitized.timestamp || sanitized.invoice?.timestamp || 0;
 
     return {
       amountSats,
-      description: inv.description,
+      description: sanitized.description || sanitized.invoice?.description,
       expiry,
-      paymentHash: inv.paymentHash,
+      paymentHash: sanitized.paymentHash || sanitized.invoice?.paymentHash,
       isExpired: timestamp > 0 ? now > timestamp + expiry : false,
     };
   } catch (err: any) {

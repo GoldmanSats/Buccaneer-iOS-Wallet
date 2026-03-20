@@ -370,7 +370,7 @@ export default function SendScreen() {
                   style={styles.confirmGradient}
                 >
                   <Ionicons name="arrow-up" size={20} color="#FFF" />
-                  <Text style={styles.confirmText}>Send Sats</Text>
+                  <Text style={styles.confirmText}>Send</Text>
                 </LinearGradient>
               </Pressable>
 
