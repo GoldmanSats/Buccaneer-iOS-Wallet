@@ -71,7 +71,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error("Failed to fetch balance");
       return res.json();
     },
-    refetchInterval: 30000,
+    refetchInterval: 5000,
   });
 
   const { data: txData, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery<{ transactions: Transaction[]; total: number }>({
@@ -81,7 +81,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error("Failed to fetch transactions");
       return res.json();
     },
-    refetchInterval: 30000,
+    refetchInterval: 5000,
   });
 
   const { data: btcPrice } = useQuery<BtcPrice>({

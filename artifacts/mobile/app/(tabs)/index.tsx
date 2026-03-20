@@ -136,10 +136,10 @@ function TransactionItem({
           </View>
         )}
         <Ionicons
-          name={isReceive ? "arrow-down-outline" : "arrow-up-outline"}
+          name={isReceive ? "arrow-back-outline" : "arrow-forward-outline"}
           size={20}
           color={iconColor}
-          style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
+          style={{ transform: [{ rotate: isReceive ? "-45deg" : "-45deg" }] }}
         />
       </View>
 
@@ -332,6 +332,11 @@ export default function HomeScreen() {
       if (receivedTxs.length > 0) {
         const totalAmount = receivedTxs.reduce((sum: number, tx: any) => sum + (tx.amountSats || 0), 0);
         const desc = receivedTxs.length > 1 ? `${receivedTxs.length} incoming payments` : (receivedTxs[0] as any).description || "Incoming payment";
+        if (receiveOpen) {
+          setReceiveOpen(false);
+          resetReceiveState();
+          receiveSheetTranslateY.value = 0;
+        }
         setCelebration({ amount: totalAmount, description: desc });
         setTimeout(() => setCelebration(null), 5500);
       }
@@ -612,9 +617,9 @@ export default function HomeScreen() {
                 <View style={styles.txDetailContent}>
                   <View style={[styles.txDetailIcon, { backgroundColor: iconBg }]}>
                     <Ionicons
-                      name={isReceive ? "arrow-down-outline" : "arrow-up-outline"}
+                      name={isReceive ? "arrow-back-outline" : "arrow-forward-outline"}
                       size={40} color={iconColor}
-                      style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
+                      style={{ transform: [{ rotate: isReceive ? "-45deg" : "-45deg" }] }}
                     />
                     {isPendingDeposit && (
                       <View style={[txStyles.pendingBadge, { width: 24, height: 24, borderRadius: 12, top: -4, right: -4 }]}>
