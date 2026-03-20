@@ -694,12 +694,12 @@ export default function HomeScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
             <Animated.View
               {...receivePanGesture.panHandlers}
-              style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: receiveMode === "amount" ? 40 : bottomPad + 20 }, receiveSheetAnimStyle]}
+              style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
             >
               <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
               <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.receiveScrollContent, receiveMode === "amount" && { paddingBottom: 60 }]} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
                 {receiveMode !== "amount" && (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
                     <Image
@@ -768,9 +768,9 @@ export default function HomeScreen() {
                           placeholder="0"
                           placeholderTextColor={colors.textMuted + "60"}
                           value={receiveAmountInput}
-                          onChangeText={setReceiveAmountInput}
+                          onChangeText={(t) => setReceiveAmountInput(t.replace(/[^0-9]/g, ""))}
                           keyboardType="number-pad"
-                          returnKeyType="done"
+                          inputAccessoryViewID="none"
                           autoFocus
                         />
                         <Text style={[styles.receiveAmountUnit, { color: colors.textMuted }]}>sats</Text>
@@ -783,6 +783,7 @@ export default function HomeScreen() {
                         value={receiveDescInput}
                         onChangeText={setReceiveDescInput}
                         returnKeyType="done"
+                        inputAccessoryViewID="none"
                       />
                     </View>
 
