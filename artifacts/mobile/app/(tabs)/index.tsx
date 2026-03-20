@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useRef } from "react";
+import React, { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Share,
+  PanResponder,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +26,7 @@ import Animated, {
   FadeInDown,
   FadeIn,
   Easing,
+  runOnJS,
 } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -237,8 +239,10 @@ export default function HomeScreen() {
   const TX_COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.22;
   const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT - topPad;
   const txPanelHeight = useSharedValue(TX_COLLAPSED_HEIGHT);
+  const isLogExpandedRef = useRef(false);
 
   useEffect(() => {
+    isLogExpandedRef.current = isLogExpanded;
     txPanelHeight.value = withTiming(
       isLogExpanded ? TX_EXPANDED_HEIGHT : TX_COLLAPSED_HEIGHT,
       { duration: 350, easing: Easing.out(Easing.cubic) }
@@ -247,6 +251,49 @@ export default function HomeScreen() {
 
   const txPanelAnimStyle = useAnimatedStyle(() => ({
     height: txPanelHeight.value,
+  }));
+
+  const txPanGesture = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx),
+    onPanResponderRelease: (_, gs) => {
+      const SWIPE_THRESHOLD = 50;
+      const VELOCITY_THRESHOLD = 0.5;
+      const swipedUp = gs.dy < -SWIPE_THRESHOLD || gs.vy < -VELOCITY_THRESHOLD;
+      const swipedDown = gs.dy > SWIPE_THRESHOLD || gs.vy > VELOCITY_THRESHOLD;
+      if (swipedUp && !isLogExpandedRef.current) {
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsLogExpanded(true);
+      } else if (swipedDown && isLogExpandedRef.current) {
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsLogExpanded(false);
+      }
+    },
+  }), []);
+
+  const receiveSheetTranslateY = useSharedValue(0);
+  const receivePanGesture = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 10 && Math.abs(gs.dy) > Math.abs(gs.dx),
+    onPanResponderMove: (_, gs) => {
+      if (gs.dy > 0) {
+        receiveSheetTranslateY.value = gs.dy;
+      }
+    },
+    onPanResponderRelease: (_, gs) => {
+      if (gs.dy > 100 || gs.vy > 0.5) {
+        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 }, () => {
+          runOnJS(closeReceiveDrawer)();
+          receiveSheetTranslateY.value = 0;
+        });
+      } else {
+        receiveSheetTranslateY.value = withTiming(0, { duration: 200 });
+      }
+    },
+  }), []);
+
+  const receiveSheetAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: receiveSheetTranslateY.value }],
   }));
 
   const handleBalanceTap = async () => {
@@ -313,6 +360,7 @@ export default function HomeScreen() {
   const openReceiveDrawer = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     resetReceiveState();
+    receiveSheetTranslateY.value = 0;
     setReceiveOpen(true);
   };
 
@@ -498,6 +546,7 @@ export default function HomeScreen() {
 
       {/* Transaction Log — anchored to bottom, expands upward */}
       <Animated.View
+        {...txPanGesture.panHandlers}
         style={[
           styles.txPanelOverlay,
           { backgroundColor: colors.bgCard },
@@ -520,6 +569,7 @@ export default function HomeScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={isLogExpanded}
         >
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
@@ -642,7 +692,10 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
-            <View style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }]}>
+            <Animated.View
+              {...receivePanGesture.panHandlers}
+              style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
+            >
               <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
               <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
 
@@ -792,7 +845,7 @@ export default function HomeScreen() {
                   </View>
                 )}
               </ScrollView>
-            </View>
+            </Animated.View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
