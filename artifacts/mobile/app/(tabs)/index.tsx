@@ -136,7 +136,7 @@ function TransactionItem({
           </View>
         )}
         <Ionicons
-          name={isReceive ? "arrow-back-outline" : "arrow-forward-outline"}
+          name={isReceive ? "arrow-back-outline" : "arrow-up-outline"}
           size={20}
           color={iconColor}
           style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
@@ -619,7 +619,7 @@ export default function HomeScreen() {
                 <View style={styles.txDetailContent}>
                   <View style={[styles.txDetailIcon, { backgroundColor: iconBg }]}>
                     <Ionicons
-                      name={isReceive ? "arrow-back-outline" : "arrow-forward-outline"}
+                      name={isReceive ? "arrow-back-outline" : "arrow-up-outline"}
                       size={40} color={iconColor}
                       style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
                     />
