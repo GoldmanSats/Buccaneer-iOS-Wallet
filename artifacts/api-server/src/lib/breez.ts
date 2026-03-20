@@ -247,12 +247,26 @@ export async function getNodeInfo(): Promise<{
   }
 }
 
+function normalizeInput(raw: string): string {
+  let s = raw.trim();
+  if (/^lightning:/i.test(s)) s = s.replace(/^lightning:/i, "");
+  if (/^bitcoin:/i.test(s)) {
+    const qIdx = s.indexOf("?");
+    if (qIdx > -1) {
+      const params = new URLSearchParams(s.slice(qIdx + 1));
+      const lightningParam = params.get("lightning") || params.get("LIGHTNING");
+      if (lightningParam) return lightningParam;
+    }
+  }
+  return s;
+}
+
 export async function parseInput(input: string) {
   if (!input || typeof input !== "string" || input.trim().length === 0) {
     throw new Error("input must be a non-empty string");
   }
   const sdk = await initBreezSdk();
-  const trimmed = input.trim();
+  const trimmed = normalizeInput(input);
   const result = await sdk.parse(trimmed);
   const sanitized = sanitizeBigInt(result);
 
@@ -337,9 +351,10 @@ export async function sendPayment(
   amountSats: number;
 }> {
   const sdk = await initBreezSdk();
+  const normalizedBolt11 = normalizeInput(bolt11);
 
   const prepRequest: any = {
-    paymentRequest: bolt11,
+    paymentRequest: normalizedBolt11,
     amount: amountSats ? BigInt(amountSats) : undefined,
   };
   const prepared = await sdk.prepareSendPayment(prepRequest);
@@ -555,7 +570,7 @@ export async function decodeInvoice(bolt11: string): Promise<{
 }> {
   const sdk = await initBreezSdk();
   try {
-    const parsed = await sdk.parse(bolt11);
+    const parsed = await sdk.parse(normalizeInput(bolt11));
     const sanitized = sanitizeBigInt(parsed);
     const now = Math.floor(Date.now() / 1000);
 

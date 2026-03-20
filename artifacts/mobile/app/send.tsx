@@ -59,11 +59,26 @@ export default function SendScreen() {
     }
   }, [permission]);
 
+  const normalizeQrData = (raw: string): string => {
+    let s = raw.trim();
+    if (/^lightning:/i.test(s)) s = s.replace(/^lightning:/i, "");
+    if (/^bitcoin:/i.test(s)) {
+      const qIdx = s.indexOf("?");
+      if (qIdx > -1) {
+        const params = new URLSearchParams(s.slice(qIdx + 1));
+        const lnParam = params.get("lightning") || params.get("LIGHTNING");
+        if (lnParam) return lnParam;
+      }
+    }
+    return s;
+  };
+
   const handleBarCodeScanned = async (data: string) => {
     if (!data || isDecoding) return;
     setCameraActive(false);
-    setInvoiceInput(data);
-    await handleDecodeInput(data);
+    const cleaned = normalizeQrData(data);
+    setInvoiceInput(cleaned);
+    await handleDecodeInput(cleaned);
   };
 
   const handlePasteInvoice = () => {
