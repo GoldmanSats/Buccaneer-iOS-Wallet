@@ -282,9 +282,9 @@ export default function HomeScreen() {
     },
     onPanResponderRelease: (_, gs) => {
       if (gs.dy > 40 || gs.vy > 0.3) {
-        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 }, () => {
-          runOnJS(closeReceiveDrawer)();
-          receiveSheetTranslateY.value = 0;
+        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
+          runOnJS(setReceiveOpen)(false);
+          runOnJS(resetReceiveState)();
         });
       } else {
         receiveSheetTranslateY.value = withTiming(0, { duration: 200 });
@@ -360,13 +360,18 @@ export default function HomeScreen() {
   const openReceiveDrawer = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     resetReceiveState();
-    receiveSheetTranslateY.value = 0;
+    receiveSheetTranslateY.value = SCREEN_HEIGHT;
     setReceiveOpen(true);
+    requestAnimationFrame(() => {
+      receiveSheetTranslateY.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.cubic) });
+    });
   };
 
   const closeReceiveDrawer = () => {
-    setReceiveOpen(false);
-    resetReceiveState();
+    receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250, easing: Easing.in(Easing.cubic) }, () => {
+      runOnJS(setReceiveOpen)(false);
+      runOnJS(resetReceiveState)();
+    });
   };
 
   const handleReceiveGenerate = async () => {
@@ -518,7 +523,7 @@ export default function HomeScreen() {
             ]}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: "rgba(23,162,184,0.10)" }]}>
-              <Ionicons name="arrow-down-outline" size={24} color={colors.teal} style={{ transform: [{ rotate: "-45deg" }] }} />
+              <Ionicons name="arrow-back-outline" size={24} color={colors.teal} style={{ transform: [{ rotate: "-45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.teal }]}>Receive</Text>
           </Pressable>
@@ -688,7 +693,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Receive Drawer */}
-      <Modal visible={receiveOpen} transparent animationType="slide" onRequestClose={closeReceiveDrawer}>
+      <Modal visible={receiveOpen} transparent animationType="none" onRequestClose={closeReceiveDrawer}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
