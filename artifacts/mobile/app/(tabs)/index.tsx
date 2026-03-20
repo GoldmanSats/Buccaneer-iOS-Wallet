@@ -231,8 +231,11 @@ export default function HomeScreen() {
     transform: [{ scale: balanceScale.value }],
   }));
 
-  const TX_COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.35;
-  const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
+  const topPad = insets.top + 2;
+  const bottomPad = insets.bottom + 16;
+
+  const TX_COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.22;
+  const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT - topPad;
   const txPanelHeight = useSharedValue(TX_COLLAPSED_HEIGHT);
 
   useEffect(() => {
@@ -294,9 +297,6 @@ export default function HomeScreen() {
   const balanceFontSize = digitCount <= 3 ? 72 : digitCount <= 5 ? 60 : digitCount <= 7 ? 48 : 36;
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
   const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
-
-  const topPad = insets.top + 2;
-  const bottomPad = insets.bottom + 16;
 
   const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
 
@@ -371,7 +371,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: SCREEN_HEIGHT * 0.38 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: TX_COLLAPSED_HEIGHT + 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />}
       >
@@ -873,6 +873,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 32, borderTopRightRadius: 32,
     paddingHorizontal: 24, paddingTop: 24,
     overflow: "hidden",
+    zIndex: 10,
   },
   txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   txHeaderText: { fontFamily: "Nunito_700Bold", fontSize: 18, flex: 1 },
