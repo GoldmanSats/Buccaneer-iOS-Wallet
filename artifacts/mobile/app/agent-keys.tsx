@@ -302,7 +302,7 @@ export default function AgentKeysScreen() {
               <TextInput
                 testID="agent-key-name-input"
                 style={[st.input, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "80", color: colors.text }]}
-                placeholder="e.g. Claude, GPT-4"
+                placeholder="e.g. My OpenClaw Bot"
                 placeholderTextColor={colors.textMuted}
                 value={newKeyName}
                 onChangeText={setNewKeyName}
@@ -640,7 +640,7 @@ const st = StyleSheet.create({
   formField: { gap: 6 },
   formLabel: { fontFamily: "Nunito_700Bold", fontSize: 10, letterSpacing: 1.5 },
   formRow: { flexDirection: "row", gap: 12 },
-  input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontFamily: "Nunito_400Regular", fontSize: 14 },
+  input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, fontFamily: "Nunito_400Regular", fontSize: 14 },
   createActions: { flexDirection: "row", gap: 10, paddingTop: 4 },
   cancelBtn: { flex: 1, borderRadius: 20, paddingVertical: 12, alignItems: "center" },
   cancelText: { fontFamily: "Nunito_600SemiBold", fontSize: 14 },
