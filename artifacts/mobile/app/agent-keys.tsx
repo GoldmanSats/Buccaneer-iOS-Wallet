@@ -238,6 +238,57 @@ export default function AgentKeysScreen() {
                 <Text style={[st.revealDoneText, { color: colors.textSecondary }]}>Done</Text>
               </Pressable>
             </View>
+
+            {newKeyRevealed.connectionType === "api" && (
+              <View style={[st.usageCard, { backgroundColor: colors.bg + "99", borderColor: colors.border + "40" }]}>
+                <View style={st.usageHeader}>
+                  <Ionicons name="book-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[st.usageTitle, { color: colors.text }]}>Quick Start</Text>
+                </View>
+                <Text style={[st.usageDesc, { color: colors.textMuted }]}>
+                  Give your AI agent this key and the base URL below. It can then check your balance, send payments, create invoices, and view transactions — all within the spending limits you set.
+                </Text>
+                <View style={[st.usageEndpoint, { backgroundColor: colors.bgCard + "80" }]}>
+                  <Text style={[st.usageLabel, { color: colors.textMuted }]}>Base URL</Text>
+                  <Text selectable style={[st.usageCode, { color: colors.text }]}>{(process.env.EXPO_PUBLIC_DOMAIN ?? "") + "/api/v1"}</Text>
+                </View>
+                <View style={st.usageEndpoints}>
+                  <Text style={[st.usageLabel, { color: colors.textMuted }]}>Available Endpoints</Text>
+                  <View style={st.usageRow}>
+                    <View style={[st.usageMethod, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                      <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#22C55E" }}>GET</Text>
+                    </View>
+                    <Text style={[st.usageEndpointText, { color: colors.textSecondary }]}>/balance</Text>
+                    <Text style={[st.usageEndpointDesc, { color: colors.textMuted }]}>Check wallet balance</Text>
+                  </View>
+                  <View style={st.usageRow}>
+                    <View style={[st.usageMethod, { backgroundColor: "rgba(59,130,246,0.15)" }]}>
+                      <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#3B82F6" }}>POST</Text>
+                    </View>
+                    <Text style={[st.usageEndpointText, { color: colors.textSecondary }]}>/send</Text>
+                    <Text style={[st.usageEndpointDesc, { color: colors.textMuted }]}>Pay a Lightning invoice</Text>
+                  </View>
+                  <View style={st.usageRow}>
+                    <View style={[st.usageMethod, { backgroundColor: "rgba(59,130,246,0.15)" }]}>
+                      <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#3B82F6" }}>POST</Text>
+                    </View>
+                    <Text style={[st.usageEndpointText, { color: colors.textSecondary }]}>/receive</Text>
+                    <Text style={[st.usageEndpointDesc, { color: colors.textMuted }]}>Create a payment request</Text>
+                  </View>
+                  <View style={st.usageRow}>
+                    <View style={[st.usageMethod, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                      <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#22C55E" }}>GET</Text>
+                    </View>
+                    <Text style={[st.usageEndpointText, { color: colors.textSecondary }]}>/transactions</Text>
+                    <Text style={[st.usageEndpointDesc, { color: colors.textMuted }]}>List payment history</Text>
+                  </View>
+                </View>
+                <View style={[st.usageEndpoint, { backgroundColor: colors.bgCard + "80" }]}>
+                  <Text style={[st.usageLabel, { color: colors.textMuted }]}>Auth Header</Text>
+                  <Text selectable style={[st.usageCode, { color: colors.text }]}>Authorization: Bearer {"<your-key>"}</Text>
+                </View>
+              </View>
+            )}
           </Animated.View>
         )}
 
@@ -622,6 +673,19 @@ const st = StyleSheet.create({
   revealCopyText: { fontFamily: "Nunito_700Bold", fontSize: 14, color: "#FFF" },
   revealDoneBtn: { flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: "center" },
   revealDoneText: { fontFamily: "Nunito_600SemiBold", fontSize: 14 },
+
+  usageCard: { marginTop: 4, borderRadius: 16, padding: 16, borderWidth: 1, gap: 12 },
+  usageHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  usageTitle: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+  usageDesc: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18 },
+  usageEndpoint: { borderRadius: 10, padding: 10, gap: 4 },
+  usageLabel: { fontFamily: "Nunito_700Bold", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase" as const },
+  usageCode: { fontFamily: "Nunito_400Regular", fontSize: 11, lineHeight: 16 },
+  usageEndpoints: { gap: 8 },
+  usageRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 4 },
+  usageMethod: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  usageEndpointText: { fontFamily: "Nunito_700Bold", fontSize: 12, minWidth: 90 },
+  usageEndpointDesc: { fontFamily: "Nunito_400Regular", fontSize: 10, flex: 1 },
 
   introCard: { borderRadius: 32, padding: 24, borderWidth: 1, gap: 12 },
   introHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 4 },

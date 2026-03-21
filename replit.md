@@ -87,8 +87,17 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - `GET /wallet/new-payments` — check for new incoming payments
 - `POST /wallet/sync` — force wallet sync
 - `GET/PUT /settings` — PostgreSQL settings
-- `GET/POST/PATCH/DELETE /agent-keys` — NWC key management (with daily limits)
+- `GET/POST/PATCH/DELETE /agent-keys` — NWC/API key management (with daily limits)
 - `GET /agent-keys/:id/logs` — per-key activity logs
+
+### Agent REST API (all under `/api/v1`, requires `Authorization: Bearer bwk_...`)
+- `GET /v1/balance` — check wallet balance
+- `POST /v1/send` — pay a Lightning invoice (`{ bolt11, amountSats? }`)
+- `POST /v1/receive` — create a payment request (`{ amountSats, description? }`)
+- `GET /v1/transactions` — list payment history (`?limit=50&offset=0`)
+- `POST /v1/decode-invoice` — decode a BOLT11 invoice (`{ bolt11 }`)
+- Auth middleware validates API keys, enforces per-tx and daily spending limits, logs all actions
+- Keys are `bwk_`-prefixed tokens stored in `secretKey` column for API-type agent keys
 
 ### NWC Relay Service (nwc.ts)
 - Connects to `wss://relay.damus.io` as a NIP-47 service provider
