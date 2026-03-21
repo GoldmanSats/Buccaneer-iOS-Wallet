@@ -31,6 +31,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
+import { Audio } from "expo-av";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
@@ -325,6 +326,20 @@ export default function HomeScreen() {
   const fiatAmount = btcPrice ? (sats / 100_000_000) * btcPrice.price : 0;
   const hasFiatPrice = !!btcPrice;
 
+  const playBellSound = useCallback(async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("@/assets/sounds/ships_bell.wav")
+      );
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.didJustFinish) sound.unloadAsync();
+      });
+    } catch (e) {
+      console.warn("Bell sound failed", e);
+    }
+  }, []);
+
   const prevTxCountRef = useRef(transactions.length);
   useEffect(() => {
     if (transactions.length > prevTxCountRef.current) {
@@ -339,6 +354,7 @@ export default function HomeScreen() {
           receiveSheetTranslateY.value = 0;
         }
         refetchBalance();
+        playBellSound();
         setCelebration({ amount: totalAmount, description: desc });
         setTimeout(() => setCelebration(null), 5500);
       }
