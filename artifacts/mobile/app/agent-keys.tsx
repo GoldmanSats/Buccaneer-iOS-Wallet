@@ -45,14 +45,7 @@ interface AgentLog {
   createdAt: string;
 }
 
-const API_ENDPOINTS = [
-  { method: "GET", path: "/api/v1/agent/balance", desc: "Check wallet balance", color: "#3B82F6" },
-  { method: "GET", path: "/api/v1/agent/info", desc: "Wallet info + spending limits", color: "#3B82F6" },
-  { method: "POST", path: "/api/v1/agent/invoice", desc: "Create invoice {amountSats, description}", color: "#22C55E" },
-  { method: "POST", path: "/api/v1/agent/pay", desc: "Pay invoice {paymentRequest, amountSats?}", color: "#22C55E" },
-  { method: "GET", path: "/api/v1/agent/transactions", desc: "List recent transactions", color: "#3B82F6" },
-  { method: "GET", path: "/api/v1/agent/address", desc: "Get Lightning address", color: "#3B82F6" },
-];
+const AGENT_BASE = "/api/v1";
 
 export default function AgentKeysScreen() {
   const insets = useSafeAreaInsets();
@@ -586,31 +579,120 @@ export default function AgentKeysScreen() {
 
         {keys.some(k => k.connectionType === "api") && (
           <>
-            <Text style={[st.sectionHeader, { color: colors.textMuted }]}>AGENT API REFERENCE</Text>
+            <Text style={[st.sectionHeader, { color: colors.textMuted }]}>HOW TO USE YOUR API KEY</Text>
             <View style={[st.apiCard, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
-              <Text style={[st.apiIntro, { color: colors.textSecondary }]}>
-                Share these endpoints with your AI agent. All requests need the header:
-              </Text>
-              <View style={[st.apiCodeBlock, { backgroundColor: colors.bg + "99" }]}>
-                <Text style={[st.apiCode, { color: colors.textSecondary }]}>Authorization: Bearer buc_your_key_here</Text>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#22C55E" }]}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Copy your API key and base URL</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Your agent needs two things: the API key you created above, and this base URL.</Text>
+                </View>
               </View>
 
-              {API_ENDPOINTS.map((ep, i) => (
-                <View key={i} style={st.apiEndpoint}>
-                  <View style={[st.methodBadge, { backgroundColor: ep.color + "33" }]}>
-                    <Text style={[st.methodText, { color: ep.color }]}>{ep.method}</Text>
-                  </View>
-                  <View style={st.apiEndpointText}>
-                    <Text style={[st.apiPath, { color: colors.text }]}>{ep.path}</Text>
-                    <Text style={[st.apiDesc, { color: colors.textMuted }]}>{ep.desc}</Text>
-                  </View>
+              <Pressable style={[st.copyableBlock, { backgroundColor: colors.bg + "99" }]} onPress={copyBaseUrl}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.copyableLabel, { color: colors.textMuted }]}>BASE URL</Text>
+                  <Text selectable style={[st.copyableValue, { color: colors.text }]}>{(process.env.EXPO_PUBLIC_DOMAIN ?? "") + AGENT_BASE}</Text>
                 </View>
-              ))}
-
-              <Pressable style={st.copyBaseRow} onPress={copyBaseUrl}>
-                <Ionicons name="copy-outline" size={14} color={colors.coral} />
-                <Text style={[st.copyBaseText, { color: colors.coral }]}>{copiedBase ? "Copied!" : "Copy Base URL"}</Text>
+                <View style={[st.copyBtn, { backgroundColor: colors.bgElevated }]}>
+                  <Ionicons name={copiedBase ? "checkmark" : "copy-outline"} size={14} color={copiedBase ? "#22C55E" : colors.textSecondary} />
+                </View>
               </Pressable>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#22C55E" }]}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Tell your agent how to authenticate</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Every request must include this header. Replace the key with the one you copied above.</Text>
+                </View>
+              </View>
+
+              <View style={[st.copyableBlock, { backgroundColor: colors.bg + "99" }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.copyableLabel, { color: colors.textMuted }]}>AUTH HEADER</Text>
+                  <Text selectable style={[st.copyableValue, { color: colors.text }]}>Authorization: Bearer bwk_your_key</Text>
+                </View>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#22C55E" }]}>3</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Tell your agent what it can do</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Share these commands with your agent. All paths are relative to the base URL above.</Text>
+                </View>
+              </View>
+
+              <View style={[st.endpointList, { backgroundColor: colors.bg + "99" }]}>
+                <View style={st.endpointItem}>
+                  <View style={[st.methodPill, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                    <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#22C55E" }}>GET</Text>
+                  </View>
+                  <Text style={[st.endpointPath, { color: colors.text }]}>/balance</Text>
+                </View>
+                <Text style={[st.endpointDesc, { color: colors.textMuted }]}>Returns sats balance. No body needed.</Text>
+
+                <View style={[st.endpointDivider, { borderColor: colors.border + "40" }]} />
+
+                <View style={st.endpointItem}>
+                  <View style={[st.methodPill, { backgroundColor: "rgba(59,130,246,0.15)" }]}>
+                    <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#3B82F6" }}>POST</Text>
+                  </View>
+                  <Text style={[st.endpointPath, { color: colors.text }]}>/send</Text>
+                </View>
+                <Text style={[st.endpointDesc, { color: colors.textMuted }]}>Pay a Lightning invoice. Send: {`{ "bolt11": "lnbc1..." }`}</Text>
+
+                <View style={[st.endpointDivider, { borderColor: colors.border + "40" }]} />
+
+                <View style={st.endpointItem}>
+                  <View style={[st.methodPill, { backgroundColor: "rgba(59,130,246,0.15)" }]}>
+                    <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#3B82F6" }}>POST</Text>
+                  </View>
+                  <Text style={[st.endpointPath, { color: colors.text }]}>/receive</Text>
+                </View>
+                <Text style={[st.endpointDesc, { color: colors.textMuted }]}>Create an invoice. Send: {`{ "amountSats": 1000 }`}</Text>
+
+                <View style={[st.endpointDivider, { borderColor: colors.border + "40" }]} />
+
+                <View style={st.endpointItem}>
+                  <View style={[st.methodPill, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                    <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 9, color: "#22C55E" }}>GET</Text>
+                  </View>
+                  <Text style={[st.endpointPath, { color: colors.text }]}>/transactions</Text>
+                </View>
+                <Text style={[st.endpointDesc, { color: colors.textMuted }]}>Lists recent payments and invoices.</Text>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#22C55E" }]}>4</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Example: check balance</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Here's what a full request looks like. Copy this and give it to your agent as an example.</Text>
+                </View>
+              </View>
+
+              <View style={[st.copyableBlock, { backgroundColor: colors.bg + "99" }]}>
+                <Text selectable style={[st.exampleCode, { color: colors.text }]}>
+{`curl ${(process.env.EXPO_PUBLIC_DOMAIN ?? "") + AGENT_BASE}/balance \\
+  -H "Authorization: Bearer bwk_your_key"`}
+                </Text>
+              </View>
+
+              <View style={[st.tipBox, { backgroundColor: "rgba(250,186,26,0.08)", borderColor: "rgba(250,186,26,0.2)" }]}>
+                <Ionicons name="shield-checkmark-outline" size={16} color="#FABA1A" />
+                <Text style={[st.tipText, { color: colors.textSecondary }]}>
+                  Spending limits you set on the key are enforced automatically. If your agent tries to spend more than allowed, the request will be rejected.
+                </Text>
+              </View>
+
             </View>
           </>
         )}
@@ -759,17 +841,29 @@ const st = StyleSheet.create({
 
   sectionHeader: { fontFamily: "Nunito_700Bold", fontSize: 11, letterSpacing: 2, marginLeft: 8, marginTop: 8 },
   apiCard: { borderRadius: 32, padding: 20, borderWidth: 1, gap: 16 },
-  apiIntro: { fontFamily: "Nunito_400Regular", fontSize: 13, lineHeight: 20 },
-  apiCodeBlock: { borderRadius: 12, padding: 12 },
-  apiCode: { fontFamily: "Nunito_400Regular", fontSize: 13, letterSpacing: 0.3 },
-  apiEndpoint: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  methodBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginTop: 2 },
-  methodText: { fontFamily: "Nunito_700Bold", fontSize: 9 },
-  apiEndpointText: { flex: 1, gap: 2 },
-  apiPath: { fontFamily: "Nunito_700Bold", fontSize: 13, letterSpacing: 0.2 },
-  apiDesc: { fontFamily: "Nunito_400Regular", fontSize: 10 },
-  copyBaseRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 4 },
-  copyBaseText: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+
+  stepRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  stepNum: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  stepNumText: { fontFamily: "Nunito_700Bold", fontSize: 13 },
+  stepTitle: { fontFamily: "Nunito_700Bold", fontSize: 14, marginBottom: 2 },
+  stepDesc: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18 },
+
+  copyableBlock: { borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 },
+  copyableLabel: { fontFamily: "Nunito_700Bold", fontSize: 9, letterSpacing: 1.5, marginBottom: 4 },
+  copyableValue: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 16 },
+  copyBtn: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+
+  endpointList: { borderRadius: 12, padding: 12, gap: 8 },
+  endpointItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  endpointPath: { fontFamily: "Nunito_700Bold", fontSize: 13 },
+  endpointDesc: { fontFamily: "Nunito_400Regular", fontSize: 11, color: "#888", paddingLeft: 46 },
+  endpointDivider: { borderTopWidth: 1, marginVertical: 4 },
+  methodPill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+
+  exampleCode: { fontFamily: "Nunito_400Regular", fontSize: 11, lineHeight: 18 },
+
+  tipBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, borderRadius: 12, borderWidth: 1, padding: 12 },
+  tipText: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18, flex: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
   modalCard: { width: "100%", maxWidth: 384, borderRadius: 24, padding: 32, alignItems: "center", borderWidth: 1 },
