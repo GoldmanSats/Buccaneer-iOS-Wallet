@@ -36,6 +36,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import Svg, { Circle, Line, G } from "react-native-svg";
+import QRCode from "react-native-qrcode-svg";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -191,10 +192,6 @@ const txStyles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   feeText: { fontFamily: "Nunito_400Regular", fontSize: 10 },
 });
-
-function makeQrUrl(data: string, size = 280) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&color=000000&bgcolor=FFFFFF&qzone=2`;
-}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -744,10 +741,12 @@ export default function HomeScreen() {
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
                 {receiveMode !== "amount" && (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
-                    <Image
-                      source={{ uri: makeQrUrl(receiveQrData, receiveQrSize) }}
-                      style={{ width: receiveQrSize, height: receiveQrSize, borderRadius: 8 }}
-                      resizeMode="contain"
+                    <QRCode
+                      value={receiveQrData}
+                      size={receiveQrSize}
+                      backgroundColor="#FFFFFF"
+                      color="#000000"
+                      quietZone={8}
                     />
                     <View style={styles.receiveQrOverlay}>
                       <Text style={styles.receiveQrText}>₿uccaneer</Text>

@@ -19,13 +19,10 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
+import QRCode from "react-native-qrcode-svg";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
-
-function makeQrUrl(data: string, size = 280) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&color=000000&bgcolor=FFFFFF&qzone=2`;
-}
 
 type Mode = "default" | "amount" | "generated";
 
@@ -127,10 +124,12 @@ export default function ReceiveScreen() {
           <Text style={[styles.pageTitle, { color: colors.text }]}>Receive</Text>
 
           <View style={[styles.qrContainer, { width: qrSize + 10, height: qrSize + 10 }]}>
-            <Image
-              source={{ uri: makeQrUrl(qrData, qrSize) }}
-              style={{ width: qrSize, height: qrSize, borderRadius: 8 }}
-              resizeMode="contain"
+            <QRCode
+              value={qrData}
+              size={qrSize}
+              backgroundColor="#FFFFFF"
+              color="#000000"
+              quietZone={8}
             />
             <View style={styles.qrCenterOverlay}>
               <Text style={styles.qrCenterText}>₿uccaneer</Text>
