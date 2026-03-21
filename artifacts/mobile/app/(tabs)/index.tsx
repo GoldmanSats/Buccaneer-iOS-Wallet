@@ -14,10 +14,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Share,
-  PanResponder,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -255,38 +255,35 @@ export default function HomeScreen() {
     height: txPanelHeight.value,
   }));
 
-  const txPanGesture = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx),
-    onPanResponderRelease: (_, gs) => {
+  const txPanGesture = Gesture.Pan()
+    .activeOffsetY([-10, 10])
+    .failOffsetX([-10, 10])
+    .onEnd((e) => {
       const SWIPE_THRESHOLD = 50;
       const VELOCITY_THRESHOLD = 0.5;
-      const swipedUp = gs.dy < -SWIPE_THRESHOLD || gs.vy < -VELOCITY_THRESHOLD;
-      const swipedDown = gs.dy > SWIPE_THRESHOLD || gs.vy > VELOCITY_THRESHOLD;
+      const swipedUp = e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
+      const swipedDown = e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD;
       if (swipedUp && !isLogExpandedRef.current) {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setIsLogExpanded(true);
+        if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        runOnJS(setIsLogExpanded)(true);
       } else if (swipedDown && isLogExpandedRef.current) {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setIsLogExpanded(false);
+        if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        runOnJS(setIsLogExpanded)(false);
       }
-    },
-  }), []);
+    });
 
   const receiveSheetTranslateY = useSharedValue(0);
-  const receiveScrollAtTop = useRef(true);
 
-  const receivePanGesture = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8 && gs.dy > Math.abs(gs.dx) && receiveScrollAtTop.current,
-    onMoveShouldSetPanResponderCapture: (_, gs) => gs.dy > 12 && gs.dy > Math.abs(gs.dx) * 1.5 && receiveScrollAtTop.current,
-    onPanResponderMove: (_, gs) => {
-      if (gs.dy > 0) {
-        receiveSheetTranslateY.value = gs.dy;
+  const receiveDismissGesture = Gesture.Pan()
+    .activeOffsetY([0, 15])
+    .failOffsetX([-15, 15])
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        receiveSheetTranslateY.value = e.translationY;
       }
-    },
-    onPanResponderRelease: (_, gs) => {
-      if (gs.dy > 40 || gs.vy > 0.3) {
+    })
+    .onEnd((e) => {
+      if (e.translationY > 60 || e.velocityY > 400) {
         receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
           runOnJS(setReceiveOpen)(false);
           runOnJS(resetReceiveState)();
@@ -294,29 +291,27 @@ export default function HomeScreen() {
       } else {
         receiveSheetTranslateY.value = withTiming(0, { duration: 200 });
       }
-    },
-  }), []);
+    });
 
   const txDetailTranslateY = useSharedValue(0);
 
-  const txDetailPanGesture = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8 && gs.dy > Math.abs(gs.dx),
-    onPanResponderMove: (_, gs) => {
-      if (gs.dy > 0) {
-        txDetailTranslateY.value = gs.dy;
+  const txDetailDismissGesture = Gesture.Pan()
+    .activeOffsetY([0, 15])
+    .failOffsetX([-15, 15])
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        txDetailTranslateY.value = e.translationY;
       }
-    },
-    onPanResponderRelease: (_, gs) => {
-      if (gs.dy > 40 || gs.vy > 0.3) {
+    })
+    .onEnd((e) => {
+      if (e.translationY > 60 || e.velocityY > 400) {
         txDetailTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
           runOnJS(setSelectedTx)(null);
         });
       } else {
         txDetailTranslateY.value = withTiming(0, { duration: 200 });
       }
-    },
-  }), []);
+    });
 
   const txDetailAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: txDetailTranslateY.value }],
@@ -424,7 +419,6 @@ export default function HomeScreen() {
   const openReceiveDrawer = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     resetReceiveState();
-    receiveScrollAtTop.current = true;
     receiveSheetTranslateY.value = SCREEN_HEIGHT;
     setReceiveOpen(true);
     requestAnimationFrame(() => {
@@ -617,8 +611,8 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Transaction Log — anchored to bottom, expands upward */}
+      <GestureDetector gesture={txPanGesture}>
       <Animated.View
-        {...txPanGesture.panHandlers}
         style={[
           styles.txPanelOverlay,
           {
@@ -674,14 +668,15 @@ export default function HomeScreen() {
           )}
         </ScrollView>
       </Animated.View>
+      </GestureDetector>
 
       {/* Transaction Detail Sheet */}
       <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
+          <GestureDetector gesture={txDetailDismissGesture}>
           <Animated.View
             style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }, txDetailAnimStyle]}
-            {...txDetailPanGesture.panHandlers}
           >
             <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
             {selectedTx && (() => {
@@ -770,6 +765,7 @@ export default function HomeScreen() {
               );
             })()}
           </Animated.View>
+          </GestureDetector>
         </View>
       </Modal>
 
@@ -778,23 +774,16 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
+            <GestureDetector gesture={receiveDismissGesture}>
             <Animated.View
               style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
-              {...receivePanGesture.panHandlers}
             >
               <Pressable onPress={closeReceiveDrawer} style={styles.receiveDragZone}>
                 <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
                 <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
               </Pressable>
 
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.receiveScrollContent}
-                keyboardShouldPersistTaps="handled"
-                scrollEnabled={receiveMode !== "amount"}
-                onScroll={(e) => { receiveScrollAtTop.current = e.nativeEvent.contentOffset.y <= 0; }}
-                scrollEventThrottle={16}
-              >
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
                 {receiveMode !== "amount" && (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
                     <QRCode
@@ -944,6 +933,7 @@ export default function HomeScreen() {
                 )}
               </ScrollView>
             </Animated.View>
+            </GestureDetector>
           </KeyboardAvoidingView>
         </View>
       </Modal>
