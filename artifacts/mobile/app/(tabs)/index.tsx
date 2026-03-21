@@ -886,8 +886,10 @@ export default function HomeScreen() {
         <Modal visible transparent animationType="fade" onRequestClose={() => setCelebration(null)}>
           <Pressable style={styles.celebrationOverlay} onPress={() => setCelebration(null)} testID="celebration-overlay">
             <Animated.View entering={FadeInDown.springify().damping(15)} style={styles.celebrationContent}>
-              <Text style={styles.celebrationEmoji}>🏴‍☠️</Text>
-              <Text style={styles.celebrationTitle}>Treasure Received!</Text>
+              <View style={styles.celebrationBell}>
+                <Ionicons name="notifications" size={36} color="#FBBF24" />
+              </View>
+              <Text style={styles.celebrationTitle}>Coins Aboard!</Text>
               <View style={styles.celebrationAmountRow}>
                 <Text style={styles.celebrationAmount}>+{formatSats(celebration.amount)}</Text>
                 <Text style={styles.celebrationSats}>sats</Text>
@@ -1058,7 +1060,11 @@ const styles = StyleSheet.create({
 
   celebrationOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
   celebrationContent: { alignItems: "center", paddingHorizontal: 32 },
-  celebrationEmoji: { fontSize: 80, marginBottom: 24 },
+  celebrationBell: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(251,191,36,0.15)",
+    alignItems: "center", justifyContent: "center", marginBottom: 24,
+    borderWidth: 2, borderColor: "rgba(251,191,36,0.3)",
+  },
   celebrationTitle: {
     fontFamily: "Chewy_400Regular", fontSize: 36, color: "#FFFFFF", marginBottom: 8,
     textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
