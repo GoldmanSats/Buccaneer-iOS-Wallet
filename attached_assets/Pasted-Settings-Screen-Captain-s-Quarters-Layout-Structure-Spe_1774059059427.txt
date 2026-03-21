@@ -1,0 +1,101 @@
+Settings Screen ("Captain's Quarters") — Layout & Structure Spec
+
+Overall Layout:
+
+    No horizontal padding or top padding on the outer wrapper (the WalletLayout has px-0 pt-0)
+    Content area has px-6 (24px horizontal padding) and pb-20 (80px bottom padding) with vertical scroll
+
+Header (sticky):
+
+    Sticky at top with z-20, background bg-background/80 with backdrop-filter: blur (semi-transparent blur)
+    Padding: px-6 pt-14 pb-6 (56px top to clear status bar, 24px bottom)
+    Back button: 40x40 circle, white background with glass-panel effect (semi-transparent white, blur, subtle border), contains a left arrow icon (20x20, foreground at 70% opacity)
+    Title: "Captain's Quarters" in display font (Chewy), size 3xl, 16px gap from back button
+
+Lightning Address Card (standalone, not in a section group):
+
+    Card: rounded-[2rem] (32px), p-4 (16px all sides), white background, subtle shadow, border at 50% opacity
+    Entrance animation: slides up 20px and fades in
+    6px margin below (mb-6)
+    Display mode: Row layout — Zap icon in 40x40 rounded-xl (12px radius) yellow-tinted square, then address text (bold, base size), then two small circular buttons (32x32 each, rounded-full, muted background): Copy and Edit (pencil)
+    Edit mode: Stacked — input field with @breez.tips suffix in a rounded-xl bordered container, then Cancel/Save buttons side by side below
+
+Section Spacing:
+
+    All sections wrapped in a container with space-y-6 (24px vertical gap between sections)
+
+Section Headers:
+
+    Text: text-xs (12px), font-bold, uppercase, tracking-widest (max letter spacing), muted foreground color
+    Left margin: ml-2 (8px indent from card edge)
+    Bottom margin: mb-3 (12px gap to card below)
+    Examples: "SECURITY & SHIP GUARD", "AGENT ACCESS", "PREFERENCES", "ABOUT THE VOYAGE", "DANGER ZONE"
+
+Section Cards (grouped rows):
+
+    Each section card: rounded-[2rem] (32px), white background, subtle shadow, border at 50% opacity, overflow-hidden
+    Rows within a card are separated by border-b border-border/50 (the last row in each card has no bottom border)
+
+Standard Row Pattern (every settings row follows this):
+
+    Padding: p-4 (16px all sides)
+    Layout: flex row, items centered, justify-between
+    Left side: icon container + text column with 12px gap (gap-3)
+        Icon container: 40x40, rounded-xl (12px radius), tinted background color, centered icon (20x20)
+        Text column: stacked vertically
+            Label: font-bold text-base (16px, bold)
+            Subtitle: text-xs text-muted-foreground (12px, grey)
+    Right side: varies by row type (see below)
+
+Row Right-Side Variants:
+
+    Navigation (chevron): Right-pointing arrow icon (16x16, muted) — used for Seed Phrase, Agent Keys
+    Switch toggle: Standard toggle switch — used for Face ID, Parrot Squawks, Daytime Mode
+    Dropdown select: Pill-shaped select (rounded-full, muted background, pl-3 pr-8 py-1.5, bold text, small down-arrow overlaid) — used for Fiat Currency
+    Segmented control: Pill container (rounded-xl, muted background, p-1 padding), two buttons inside (px-3 py-1.5, text-xs font-bold, rounded-lg). Active segment gets white background + shadow; inactive is just muted text — used for SATS/FIAT toggle
+
+Tappable rows (navigation rows): Add hover:bg-muted/30 and active:bg-muted/50 for press feedback
+
+Section: Security & Ship Guard (2 rows):
+
+    Seed Phrase — Key icon, secondary-tinted bg → navigates to backup screen
+    Face ID Lock — Shield icon, accent-tinted bg → switch toggle
+
+Section: Agent Access (1 row):
+
+    AI Agent Keys — Bot icon, purple-tinted bg → navigates to agent access screen
+
+Section: Preferences (4 rows):
+
+    Fiat Currency — Coins icon, gold-tinted bg → dropdown select
+    Primary Display — Coins icon, lighter gold bg → SATS/FIAT segmented control
+    Annoying Parrot Squawks — Bell icon, blue-tinted bg → switch toggle, subtitle "Be notified of incoming transactions"
+    Daytime Mode — Moon or Sun icon (changes based on current mode), indigo-tinted bg → switch toggle, subtitle "Sail under the glare of daylight"
+
+Section: About The Voyage (3 items):
+
+    Spark Network Status — Sparkles icon, purple-tinted bg → expandable (tappable row reveals detail panel below)
+        Right side shows status: green pulsing dot + "ONLINE", red dot + "OFFLINE", or spinner + "CHECKING"
+        Expanded panel: px-4 py-3, muted background at 30%, shows key-value pairs (Balance, Pending, Node ID, Backend, Network) as text-xs rows with justify-between
+    Pirate's Code (TOS) — BookOpen icon, gray-tinted bg → external link icon on right
+    Version footer — Full-width row, bg-muted/50, centered text: text-xs font-bold text-muted-foreground, reads "v1.0.0 'Blackbeard'"
+
+Section: Danger Zone:
+
+    Card border is red-tinted: border-red-500/20 instead of the normal border
+
+    Delete Wallet — Trash2 icon, red-tinted bg, label and subtitle both in red
+        Tapping opens a confirmation modal overlay
+
+Delete Confirmation Modal:
+
+    Full-screen overlay: bg-black/60 backdrop-blur-sm, centered
+    Modal card: rounded-3xl (24px), p-8, max-width ~384px, shadow-xl, border
+    Content (centered column):
+        64x64 circle, red-tinted bg, AlertTriangle icon (32x32) inside
+        Title: "Abandon Ship?" in display font, 2xl
+        Warning text in sm, muted
+        Bold red warning: "If you haven't backed up your seed phrase, you will lose your funds forever."
+        Two stacked buttons (full-width, rounded-2xl, py-3.5):
+            "Delete My Wallet" — red-500 background, white text
+            "Actually, on second thought..." — muted background, foreground text
