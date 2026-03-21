@@ -301,7 +301,7 @@ export default function SettingsScreen() {
               <Ionicons name="notifications-outline" size={20} color={colors.blue} />
             </View>
             <View style={s.rowText}>
-              <Text style={[s.rowLabel, { color: colors.text }]}>Annoying Parrot Squawks</Text>
+              <Text style={[s.rowLabel, { color: colors.text }]}>Ship's Bell</Text>
               <Text style={[s.rowSub, { color: colors.textMuted }]}>Be notified of incoming transactions</Text>
             </View>
             <Switch
