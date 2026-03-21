@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -672,6 +672,7 @@ export default function HomeScreen() {
 
       {/* Transaction Detail Sheet */}
       <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
           <GestureDetector gesture={txDetailDismissGesture}>
@@ -767,10 +768,12 @@ export default function HomeScreen() {
           </Animated.View>
           </GestureDetector>
         </View>
+        </GestureHandlerRootView>
       </Modal>
 
       {/* Receive Drawer */}
       <Modal visible={receiveOpen} transparent animationType="none" onRequestClose={closeReceiveDrawer}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
@@ -936,6 +939,7 @@ export default function HomeScreen() {
             </GestureDetector>
           </KeyboardAvoidingView>
         </View>
+        </GestureHandlerRootView>
       </Modal>
 
       {/* Celebration overlay */}
