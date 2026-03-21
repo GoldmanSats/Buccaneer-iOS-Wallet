@@ -1,0 +1,132 @@
+Agent Access Screen — Complete Layout & Structure Spec
+
+Overall Layout:
+
+    Same pattern as Settings: WalletLayout with px-0 pt-0, content area px-6 pb-20 with scroll
+
+Header (sticky):
+
+    Identical to Settings header pattern: sticky, blurred background, px-6 pt-14 pb-6
+    Back button: 40x40 circle, glass-panel, navigates back to /settings
+    Title area (flex column):
+        "Agent Access" in display font (Chewy), 2xl (slightly smaller than Settings title)
+        Subtitle below: "Let AI agents use your wallet" in text-xs text-muted-foreground, 2px top margin
+
+State 1: New Key Reveal Banner (shown after creating a key)
+
+    Animated entrance: slides down and fades in
+    Card: rounded-2xl, p-5, mb-6
+        NWC type: purple tinted — bg-purple-500/10 border-purple-500/30
+        API type: green tinted — bg-green-500/10 border-green-500/30
+    Top row: 32x32 circle icon (Link2 for NWC / Check for API) + title + description text
+    Key/URI display: bg-background/60 rounded-xl p-3, monospace font at 10px, break-all, max-height 96px with scroll
+    Button row:
+        Copy button: full purple (NWC) or green (API), white text, rounded-xl py-2.5, shows "Copied!" with Check icon after tap
+        Done button: muted background, rounded-xl, dismisses the banner
+
+State 2: Intro Card (shown when no create form is open)
+
+    Card: rounded-[2rem] p-6, white background, shadow, border
+
+    Top: Bot icon (40x40, rounded-xl, bg-purple-500/15, purple-500 icon) + heading "Give your AI agent a wallet" + description text
+
+    Two connection type buttons stacked (space-y-2):
+
+    NWC Button (recommended):
+        rounded-2xl p-3.5, bg-purple-500/10 border-purple-500/20
+        Left: Link2 icon in 36x36 rounded-xl bg-purple-500/20 square
+        Center: "Nostr Wallet Connect" (bold, sm) + subtitle "One connection string — works with any NWC-compatible agent" (10px, muted)
+        Right: "RECOMMENDED" badge — text-[9px] font-bold bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded-full
+
+    API Key Button:
+        rounded-2xl p-3.5, bg-muted/50 border-border/30
+        Left: Zap icon in 36x36 rounded-xl bg-muted square
+        Center: "REST API Key" (bold, sm) + "Direct API access with Bearer token auth" (10px, muted)
+        No badge
+
+State 3: Create Form (replaces intro card when a type is selected)
+
+    Card: rounded-[2rem] p-6, white background, shadow
+        NWC: border-purple-500/30
+        API: border-accent/30
+    Animated entrance: height expands from 0 + fade in
+    Header row: icon (Link2 purple or Zap accent) + "New NWC Connection" or "New API Key" (bold, base)
+    Form fields (space-y-4):
+        Label: input with rounded-xl border border-border/50 bg-muted/50 px-3 py-2.5 text-sm, label above is text-xs font-bold uppercase tracking-wider text-muted-foreground
+        Limits (2-column grid, gap-3):
+            "Max per TX (sats)" — same input style
+            "Max per day (sats)" — same input style
+    Button row (gap-2 pt-1):
+        Cancel: rounded-2xl py-3, muted background
+        Create: rounded-2xl py-3, purple-500 (NWC) or accent (API) background, white text, shows spinner when loading
+
+State 4: Key List (shown when keys exist)
+
+    Container: space-y-4 (16px gap between key cards)
+    Loading state: centered spinner, py-12
+    Empty state: large muted Bot icon (48x48 at 30% opacity), "No agent keys yet" text
+
+Each Key Card:
+
+    Card: rounded-[2rem], shadow, overflow-hidden, uses layout animation (Framer Motion)
+        Enabled: border-border/50
+        Disabled: border-red-500/20 opacity-60
+
+    Content padding: p-5
+
+    Row 1 — Identity (mb-3):
+        Left: Bot icon in 40x40 rounded-xl square
+            Enabled: bg-purple-500/15 text-purple-500
+            Disabled: bg-red-500/15 text-red-500
+        Center column:
+            Label (bold, sm) + NWC badge if applicable: text-[8px] font-bold bg-purple-500/20 text-purple-500 px-1.5 py-0.5 rounded-full
+            Key preview or "Nostr Wallet Connect" in text-[10px] font-mono text-muted-foreground
+        Right: Switch toggle for enabled/disabled
+
+    Row 2 — Limits (2-column grid, gap-3, mb-3):
+        Two stat boxes: bg-muted/40 rounded-xl p-2.5
+            Label: text-[10px] uppercase tracking-wider text-muted-foreground
+            Value: text-sm font-bold text-foreground, formatted with commas + "sats"
+
+    Row 3 — Spending Progress Bar (mb-3):
+        Header row: "Spent Today" label (10px, uppercase) left, "X / Y" value (xs, bold) right
+        Bar: h-1.5 (6px tall), bg-muted rounded-full, inner fill rounded-full with width as percentage
+            Under 50%: bg-green-500
+            50-80%: bg-yellow-500
+            Over 80%: bg-red-500
+
+    Row 4 — Action Buttons (3 buttons, gap-2):
+        Activity Log: flex-1, rounded-xl py-2, bg-muted/50, Clock icon + "Activity Log" / "Hide Log", text-xs font-bold
+        Edit Limits: flex-1, same style, Shield icon + "Edit Limits" / "Cancel"
+        Delete: fixed w-10, rounded-xl py-2, bg-red-500/10 text-red-500, Trash2 icon only
+
+    Expandable: Edit Limits Panel (animated height):
+        2-column grid of inputs (same style as create form), "Save Limits" button (accent colored, rounded-xl)
+
+    Expandable: Activity Log Panel (animated height):
+        Top border separator
+        Scrollable container, max-height ~240px
+        Each log entry: flex row, small colored dot (6x6, rounded-full) + formatted action text + amount if any + time ago
+            Dot colors: success = bg-green-500, denied = bg-yellow-500, error = bg-red-500
+        Empty state: "No activity yet" centered text
+
+Delete Confirmation Modal:
+
+    Full-screen overlay: bg-black/60 backdrop-blur-sm
+    Modal: rounded-3xl p-8, max-width ~384px, shadow-xl, border
+    Content (centered):
+        64x64 red circle with AlertTriangle icon
+        "Revoke Access?" in display font, 2xl
+        Warning text about the agent losing access
+        "Revoke Key" red button + "Keep It" muted button (stacked, full-width, rounded-2xl py-3.5)
+
+API Docs Section (at bottom, below key list):
+
+    Card: rounded-[2rem] p-5, white background, shadow, border
+    Header: "API Docs" with base URL shown in monospace
+    List of endpoint rows, each showing:
+        Method badge: rounded-full px-2 py-0.5 text-[9px] font-bold
+            GET: bg-blue-500/20 text-blue-500
+            POST: bg-green-500/20 text-green-500
+        Endpoint path in monospace text-xs
+        Description in text-[10px] text-muted-foreground

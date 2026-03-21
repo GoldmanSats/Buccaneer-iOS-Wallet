@@ -9,6 +9,7 @@ import {
   Platform,
   Switch,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,6 +44,15 @@ interface AgentLog {
   createdAt: string;
 }
 
+const API_ENDPOINTS = [
+  { method: "GET", path: "/api/v1/agent/balance", desc: "Check wallet balance", color: "#3B82F6" },
+  { method: "GET", path: "/api/v1/agent/info", desc: "Wallet info + spending limits", color: "#3B82F6" },
+  { method: "POST", path: "/api/v1/agent/invoice", desc: "Create invoice {amountSats, description}", color: "#22C55E" },
+  { method: "POST", path: "/api/v1/agent/pay", desc: "Pay invoice {paymentRequest, amountSats?}", color: "#22C55E" },
+  { method: "GET", path: "/api/v1/agent/transactions", desc: "List recent transactions", color: "#3B82F6" },
+  { method: "GET", path: "/api/v1/agent/address", desc: "Get Lightning address", color: "#3B82F6" },
+];
+
 export default function AgentKeysScreen() {
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
@@ -50,15 +60,21 @@ export default function AgentKeysScreen() {
   const isDark = settings.isDarkMode;
   const [keys, setKeys] = useState<AgentKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [selectedType, setSelectedType] = useState<"nwc" | "api" | null>(null);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyLimit, setNewKeyLimit] = useState("");
   const [newKeyDaily, setNewKeyDaily] = useState("");
-  const [newKeyType, setNewKeyType] = useState<"nwc" | "api">("nwc");
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedBase, setCopiedBase] = useState(false);
   const [expandedKey, setExpandedKey] = useState<number | null>(null);
+  const [showLogs, setShowLogs] = useState<number | null>(null);
+  const [editLimits, setEditLimits] = useState<number | null>(null);
+  const [editLimitVal, setEditLimitVal] = useState("");
+  const [editDailyVal, setEditDailyVal] = useState("");
   const [keyLogs, setKeyLogs] = useState<Record<number, AgentLog[]>>({});
+  const [deleteTarget, setDeleteTarget] = useState<AgentKey | null>(null);
+  const [newKeyRevealed, setNewKeyRevealed] = useState<AgentKey | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -91,7 +107,7 @@ export default function AgentKeysScreen() {
   };
 
   const createKey = async () => {
-    if (!newKeyName.trim()) return;
+    if (!newKeyName.trim() || !selectedType) return;
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCreating(true);
     try {
@@ -102,7 +118,7 @@ export default function AgentKeysScreen() {
           name: newKeyName.trim(),
           spendingLimitSats: newKeyLimit ? parseInt(newKeyLimit) : undefined,
           maxDailySats: newKeyDaily ? parseInt(newKeyDaily) : undefined,
-          connectionType: newKeyType,
+          connectionType: selectedType,
         }),
       });
       if (res.ok) {
@@ -111,7 +127,8 @@ export default function AgentKeysScreen() {
         setNewKeyName("");
         setNewKeyLimit("");
         setNewKeyDaily("");
-        setShowCreate(false);
+        setSelectedType(null);
+        setNewKeyRevealed(key);
         if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (e) {
@@ -138,242 +155,444 @@ export default function AgentKeysScreen() {
   const deleteKey = async (id: number) => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     try {
-      await fetch(`${API}/${id}`, { method: "DELETE" });
-      setKeys((prev) => prev.filter((k) => k.id !== id));
+      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setKeys((prev) => prev.filter((k) => k.id !== id));
+      }
     } catch (e) {
       console.error("Failed to delete key", e);
     }
+    setDeleteTarget(null);
   };
 
   const copyUri = async (key: AgentKey) => {
-    if (Platform.OS !== "web") {
-      await Clipboard.setStringAsync(key.nwcUri);
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    await Clipboard.setStringAsync(key.nwcUri);
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCopiedId(key.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleExpand = (keyId: number) => {
-    if (expandedKey === keyId) {
-      setExpandedKey(null);
-    } else {
-      setExpandedKey(keyId);
-      if (!keyLogs[keyId]) {
-        loadLogs(keyId);
-      }
-    }
+  const copyBaseUrl = async () => {
+    const base = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+    await Clipboard.setStringAsync(base);
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCopiedBase(true);
+    setTimeout(() => setCopiedBase(false), 2000);
   };
 
+  const spentPercent = (key: AgentKey) => {
+    if (!key.maxDailySats || key.maxDailySats === 0) return 0;
+    return Math.min(100, (key.spentToday / key.maxDailySats) * 100);
+  };
+
+  const barColor = (pct: number) => pct > 80 ? "#EF4444" : pct > 50 ? "#EAB308" : "#22C55E";
+
   return (
-    <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
+    <View style={[st.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
       {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
 
-      <View style={styles.header}>
-        <Pressable testID="agent-keys-back-button" onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-          <Ionicons name="arrow-back" size={22} color={colors.textSecondary} />
+      <View style={st.header}>
+        <Pressable testID="agent-keys-back-button" onPress={() => router.back()} style={[st.backBtn, { backgroundColor: colors.bgCard + "CC", borderColor: colors.border + "60" }]}>
+          <Ionicons name="arrow-back" size={20} color={colors.text + "B3"} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>AI Agent Keys</Text>
-        <Pressable testID="create-key-button" onPress={() => setShowCreate(!showCreate)} style={styles.addBtn}>
-          <Ionicons name={showCreate ? "close" : "add"} size={22} color={colors.gold} />
-        </Pressable>
+        <View style={st.headerText}>
+          <Text style={[st.title, { color: colors.text }]}>Agent Access</Text>
+          <Text style={[st.subtitle, { color: colors.textMuted }]}>Let AI agents use your wallet</Text>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 20 }]}
+        contentContainerStyle={[st.content, { paddingBottom: bottomPad + 80 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.explainerCard}>
-          <MaterialCommunityIcons name="robot" size={22} color="#9333EA" />
-          <Text style={[styles.explainerText, { color: colors.textSecondary }]}>
-            Give AI agents controlled access to your wallet via Nostr Wallet Connect (NIP-47) or API key. Set per-transaction and daily spending limits.
-          </Text>
-        </View>
+        {newKeyRevealed && (
+          <Animated.View entering={FadeInDown.duration(300)} style={[st.revealCard, {
+            backgroundColor: newKeyRevealed.connectionType === "nwc" ? "rgba(147,51,234,0.1)" : "rgba(34,197,94,0.1)",
+            borderColor: newKeyRevealed.connectionType === "nwc" ? "rgba(147,51,234,0.3)" : "rgba(34,197,94,0.3)",
+          }]}>
+            <View style={st.revealHeader}>
+              <View style={[st.revealIcon, { backgroundColor: newKeyRevealed.connectionType === "nwc" ? "rgba(147,51,234,0.2)" : "rgba(34,197,94,0.2)" }]}>
+                <Ionicons name={newKeyRevealed.connectionType === "nwc" ? "link" : "checkmark"} size={18} color={newKeyRevealed.connectionType === "nwc" ? "#9333EA" : "#22C55E"} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[st.revealTitle, { color: colors.text }]}>{newKeyRevealed.connectionType === "nwc" ? "NWC Connection Ready" : "API Key Created"}</Text>
+                <Text style={[st.revealDesc, { color: colors.textMuted }]}>Copy this now — it won't be shown again</Text>
+              </View>
+            </View>
+            <View style={[st.revealUri, { backgroundColor: colors.bg + "99" }]}>
+              <Text style={[st.revealUriText, { color: colors.textSecondary }]} numberOfLines={4}>{newKeyRevealed.nwcUri}</Text>
+            </View>
+            <View style={st.revealActions}>
+              <Pressable
+                style={[st.revealCopyBtn, { backgroundColor: newKeyRevealed.connectionType === "nwc" ? "#9333EA" : "#22C55E" }]}
+                onPress={() => copyUri(newKeyRevealed)}
+              >
+                <Ionicons name={copiedId === newKeyRevealed.id ? "checkmark" : "copy-outline"} size={16} color="#FFF" />
+                <Text style={st.revealCopyText}>{copiedId === newKeyRevealed.id ? "Copied!" : "Copy"}</Text>
+              </Pressable>
+              <Pressable style={[st.revealDoneBtn, { backgroundColor: colors.bgElevated }]} onPress={() => setNewKeyRevealed(null)}>
+                <Text style={[st.revealDoneText, { color: colors.textSecondary }]}>Done</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        )}
 
-        {showCreate && (
-          <Animated.View entering={FadeInDown} style={[styles.createCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-            <Text style={[styles.createTitle, { color: colors.text }]}>New Agent Key</Text>
-
-            <View style={[styles.typeToggle, { backgroundColor: colors.bgInput, borderColor: colors.border }]}>
-              {(["nwc", "api"] as const).map((t) => (
-                <Pressable
-                  key={t}
-                  style={[styles.typeOption, newKeyType === t && styles.typeOptionActive]}
-                  onPress={() => setNewKeyType(t)}
-                >
-                  <MaterialCommunityIcons
-                    name={t === "nwc" ? "access-point" : "key-variant"}
-                    size={16}
-                    color={newKeyType === t ? "#FFFFFF" : "#4A6080"}
-                  />
-                  <Text style={[styles.typeOptionText, newKeyType === t && { color: "#FFFFFF" }]}>
-                    {t.toUpperCase()}
-                  </Text>
-                </Pressable>
-              ))}
+        {!selectedType && !newKeyRevealed && (
+          <View style={[st.introCard, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
+            <View style={st.introHeader}>
+              <View style={[st.introIcon, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
+                <MaterialCommunityIcons name="robot" size={20} color="#9333EA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[st.introTitle, { color: colors.text }]}>Give your AI agent a wallet</Text>
+                <Text style={[st.introDesc, { color: colors.textMuted }]}>
+                  Connect your AI agent to your wallet. It can send payments, create invoices, and check your balance — all within the spending limits you set.
+                </Text>
+              </View>
             </View>
 
-            <TextInput
-              testID="agent-key-name-input"
-              style={[styles.input, { backgroundColor: colors.bgInput, borderColor: colors.border, color: colors.text }]}
-              placeholder="Agent name (e.g. Claude, GPT-4)"
-              placeholderTextColor={colors.textMuted}
-              value={newKeyName}
-              onChangeText={setNewKeyName}
-              autoCapitalize="words"
-            />
-            <TextInput
-              testID="agent-key-limit-input"
-              style={[styles.input, { backgroundColor: colors.bgInput, borderColor: colors.border, color: colors.text }]}
-              placeholder="Max per transaction (sats, optional)"
-              placeholderTextColor={colors.textMuted}
-              value={newKeyLimit}
-              onChangeText={setNewKeyLimit}
-              keyboardType="number-pad"
-            />
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.bgInput, borderColor: colors.border, color: colors.text }]}
-              placeholder="Max daily spending (sats, optional)"
-              placeholderTextColor={colors.textMuted}
-              value={newKeyDaily}
-              onChangeText={setNewKeyDaily}
-              keyboardType="number-pad"
-            />
-            <Pressable testID="confirm-create-key" style={styles.createBtn} onPress={createKey} disabled={creating}>
-              <LinearGradient
-                colors={["#9333EA", "#7928CA"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.createBtnGradient}
+            <Pressable
+              testID="select-nwc-type"
+              style={[st.typeBtn, { backgroundColor: "rgba(147,51,234,0.1)", borderColor: "rgba(147,51,234,0.2)" }]}
+              onPress={() => setSelectedType("nwc")}
+            >
+              <View style={[st.typeBtnIcon, { backgroundColor: "rgba(147,51,234,0.2)" }]}>
+                <Ionicons name="link" size={18} color="#9333EA" />
+              </View>
+              <View style={st.typeBtnText}>
+                <Text style={[st.typeBtnLabel, { color: colors.text }]}>Nostr Wallet Connect</Text>
+                <Text style={[st.typeBtnSub, { color: colors.textMuted }]}>One connection string — works with any NWC-compatible agent</Text>
+              </View>
+              <View style={st.recBadge}>
+                <Text style={st.recBadgeText}>RECOMMENDED</Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              testID="select-api-type"
+              style={[st.typeBtn, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "50" }]}
+              onPress={() => setSelectedType("api")}
+            >
+              <View style={[st.typeBtnIcon, { backgroundColor: colors.bgElevated }]}>
+                <Ionicons name="flash" size={18} color={colors.textSecondary} />
+              </View>
+              <View style={st.typeBtnText}>
+                <Text style={[st.typeBtnLabel, { color: colors.text }]}>REST API Key</Text>
+                <Text style={[st.typeBtnSub, { color: colors.textMuted }]}>Direct API access with Bearer token auth</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
+
+        {selectedType && !newKeyRevealed && (
+          <Animated.View entering={FadeInDown.duration(300)} style={[st.createCard, {
+            backgroundColor: colors.bgCard,
+            borderColor: selectedType === "nwc" ? "rgba(147,51,234,0.3)" : colors.border,
+          }]}>
+            <View style={st.createHeader}>
+              <View style={[st.typeBtnIcon, { backgroundColor: selectedType === "nwc" ? "rgba(147,51,234,0.2)" : colors.bgElevated }]}>
+                <Ionicons name={selectedType === "nwc" ? "link" : "flash"} size={18} color={selectedType === "nwc" ? "#9333EA" : colors.textSecondary} />
+              </View>
+              <Text style={[st.createTitle, { color: colors.text }]}>{selectedType === "nwc" ? "New NWC Connection" : "New API Key"}</Text>
+            </View>
+
+            <View style={st.formField}>
+              <Text style={[st.formLabel, { color: colors.textMuted }]}>LABEL</Text>
+              <TextInput
+                testID="agent-key-name-input"
+                style={[st.input, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "80", color: colors.text }]}
+                placeholder="e.g. Claude, GPT-4"
+                placeholderTextColor={colors.textMuted}
+                value={newKeyName}
+                onChangeText={setNewKeyName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={st.formRow}>
+              <View style={[st.formField, { flex: 1 }]}>
+                <Text style={[st.formLabel, { color: colors.textMuted }]}>MAX PER TX (SATS)</Text>
+                <TextInput
+                  testID="agent-key-limit-input"
+                  style={[st.input, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "80", color: colors.text }]}
+                  placeholder="Optional"
+                  placeholderTextColor={colors.textMuted}
+                  value={newKeyLimit}
+                  onChangeText={setNewKeyLimit}
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View style={[st.formField, { flex: 1 }]}>
+                <Text style={[st.formLabel, { color: colors.textMuted }]}>MAX PER DAY (SATS)</Text>
+                <TextInput
+                  style={[st.input, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "80", color: colors.text }]}
+                  placeholder="Optional"
+                  placeholderTextColor={colors.textMuted}
+                  value={newKeyDaily}
+                  onChangeText={setNewKeyDaily}
+                  keyboardType="number-pad"
+                />
+              </View>
+            </View>
+
+            <View style={st.createActions}>
+              <Pressable style={[st.cancelBtn, { backgroundColor: colors.bgElevated }]} onPress={() => { setSelectedType(null); setNewKeyName(""); setNewKeyLimit(""); setNewKeyDaily(""); }}>
+                <Text style={[st.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                testID="confirm-create-key"
+                style={[st.submitBtn, { backgroundColor: selectedType === "nwc" ? "#9333EA" : colors.gold }]}
+                onPress={createKey}
+                disabled={creating}
               >
                 {creating ? (
                   <ActivityIndicator color="#FFF" size="small" />
                 ) : (
-                  <>
-                    <MaterialCommunityIcons name="key-plus" size={18} color="#FFF" />
-                    <Text style={styles.createBtnText}>Generate Key</Text>
-                  </>
+                  <Text style={st.submitText}>Create</Text>
                 )}
-              </LinearGradient>
-            </Pressable>
+              </Pressable>
+            </View>
           </Animated.View>
         )}
 
         {isLoading ? (
-          <View style={styles.centerState}>
+          <View style={st.centerState}>
             <ActivityIndicator color={colors.gold} />
-            <Text style={styles.loadingText}>Loading keys…</Text>
           </View>
-        ) : keys.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="robot-off" size={48} color="#243354" />
-            <Text style={styles.emptyTitle}>No agent keys yet</Text>
-            <Text style={styles.emptySubtitle}>Create a key to let AI agents use your wallet</Text>
+        ) : keys.length === 0 && !selectedType && !newKeyRevealed ? (
+          <View style={st.emptyState}>
+            <MaterialCommunityIcons name="robot" size={48} color={colors.textMuted + "4D"} />
+            <Text style={[st.emptyTitle, { color: colors.textMuted }]}>No agent keys yet</Text>
           </View>
-        ) : (
-          <View style={styles.keysList}>
-            {keys.map((key) => (
-              <Animated.View key={key.id} entering={FadeInDown} style={[styles.keyCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-                <Pressable style={styles.keyHeader} onPress={() => handleExpand(key.id)}>
-                  <View style={styles.keyIconBg}>
-                    <MaterialCommunityIcons
-                      name={key.connectionType === "api" ? "key-variant" : "access-point"}
-                      size={20}
-                      color="#9333EA"
-                    />
-                  </View>
-                  <View style={styles.keyInfo}>
-                    <Text style={[styles.keyName, { color: colors.text }]}>{key.name}</Text>
-                    <Text style={styles.keyDate}>
-                      {key.connectionType.toUpperCase()} · Created {new Date(key.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={key.isActive}
-                    trackColor={{ false: "#243354", true: "#9333EA" }}
-                    thumbColor="#FFF"
-                    onValueChange={() => toggleKey(key)}
-                    style={{ transform: [{ scale: 0.8 }] }}
-                  />
-                </Pressable>
-
-                <View style={styles.limitsRow}>
-                  {key.spendingLimitSats ? (
-                    <View style={styles.limitBadge}>
-                      <Ionicons name="shield-outline" size={11} color={colors.gold} />
-                      <Text style={styles.limitBadgeText}>{key.spendingLimitSats.toLocaleString()}/tx</Text>
+        ) : keys.length > 0 ? (
+          <View style={st.keysList}>
+            {keys.map((key) => {
+              const pct = spentPercent(key);
+              return (
+                <Animated.View key={key.id} entering={FadeInDown} style={[st.keyCard, {
+                  backgroundColor: colors.bgCard,
+                  borderColor: key.isActive ? colors.border + "80" : "rgba(239,68,68,0.2)",
+                  opacity: key.isActive ? 1 : 0.6,
+                }]}>
+                  <View style={st.keyRow1}>
+                    <View style={[st.keyIcon, { backgroundColor: key.isActive ? "rgba(147,51,234,0.15)" : "rgba(239,68,68,0.15)" }]}>
+                      <MaterialCommunityIcons name="robot" size={20} color={key.isActive ? "#9333EA" : "#EF4444"} />
                     </View>
-                  ) : null}
-                  {key.maxDailySats ? (
-                    <View style={styles.limitBadge}>
-                      <Ionicons name="today-outline" size={11} color={colors.gold} />
-                      <Text style={styles.limitBadgeText}>
-                        {key.spentToday.toLocaleString()}/{key.maxDailySats.toLocaleString()} daily
+                    <View style={st.keyMeta}>
+                      <View style={st.keyNameRow}>
+                        <Text style={[st.keyName, { color: colors.text }]}>{key.name}</Text>
+                        {key.connectionType === "nwc" && (
+                          <View style={st.nwcBadge}>
+                            <Text style={st.nwcBadgeText}>NWC</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[st.keyPreview, { color: colors.textMuted }]}>
+                        {key.connectionType === "nwc" ? "Nostr Wallet Connect" : key.nwcUri.slice(0, 24) + "…"}
                       </Text>
                     </View>
-                  ) : null}
-                  {!key.isActive && (
-                    <View style={[styles.limitBadge, { borderColor: "rgba(230,57,70,0.3)", backgroundColor: "rgba(230,57,70,0.1)" }]}>
-                      <Text style={[styles.limitBadgeText, { color: "#E63946" }]}>Disabled</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.uriRow}>
-                  <Text style={styles.uriText} numberOfLines={1}>{key.nwcUri.slice(0, 32)}…</Text>
-                  <Pressable testID={`copy-nwc-${key.id}`} onPress={() => copyUri(key)} style={styles.uriCopyBtn}>
-                    <Ionicons
-                      name={copiedId === key.id ? "checkmark" : "copy-outline"}
-                      size={15}
-                      color={copiedId === key.id ? "#2DC653" : "#4A6080"}
+                    <Switch
+                      value={key.isActive}
+                      trackColor={{ false: isDark ? "#243354" : colors.border, true: "#9333EA" }}
+                      thumbColor="#FFF"
+                      onValueChange={() => toggleKey(key)}
+                      style={{ transform: [{ scale: 0.8 }] }}
                     />
-                  </Pressable>
-                </View>
+                  </View>
 
-                {expandedKey === key.id && (
-                  <Animated.View entering={FadeInDown} style={styles.logsSection}>
-                    <Text style={styles.logsSectionTitle}>Activity Log</Text>
-                    {keyLogs[key.id]?.length ? (
-                      keyLogs[key.id]!.map((log) => (
-                        <View key={log.id} style={styles.logRow}>
-                          <View style={[styles.logDot, { backgroundColor: log.status === "success" ? "#2DC653" : "#E63946" }]} />
-                          <View style={styles.logInfo}>
-                            <Text style={styles.logAction}>{log.action}</Text>
-                            {log.detail ? <Text style={styles.logDetail}>{log.detail}</Text> : null}
-                          </View>
-                          <Text style={styles.logTime}>
-                            {new Date(log.createdAt).toLocaleDateString()}
-                          </Text>
+                  <View style={st.limitsGrid}>
+                    <View style={[st.limitBox, { backgroundColor: colors.bgElevated + "66" }]}>
+                      <Text style={[st.limitLabel, { color: colors.textMuted }]}>PER TX LIMIT</Text>
+                      <Text style={[st.limitValue, { color: colors.text }]}>{key.spendingLimitSats ? key.spendingLimitSats.toLocaleString() + " sats" : "None"}</Text>
+                    </View>
+                    <View style={[st.limitBox, { backgroundColor: colors.bgElevated + "66" }]}>
+                      <Text style={[st.limitLabel, { color: colors.textMuted }]}>DAILY LIMIT</Text>
+                      <Text style={[st.limitValue, { color: colors.text }]}>{key.maxDailySats ? key.maxDailySats.toLocaleString() + " sats" : "None"}</Text>
+                    </View>
+                  </View>
+
+                  {key.maxDailySats ? (
+                    <View style={st.progressSection}>
+                      <View style={st.progressHeader}>
+                        <Text style={[st.progressLabel, { color: colors.textMuted }]}>SPENT TODAY</Text>
+                        <Text style={[st.progressValue, { color: colors.text }]}>{key.spentToday.toLocaleString()} / {key.maxDailySats.toLocaleString()}</Text>
+                      </View>
+                      <View style={[st.progressBar, { backgroundColor: colors.bgElevated }]}>
+                        <View style={[st.progressFill, { width: `${pct}%`, backgroundColor: barColor(pct) }]} />
+                      </View>
+                    </View>
+                  ) : null}
+
+                  <View style={st.actionBtns}>
+                    <Pressable
+                      style={[st.actionBtn, { backgroundColor: colors.bgElevated + "80" }]}
+                      onPress={() => {
+                        if (showLogs === key.id) { setShowLogs(null); } else { setShowLogs(key.id); if (!keyLogs[key.id]) loadLogs(key.id); }
+                      }}
+                    >
+                      <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[st.actionBtnText, { color: colors.textSecondary }]}>{showLogs === key.id ? "Hide Log" : "Activity Log"}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[st.actionBtn, { backgroundColor: colors.bgElevated + "80" }]}
+                      onPress={() => {
+                        if (editLimits === key.id) { setEditLimits(null); } else {
+                          setEditLimits(key.id);
+                          setEditLimitVal(key.spendingLimitSats?.toString() ?? "");
+                          setEditDailyVal(key.maxDailySats?.toString() ?? "");
+                        }
+                      }}
+                    >
+                      <Ionicons name="shield-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[st.actionBtnText, { color: colors.textSecondary }]}>{editLimits === key.id ? "Cancel" : "Edit Limits"}</Text>
+                    </Pressable>
+                    <Pressable
+                      testID={`delete-key-${key.id}`}
+                      style={[st.deleteSmallBtn, { backgroundColor: "rgba(239,68,68,0.1)" }]}
+                      onPress={() => setDeleteTarget(key)}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                    </Pressable>
+                  </View>
+
+                  {editLimits === key.id && (
+                    <Animated.View entering={FadeInDown.duration(200)} style={st.editPanel}>
+                      <View style={st.formRow}>
+                        <View style={[st.formField, { flex: 1 }]}>
+                          <Text style={[st.formLabel, { color: colors.textMuted }]}>MAX PER TX</Text>
+                          <TextInput
+                            style={[st.input, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "80", color: colors.text }]}
+                            value={editLimitVal}
+                            onChangeText={setEditLimitVal}
+                            keyboardType="number-pad"
+                            placeholder="sats"
+                            placeholderTextColor={colors.textMuted}
+                          />
                         </View>
-                      ))
-                    ) : (
-                      <Text style={styles.logEmpty}>No activity yet</Text>
-                    )}
-                  </Animated.View>
-                )}
+                        <View style={[st.formField, { flex: 1 }]}>
+                          <Text style={[st.formLabel, { color: colors.textMuted }]}>MAX PER DAY</Text>
+                          <TextInput
+                            style={[st.input, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "80", color: colors.text }]}
+                            value={editDailyVal}
+                            onChangeText={setEditDailyVal}
+                            keyboardType="number-pad"
+                            placeholder="sats"
+                            placeholderTextColor={colors.textMuted}
+                          />
+                        </View>
+                      </View>
+                      <Pressable
+                        style={[st.saveLimitsBtn, { backgroundColor: colors.gold }]}
+                        onPress={async () => {
+                          try {
+                            const res = await fetch(`${API}/${key.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                spendingLimitSats: editLimitVal ? parseInt(editLimitVal) : null,
+                                maxDailySats: editDailyVal ? parseInt(editDailyVal) : null,
+                              }),
+                            });
+                            if (res.ok) {
+                              const updated = await res.json();
+                              setKeys(prev => prev.map(k => k.id === key.id ? updated : k));
+                              setEditLimits(null);
+                            }
+                          } catch (_e) {}
+                        }}
+                      >
+                        <Text style={[st.saveLimitsText, { color: isDark ? colors.bg : "#172331" }]}>Save Limits</Text>
+                      </Pressable>
+                    </Animated.View>
+                  )}
 
-                <Pressable testID={`delete-key-${key.id}`} style={styles.deleteBtn} onPress={() => deleteKey(key.id)}>
-                  <Ionicons name="trash-outline" size={16} color="#E63946" />
-                  <Text style={styles.deleteBtnText}>Revoke Access</Text>
-                </Pressable>
-              </Animated.View>
-            ))}
+                  {showLogs === key.id && (
+                    <Animated.View entering={FadeInDown.duration(200)} style={[st.logsPanel, { borderTopColor: colors.border + "50" }]}>
+                      {keyLogs[key.id]?.length ? (
+                        keyLogs[key.id]!.slice(0, 20).map((log) => (
+                          <View key={log.id} style={st.logRow}>
+                            <View style={[st.logDot, { backgroundColor: log.status === "success" ? "#22C55E" : log.status === "denied" ? "#EAB308" : "#EF4444" }]} />
+                            <Text style={[st.logAction, { color: colors.textSecondary }]} numberOfLines={1}>
+                              {log.action}{log.amount ? ` ${log.amount.toLocaleString()} sats` : ""}
+                            </Text>
+                            <Text style={[st.logTime, { color: colors.textMuted }]}>{new Date(log.createdAt).toLocaleDateString()}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={[st.logEmpty, { color: colors.textMuted }]}>No activity yet</Text>
+                      )}
+                    </Animated.View>
+                  )}
+                </Animated.View>
+              );
+            })}
           </View>
+        ) : null}
+
+        {keys.some(k => k.connectionType === "api") && (
+          <>
+            <Text style={[st.sectionHeader, { color: colors.textMuted }]}>AGENT API REFERENCE</Text>
+            <View style={[st.apiCard, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
+              <Text style={[st.apiIntro, { color: colors.textSecondary }]}>
+                Share these endpoints with your AI agent. All requests need the header:
+              </Text>
+              <View style={[st.apiCodeBlock, { backgroundColor: colors.bg + "99" }]}>
+                <Text style={[st.apiCode, { color: colors.textSecondary }]}>Authorization: Bearer buc_your_key_here</Text>
+              </View>
+
+              {API_ENDPOINTS.map((ep, i) => (
+                <View key={i} style={st.apiEndpoint}>
+                  <View style={[st.methodBadge, { backgroundColor: ep.color + "33" }]}>
+                    <Text style={[st.methodText, { color: ep.color }]}>{ep.method}</Text>
+                  </View>
+                  <View style={st.apiEndpointText}>
+                    <Text style={[st.apiPath, { color: colors.text }]}>{ep.path}</Text>
+                    <Text style={[st.apiDesc, { color: colors.textMuted }]}>{ep.desc}</Text>
+                  </View>
+                </View>
+              ))}
+
+              <Pressable style={st.copyBaseRow} onPress={copyBaseUrl}>
+                <Ionicons name="copy-outline" size={14} color={colors.coral} />
+                <Text style={[st.copyBaseText, { color: colors.coral }]}>{copiedBase ? "Copied!" : "Copy Base URL"}</Text>
+              </Pressable>
+            </View>
+          </>
         )}
       </ScrollView>
+
+      <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <View style={st.modalOverlay}>
+          <View style={[st.modalCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+            <View style={st.modalIconCircle}>
+              <Ionicons name="warning-outline" size={32} color="#EF4444" />
+            </View>
+            <Text style={[st.modalTitle, { color: colors.text }]}>Revoke Access?</Text>
+            <Text style={[st.modalDesc, { color: colors.textMuted }]}>
+              This agent will immediately lose all access to your wallet. This action cannot be undone.
+            </Text>
+            <Pressable style={st.modalDeleteBtn} onPress={() => deleteTarget && deleteKey(deleteTarget.id)}>
+              <Text style={st.modalDeleteText}>Revoke Key</Text>
+            </Pressable>
+            <Pressable style={[st.modalCancelBtn, { backgroundColor: colors.bgElevated }]} onPress={() => setDeleteTarget(null)}>
+              <Text style={[st.modalCancelText, { color: colors.text }]}>Keep It</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const st = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    gap: 16,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   backBtn: {
     width: 40,
@@ -383,157 +602,115 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  title: { fontFamily: "Nunito_700Bold", fontSize: 20, color: "#FFFFFF" },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(201,162,77,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(201,162,77,0.3)",
-  },
-  content: { padding: 20, gap: 16 },
-  explainerCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    backgroundColor: "rgba(147,51,234,0.1)",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(147,51,234,0.25)",
-  },
-  explainerText: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 13, color: "#CDDAED", lineHeight: 20 },
-  createCard: {
-    borderRadius: 16,
-    padding: 20,
-    gap: 12,
-    borderWidth: 1,
-  },
-  createTitle: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFFFFF", marginBottom: 4 },
-  typeToggle: {
-    flexDirection: "row",
-    backgroundColor: "#0D1830",
-    borderRadius: 10,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: "#1E2D50",
-  },
-  typeOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 7,
-  },
-  typeOptionActive: { backgroundColor: "#172040" },
-  typeOptionText: { fontFamily: "Nunito_600SemiBold", fontSize: 13, color: "#4A6080" },
-  input: {
-    backgroundColor: "#0D1830",
-    borderRadius: 10,
-    padding: 14,
-    fontFamily: "Nunito_400Regular",
-    fontSize: 14,
-    color: "#CDDAED",
-    borderWidth: 1,
-    borderColor: "#1E2D50",
-  },
-  createBtn: { borderRadius: 12, overflow: "hidden", marginTop: 4 },
-  createBtnGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-  },
-  createBtnText: { fontFamily: "Nunito_700Bold", fontSize: 15, color: "#FFF" },
-  centerState: { alignItems: "center", paddingVertical: 60, gap: 12 },
-  loadingText: { fontFamily: "Nunito_400Regular", fontSize: 14, color: "#4A6080" },
-  emptyState: { alignItems: "center", paddingVertical: 60, gap: 10 },
-  emptyTitle: { fontFamily: "Nunito_600SemiBold", fontSize: 16, color: "#8FA3C8" },
-  emptySubtitle: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#4A6080", textAlign: "center" },
-  keysList: { gap: 12 },
-  keyCard: {
-    borderRadius: 16,
-    padding: 18,
-    gap: 12,
-    borderWidth: 1,
-  },
-  keyHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  keyIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(147,51,234,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  keyInfo: { flex: 1, gap: 2 },
-  keyName: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFFFFF" },
-  keyDate: { fontFamily: "Nunito_400Regular", fontSize: 11, color: "#4A6080" },
-  limitsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  limitBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(201,162,77,0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(201,162,77,0.3)",
-  },
-  limitBadgeText: { fontFamily: "Nunito_500Medium", fontSize: 11, color: "#c9a24d" },
-  uriRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#0D1830",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#1E2D50",
-  },
-  uriText: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080", letterSpacing: 0.3 },
-  uriCopyBtn: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
-  logsSection: {
-    backgroundColor: "#0D1830",
-    borderRadius: 10,
-    padding: 14,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "#1E2D50",
-  },
-  logsSectionTitle: { fontFamily: "Nunito_600SemiBold", fontSize: 13, color: "#8FA3C8" },
-  logRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1E2D50",
-  },
+  headerText: { flex: 1, gap: 2 },
+  title: { fontFamily: "Chewy_400Regular", fontSize: 24 },
+  subtitle: { fontFamily: "Nunito_400Regular", fontSize: 12 },
+  content: { paddingHorizontal: 24, gap: 16 },
+
+  revealCard: { borderRadius: 20, padding: 20, borderWidth: 1, gap: 12 },
+  revealHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  revealIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  revealTitle: { fontFamily: "Nunito_700Bold", fontSize: 15 },
+  revealDesc: { fontFamily: "Nunito_400Regular", fontSize: 12 },
+  revealUri: { borderRadius: 12, padding: 12, maxHeight: 96 },
+  revealUriText: { fontFamily: "Nunito_400Regular", fontSize: 10, lineHeight: 16 },
+  revealActions: { flexDirection: "row", gap: 10 },
+  revealCopyBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 12, paddingVertical: 10 },
+  revealCopyText: { fontFamily: "Nunito_700Bold", fontSize: 14, color: "#FFF" },
+  revealDoneBtn: { flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: "center" },
+  revealDoneText: { fontFamily: "Nunito_600SemiBold", fontSize: 14 },
+
+  introCard: { borderRadius: 32, padding: 24, borderWidth: 1, gap: 12 },
+  introHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 4 },
+  introIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  introTitle: { fontFamily: "Nunito_700Bold", fontSize: 18 },
+  introDesc: { fontFamily: "Nunito_400Regular", fontSize: 13, lineHeight: 20, marginTop: 4 },
+
+  typeBtn: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 20, padding: 14, borderWidth: 1 },
+  typeBtnIcon: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  typeBtnText: { flex: 1, gap: 2 },
+  typeBtnLabel: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+  typeBtnSub: { fontFamily: "Nunito_400Regular", fontSize: 10, lineHeight: 14 },
+  recBadge: { backgroundColor: "rgba(147,51,234,0.2)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  recBadgeText: { fontFamily: "Nunito_700Bold", fontSize: 9, color: "#9333EA" },
+
+  createCard: { borderRadius: 32, padding: 24, borderWidth: 1, gap: 16 },
+  createHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  createTitle: { fontFamily: "Nunito_700Bold", fontSize: 16 },
+  formField: { gap: 6 },
+  formLabel: { fontFamily: "Nunito_700Bold", fontSize: 10, letterSpacing: 1.5 },
+  formRow: { flexDirection: "row", gap: 12 },
+  input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontFamily: "Nunito_400Regular", fontSize: 14 },
+  createActions: { flexDirection: "row", gap: 10, paddingTop: 4 },
+  cancelBtn: { flex: 1, borderRadius: 20, paddingVertical: 12, alignItems: "center" },
+  cancelText: { fontFamily: "Nunito_600SemiBold", fontSize: 14 },
+  submitBtn: { flex: 1, borderRadius: 20, paddingVertical: 12, alignItems: "center" },
+  submitText: { fontFamily: "Nunito_700Bold", fontSize: 14, color: "#FFF" },
+
+  centerState: { alignItems: "center", paddingVertical: 48 },
+  emptyState: { alignItems: "center", paddingVertical: 48, gap: 10 },
+  emptyTitle: { fontFamily: "Nunito_600SemiBold", fontSize: 16 },
+
+  keysList: { gap: 16 },
+  keyCard: { borderRadius: 32, padding: 20, borderWidth: 1, gap: 12 },
+  keyRow1: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 },
+  keyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  keyMeta: { flex: 1, gap: 2 },
+  keyNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  keyName: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+  nwcBadge: { backgroundColor: "rgba(147,51,234,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  nwcBadgeText: { fontFamily: "Nunito_700Bold", fontSize: 8, color: "#9333EA" },
+  keyPreview: { fontFamily: "Nunito_400Regular", fontSize: 10 },
+
+  limitsGrid: { flexDirection: "row", gap: 12 },
+  limitBox: { flex: 1, borderRadius: 12, padding: 10, gap: 2 },
+  limitLabel: { fontFamily: "Nunito_700Bold", fontSize: 10, letterSpacing: 1 },
+  limitValue: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+
+  progressSection: { gap: 6 },
+  progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  progressLabel: { fontFamily: "Nunito_700Bold", fontSize: 10, letterSpacing: 1 },
+  progressValue: { fontFamily: "Nunito_700Bold", fontSize: 12 },
+  progressBar: { height: 6, borderRadius: 3 },
+  progressFill: { height: 6, borderRadius: 3 },
+
+  actionBtns: { flexDirection: "row", gap: 8 },
+  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: 12, paddingVertical: 8 },
+  actionBtnText: { fontFamily: "Nunito_700Bold", fontSize: 11 },
+  deleteSmallBtn: { width: 40, borderRadius: 12, paddingVertical: 8, alignItems: "center", justifyContent: "center" },
+
+  editPanel: { gap: 12, paddingTop: 4 },
+  saveLimitsBtn: { borderRadius: 12, paddingVertical: 10, alignItems: "center" },
+  saveLimitsText: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+
+  logsPanel: { borderTopWidth: 1, paddingTop: 12, gap: 6, maxHeight: 240 },
+  logRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   logDot: { width: 6, height: 6, borderRadius: 3 },
-  logInfo: { flex: 1, gap: 1 },
-  logAction: { fontFamily: "Nunito_500Medium", fontSize: 12, color: "#CDDAED" },
-  logDetail: { fontFamily: "Nunito_400Regular", fontSize: 11, color: "#4A6080" },
-  logTime: { fontFamily: "Nunito_400Regular", fontSize: 10, color: "#4A6080" },
-  logEmpty: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "#4A6080", textAlign: "center", paddingVertical: 8 },
-  deleteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "rgba(230,57,70,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(230,57,70,0.2)",
-  },
-  deleteBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 13, color: "#E63946" },
+  logAction: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12 },
+  logTime: { fontFamily: "Nunito_400Regular", fontSize: 10 },
+  logEmpty: { fontFamily: "Nunito_400Regular", fontSize: 12, textAlign: "center", paddingVertical: 12 },
+
+  sectionHeader: { fontFamily: "Nunito_700Bold", fontSize: 11, letterSpacing: 2, marginLeft: 8, marginTop: 8 },
+  apiCard: { borderRadius: 32, padding: 20, borderWidth: 1, gap: 16 },
+  apiIntro: { fontFamily: "Nunito_400Regular", fontSize: 13, lineHeight: 20 },
+  apiCodeBlock: { borderRadius: 12, padding: 12 },
+  apiCode: { fontFamily: "Nunito_400Regular", fontSize: 13, letterSpacing: 0.3 },
+  apiEndpoint: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  methodBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginTop: 2 },
+  methodText: { fontFamily: "Nunito_700Bold", fontSize: 9 },
+  apiEndpointText: { flex: 1, gap: 2 },
+  apiPath: { fontFamily: "Nunito_700Bold", fontSize: 13, letterSpacing: 0.2 },
+  apiDesc: { fontFamily: "Nunito_400Regular", fontSize: 10 },
+  copyBaseRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 4 },
+  copyBaseText: { fontFamily: "Nunito_700Bold", fontSize: 14 },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
+  modalCard: { width: "100%", maxWidth: 384, borderRadius: 24, padding: 32, alignItems: "center", borderWidth: 1 },
+  modalIconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(239,68,68,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  modalTitle: { fontFamily: "Chewy_400Regular", fontSize: 24, marginBottom: 8 },
+  modalDesc: { fontFamily: "Nunito_400Regular", fontSize: 14, textAlign: "center", marginBottom: 20 },
+  modalDeleteBtn: { width: "100%", backgroundColor: "#EF4444", borderRadius: 20, paddingVertical: 14, alignItems: "center", marginBottom: 10 },
+  modalDeleteText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFFFFF" },
+  modalCancelBtn: { width: "100%", borderRadius: 20, paddingVertical: 14, alignItems: "center" },
+  modalCancelText: { fontFamily: "Nunito_700Bold", fontSize: 16 },
 });

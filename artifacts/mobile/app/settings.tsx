@@ -354,11 +354,11 @@ export default function SettingsScreen() {
                   </View>
                   <View style={s.kvRow}>
                     <Text style={[s.kvKey, { color: colors.textMuted }]}>Node ID</Text>
-                    <Text style={[s.kvVal, { color: colors.textSecondary }]} numberOfLines={1}>{nodeInfo.pubkey.slice(0, 12)}…{nodeInfo.pubkey.slice(-6)}</Text>
+                    <Text style={[s.kvVal, { color: colors.textSecondary }]}>Nodeless</Text>
                   </View>
                   <View style={s.kvRow}>
                     <Text style={[s.kvKey, { color: colors.textMuted }]}>Backend</Text>
-                    <Text style={[s.kvVal, { color: colors.textSecondary }]}>Breez SDK</Text>
+                    <Text style={[s.kvVal, { color: colors.textSecondary }]}>Breez Spark SDK</Text>
                   </View>
                   <View style={s.kvRow}>
                     <Text style={[s.kvKey, { color: colors.textMuted }]}>Network</Text>
