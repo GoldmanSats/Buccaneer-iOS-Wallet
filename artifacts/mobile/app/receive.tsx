@@ -105,7 +105,7 @@ export default function ReceiveScreen() {
   };
 
   const qrData = invoice || `lightning:${lightningAddress}`;
-  const qrSize = mode === "amount" ? 200 : 300;
+  const qrSize = 300;
 
   return (
     <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
