@@ -1,0 +1,50 @@
+Daylight Mode (Light Theme) — Complete Color Specification for Buccaneer Wallet
+
+Core Theme Colors (HSL values):
+
+    Background: hsl(40, 40%, 96%) — warm parchment/sand, NOT pure white
+    Foreground (text): hsl(215, 40%, 15%) — deep navy/ocean, approximately #172331
+    Card surfaces: hsl(0, 0%, 100%) — pure white cards on the warm background
+    Primary (gold): hsl(43, 96%, 58%) — treasure gold, approximately #FABA1A
+    Primary foreground: hsl(215, 50%, 10%) — dark text on gold buttons
+    Secondary: hsl(198, 60%, 85%) — soft water blue
+    Muted backgrounds: hsl(40, 25%, 90%) — warm grey
+    Muted text: hsl(215, 20%, 40%) — grey-blue for subtitles and secondary info
+    Accent (send/action): hsl(14, 75%, 55%) — saturated coral
+    Borders: hsl(40, 25%, 85%) — warm, subtle
+    Ring/focus: same as primary gold
+    Destructive/error: hsl(0, 84%, 60%) — red
+
+Action Colors (hardcoded, not theme tokens):
+
+    Receive button background: #EAF7FA, hover: #DDF2F6
+    Receive icon circle: #17A2B8 at 20% opacity (bg-[#17A2B8]/20)
+    Receive text: #0D6E7D
+    Send button background: #FDE9E6, hover: #F9D7D2
+    Send icon circle: #E86A33 at 20% opacity (bg-[#E86A33]/20)
+    Send text: #B54215
+
+Settings Icon Tints (light mode):
+
+    Yellow/gold icons: bg-yellow-500/15 background, yellow-500 icon
+    Blue icons: bg-blue-100 background, blue-600 icon
+    Purple icons: bg-purple-100 background, purple-600 icon
+    Indigo icons: bg-indigo-100 background, indigo-600 icon
+    Gray icons: bg-gray-100 background, gray-600 icon
+    Red icons: bg-red-100 background, red-600 icon
+    Amber icons: bg-amber-100 background, amber-600 icon
+    Green (success): bg-green-100 background, green-600 icon
+
+Backup screen icon: Sandy parchment circle #f5e6c8
+
+Glass Panel effect (light mode):
+
+    Background: rgba(255, 255, 255, 0.5) with backdrop-filter: blur(12px)
+    Border: rgba(255, 255, 255, 0.7)
+    Shadow: 0 8px 32px rgba(30, 45, 65, 0.05)
+
+Gold Button Glow ("pirate-shadow"):
+
+    box-shadow: 0 10px 25px -5px rgba(250, 186, 26, 0.3), 0 8px 10px -6px rgba(250, 186, 26, 0.1)
+
+Key design note: The light theme background is intentionally warm (parchment/sand tint at hsl(40, 40%, 96%)), not cold white. Cards are pure white, creating gentle contrast against the warm background. This gives the daylight mode a sun-bleached, nautical feel rather than a generic light theme.

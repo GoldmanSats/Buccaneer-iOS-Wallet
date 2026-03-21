@@ -115,9 +115,12 @@ function TransactionItem({
     ? "On-chain deposit"
     : tx.memo || (isReceive ? "Received" : "Sent");
 
+  const isDark = colors === MIDNIGHT;
   const iconBg = isPendingDeposit
     ? "rgba(234,179,8,0.15)"
-    : isReceive ? "rgba(23,162,184,0.10)" : "rgba(232,106,51,0.10)";
+    : isReceive
+      ? (isDark ? "rgba(23,162,184,0.10)" : "rgba(23,162,184,0.15)")
+      : (isDark ? "rgba(232,106,51,0.10)" : "rgba(232,106,51,0.15)");
   const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
   const amountColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
 
@@ -479,12 +482,14 @@ export default function HomeScreen() {
               onPress={() => router.push("/backup")}
               style={({ pressed }) => [
                 styles.backupBtn,
-                { backgroundColor: colors.bgCard, borderColor: colors.border + "80" },
+                isDark
+                  ? { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }
+                  : { backgroundColor: "rgba(251,147,60,0.08)", borderColor: "rgba(251,147,60,0.3)" },
                 pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
               ]}
             >
-              <Ionicons name="shield-outline" size={16} color="#FB923C70" />
-              <Text style={styles.backupText}>Backup!</Text>
+              <Ionicons name="shield-outline" size={16} color={isDark ? "#FB923C70" : "#E86A33"} />
+              <Text style={[styles.backupText, !isDark && { color: "#B54215" }]}>Backup!</Text>
             </Pressable>
           )}
         </View>
@@ -550,14 +555,14 @@ export default function HomeScreen() {
             onPress={openReceiveDrawer}
             style={({ pressed }) => [
               styles.actionCard,
-              { backgroundColor: colors.bgCard, borderColor: colors.border + "80" },
+              { backgroundColor: isDark ? colors.bgCard : colors.receiveIconBg, borderColor: isDark ? colors.border + "80" : "transparent" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: "rgba(23,162,184,0.10)" }]}>
+            <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(23,162,184,0.10)" : "rgba(23,162,184,0.20)" }]}>
               <Ionicons name="arrow-back-outline" size={24} color={colors.teal} style={{ transform: [{ rotate: "-45deg" }] }} />
             </View>
-            <Text style={[styles.actionLabel, { color: colors.teal }]}>Receive</Text>
+            <Text style={[styles.actionLabel, { color: colors.receiveBtnText }]}>Receive</Text>
           </Pressable>
 
           <Pressable
@@ -568,14 +573,14 @@ export default function HomeScreen() {
             }}
             style={({ pressed }) => [
               styles.actionCard,
-              { backgroundColor: colors.bgCard, borderColor: colors.border + "80" },
+              { backgroundColor: isDark ? colors.bgCard : colors.sendIconBg, borderColor: isDark ? colors.border + "80" : "transparent" },
               pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: "rgba(232,106,51,0.10)" }]}>
+            <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(232,106,51,0.10)" : "rgba(232,106,51,0.20)" }]}>
               <Ionicons name="arrow-up-outline" size={24} color={colors.coral} style={{ transform: [{ rotate: "45deg" }] }} />
             </View>
-            <Text style={[styles.actionLabel, { color: colors.coral }]}>Send</Text>
+            <Text style={[styles.actionLabel, { color: colors.sendBtnText }]}>Send</Text>
           </Pressable>
         </View>
 
