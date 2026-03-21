@@ -452,7 +452,7 @@ export default function HomeScreen() {
     try { await Share.share({ message: text, title: "Buccaneer Wallet" }); } catch {}
   };
 
-  const receiveQrData = receiveInvoice || `lightning:${lightningAddress}`;
+  const receiveQrData = receiveInvoice ? `lightning:${receiveInvoice}` : lightningAddress;
   const receiveQrSize = receiveMode === "amount" ? 180 : 280;
 
   return (
