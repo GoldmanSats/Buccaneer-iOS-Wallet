@@ -27,15 +27,15 @@ const MIDNIGHT = {
 };
 
 const DAYLIGHT = {
-  bg: "#F2ECE0",
+  bg: "#F5F0E8",
   bgCard: "#FFFFFF",
-  bgElevated: "#E8E2D6",
-  bgInput: "#EDE8DC",
-  border: "#D6CDB8",
-  borderLight: "#E0D9C5",
+  bgElevated: "#E8E3DA",
+  bgInput: "#E8E3DA",
+  border: "#DDD8CE",
+  borderLight: "#E8E3DA",
   text: "#172331",
-  textSecondary: "#526070",
-  textMuted: "#6B7D94",
+  textSecondary: "#556270",
+  textMuted: "#556270",
   gold: "#FABA1A",
   goldBright: "#FCC83D",
   goldDark: "#C9960E",

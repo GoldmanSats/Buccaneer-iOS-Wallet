@@ -119,10 +119,10 @@ function TransactionItem({
   const iconBg = isPendingDeposit
     ? "rgba(234,179,8,0.15)"
     : isReceive
-      ? (isDark ? "rgba(23,162,184,0.10)" : "rgba(23,162,184,0.15)")
-      : (isDark ? "rgba(232,106,51,0.10)" : "rgba(232,106,51,0.15)");
-  const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
-  const amountColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
+      ? (isDark ? "rgba(23,162,184,0.10)" : "rgba(23,162,184,0.20)")
+      : (isDark ? "rgba(232,106,51,0.10)" : "rgba(232,106,51,0.20)");
+  const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? (isDark ? colors.teal : colors.tealDark) : (isDark ? colors.coral : colors.coralDark);
+  const amountColor = isPendingDeposit ? "#EAB308" : isReceive ? (isDark ? colors.teal : colors.tealDark) : (isDark ? colors.coral : colors.coralDark);
 
   return (
     <Pressable
@@ -484,12 +484,12 @@ export default function HomeScreen() {
                 styles.backupBtn,
                 isDark
                   ? { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }
-                  : { backgroundColor: "rgba(251,147,60,0.08)", borderColor: "rgba(251,147,60,0.3)" },
+                  : { backgroundColor: "#FFF3E0", borderColor: "#FFCC80" },
                 pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
               ]}
             >
-              <Ionicons name="shield-outline" size={16} color={isDark ? "#FB923C70" : "#E86A33"} />
-              <Text style={[styles.backupText, !isDark && { color: "#B54215" }]}>Backup!</Text>
+              <Ionicons name="shield-outline" size={16} color={isDark ? "#FB923C70" : "#EA580C"} />
+              <Text style={[styles.backupText, !isDark && { color: "#EA580C" }]}>Backup!</Text>
             </Pressable>
           )}
         </View>
@@ -560,7 +560,7 @@ export default function HomeScreen() {
             ]}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(23,162,184,0.10)" : "rgba(23,162,184,0.20)" }]}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.teal} style={{ transform: [{ rotate: "-45deg" }] }} />
+              <Ionicons name="arrow-back-outline" size={24} color={isDark ? colors.teal : colors.tealDark} style={{ transform: [{ rotate: "-45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.receiveBtnText }]}>Receive</Text>
           </Pressable>
@@ -578,7 +578,7 @@ export default function HomeScreen() {
             ]}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(232,106,51,0.10)" : "rgba(232,106,51,0.20)" }]}>
-              <Ionicons name="arrow-up-outline" size={24} color={colors.coral} style={{ transform: [{ rotate: "45deg" }] }} />
+              <Ionicons name="arrow-up-outline" size={24} color={isDark ? colors.coral : colors.coralDark} style={{ transform: [{ rotate: "45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.sendBtnText }]}>Send</Text>
           </Pressable>
@@ -591,7 +591,18 @@ export default function HomeScreen() {
         {...txPanGesture.panHandlers}
         style={[
           styles.txPanelOverlay,
-          { backgroundColor: colors.bgCard },
+          {
+            backgroundColor: colors.bgCard,
+            borderTopWidth: 1,
+            borderTopColor: colors.border + "80",
+          },
+          !isDark && {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -8 },
+            shadowOpacity: 0.06,
+            shadowRadius: 15,
+            elevation: 8,
+          },
           txPanelAnimStyle,
         ]}
       >
@@ -972,7 +983,7 @@ const styles = StyleSheet.create({
 
   txPanelOverlay: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    borderTopLeftRadius: 40, borderTopRightRadius: 40,
     paddingHorizontal: 24, paddingTop: 24,
     overflow: "hidden",
     zIndex: 10,
