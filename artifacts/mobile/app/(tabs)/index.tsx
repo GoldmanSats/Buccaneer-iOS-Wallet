@@ -274,9 +274,12 @@ export default function HomeScreen() {
   }), []);
 
   const receiveSheetTranslateY = useSharedValue(0);
+  const receiveScrollAtTop = useRef(true);
+
   const receivePanGesture = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8 && gs.dy > Math.abs(gs.dx),
+    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8 && gs.dy > Math.abs(gs.dx) && receiveScrollAtTop.current,
+    onMoveShouldSetPanResponderCapture: (_, gs) => gs.dy > 12 && gs.dy > Math.abs(gs.dx) * 1.5 && receiveScrollAtTop.current,
     onPanResponderMove: (_, gs) => {
       if (gs.dy > 0) {
         receiveSheetTranslateY.value = gs.dy;
@@ -294,6 +297,31 @@ export default function HomeScreen() {
     },
   }), []);
 
+  const txDetailTranslateY = useSharedValue(0);
+
+  const txDetailPanGesture = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8 && gs.dy > Math.abs(gs.dx),
+    onPanResponderMove: (_, gs) => {
+      if (gs.dy > 0) {
+        txDetailTranslateY.value = gs.dy;
+      }
+    },
+    onPanResponderRelease: (_, gs) => {
+      if (gs.dy > 40 || gs.vy > 0.3) {
+        txDetailTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
+          runOnJS(setSelectedTx)(null);
+        });
+      } else {
+        txDetailTranslateY.value = withTiming(0, { duration: 200 });
+      }
+    },
+  }), []);
+
+  const txDetailAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: txDetailTranslateY.value }],
+  }));
+
   const receiveSheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: receiveSheetTranslateY.value }],
   }));
@@ -305,6 +333,7 @@ export default function HomeScreen() {
   };
 
   const handleTxPress = (tx: TxType) => {
+    txDetailTranslateY.value = 0;
     setSelectedTx(tx);
     setEditingMemo(tx.memo || "");
   };
@@ -395,6 +424,7 @@ export default function HomeScreen() {
   const openReceiveDrawer = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     resetReceiveState();
+    receiveScrollAtTop.current = true;
     receiveSheetTranslateY.value = SCREEN_HEIGHT;
     setReceiveOpen(true);
     requestAnimationFrame(() => {
@@ -649,7 +679,10 @@ export default function HomeScreen() {
       <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
-          <View style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }]}>
+          <Animated.View
+            style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }, txDetailAnimStyle]}
+            {...txDetailPanGesture.panHandlers}
+          >
             <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
             {selectedTx && (() => {
               const isReceive = selectedTx.type === "receive";
@@ -736,7 +769,7 @@ export default function HomeScreen() {
                 </View>
               );
             })()}
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 
@@ -754,7 +787,14 @@ export default function HomeScreen() {
                 <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
               </Pressable>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.receiveScrollContent} keyboardShouldPersistTaps="handled" scrollEnabled={receiveMode !== "amount"}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.receiveScrollContent}
+                keyboardShouldPersistTaps="handled"
+                scrollEnabled={receiveMode !== "amount"}
+                onScroll={(e) => { receiveScrollAtTop.current = e.nativeEvent.contentOffset.y <= 0; }}
+                scrollEventThrottle={16}
+              >
                 {receiveMode !== "amount" && (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
                     <QRCode
