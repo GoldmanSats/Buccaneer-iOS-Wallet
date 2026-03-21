@@ -3,14 +3,14 @@ import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import crypto from "crypto";
+import * as secp256k1 from "@noble/secp256k1";
 import { refreshNwcSubscriptions } from "../lib/nwc.js";
 
 const router: IRouter = Router();
 
 function getSecp256k1Pubkey(secretKeyHex: string): string {
-  const { getPublicKey } = require("@noble/secp256k1");
   const privKeyBytes = Buffer.from(secretKeyHex, "hex");
-  const pubKeyBytes = getPublicKey(privKeyBytes, true);
+  const pubKeyBytes = secp256k1.getPublicKey(privKeyBytes, true);
   return Buffer.from(pubKeyBytes.slice(1)).toString("hex");
 }
 
