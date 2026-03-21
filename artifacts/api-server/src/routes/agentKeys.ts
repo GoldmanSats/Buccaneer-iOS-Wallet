@@ -56,8 +56,8 @@ router.post("/", async (req, res) => {
 
     const connType = body.connectionType ?? "nwc";
     const secretKey = crypto.randomBytes(32).toString("hex");
-    const nwcUri = connType === "nwc" ? generateNwcUri(secretKey) : null;
     const apiToken = connType === "api" ? `bwk_${crypto.randomBytes(24).toString("hex")}` : null;
+    const nwcUri = connType === "nwc" ? generateNwcUri(secretKey) : "";
 
     const created = await db.insert(agentKeysTable).values({
       name: body.name,
