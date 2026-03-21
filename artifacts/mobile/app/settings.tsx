@@ -542,6 +542,8 @@ const s = StyleSheet.create({
     padding: 16,
   },
   currencyChip: {
+    minWidth: 60,
+    alignItems: "center" as const,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
