@@ -224,7 +224,7 @@ export default function AgentKeysScreen() {
               </View>
             </View>
             <View style={[st.revealUri, { backgroundColor: colors.bg + "99" }]}>
-              <Text style={[st.revealUriText, { color: colors.textSecondary }]} numberOfLines={4}>{newKeyRevealed.connectionType === "api" ? newKeyRevealed.apiToken : newKeyRevealed.nwcUri}</Text>
+              <Text selectable style={[st.revealUriText, { color: colors.text }]} numberOfLines={4}>{newKeyRevealed.connectionType === "api" ? (newKeyRevealed.apiToken ?? "") : (newKeyRevealed.nwcUri ?? "")}</Text>
             </View>
             <View style={st.revealActions}>
               <Pressable
@@ -616,7 +616,7 @@ const st = StyleSheet.create({
   revealTitle: { fontFamily: "Nunito_700Bold", fontSize: 15 },
   revealDesc: { fontFamily: "Nunito_400Regular", fontSize: 12 },
   revealUri: { borderRadius: 12, padding: 12, maxHeight: 96 },
-  revealUriText: { fontFamily: "Nunito_400Regular", fontSize: 10, lineHeight: 16 },
+  revealUriText: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18 },
   revealActions: { flexDirection: "row", gap: 10 },
   revealCopyBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 12, paddingVertical: 10 },
   revealCopyText: { fontFamily: "Nunito_700Bold", fontSize: 14, color: "#FFF" },
