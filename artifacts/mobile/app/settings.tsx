@@ -243,7 +243,7 @@ export default function SettingsScreen() {
             onPress={() => setShowCurrencies(!showCurrencies)}
           >
             <View style={[s.iconBox, { backgroundColor: isDark ? "rgba(201,162,77,0.15)" : "rgba(250,186,26,0.15)" }]}>
-              <MaterialCommunityIcons name="circle-multiple-outline" size={20} color={colors.gold} />
+              <MaterialCommunityIcons name="currency-usd" size={20} color={colors.gold} />
             </View>
             <View style={s.rowText}>
               <Text style={[s.rowLabel, { color: colors.text }]}>Fiat Currency</Text>
@@ -542,22 +542,22 @@ const s = StyleSheet.create({
     padding: 16,
   },
   currencyChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
   },
   currencyChipText: { fontFamily: "Nunito_600SemiBold", fontSize: 13 },
 
   segmented: {
     flexDirection: "row",
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 4,
   },
   segOption: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 16,
   },
   segActive: {
     shadowOffset: { width: 0, height: 1 },
