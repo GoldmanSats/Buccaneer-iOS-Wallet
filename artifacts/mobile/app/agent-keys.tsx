@@ -232,6 +232,42 @@ export default function AgentKeysScreen() {
               </Pressable>
             </View>
 
+            {newKeyRevealed.connectionType === "nwc" && (
+              <View style={[st.usageCard, { backgroundColor: colors.bg + "99", borderColor: colors.border + "40" }]}>
+                <View style={st.usageHeader}>
+                  <Ionicons name="book-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[st.usageTitle, { color: colors.text }]}>Quick Start</Text>
+                </View>
+                <Text style={[st.usageDesc, { color: colors.textMuted }]}>
+                  Paste this connection string into any app or agent that supports Nostr Wallet Connect (NWC). It will automatically connect to your wallet.
+                </Text>
+                <View style={st.nwcStepList}>
+                  <View style={st.nwcStep}>
+                    <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>1</Text>
+                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Copy the connection string above</Text>
+                  </View>
+                  <View style={st.nwcStep}>
+                    <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>2</Text>
+                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Open your agent or NWC-compatible app</Text>
+                  </View>
+                  <View style={st.nwcStep}>
+                    <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>3</Text>
+                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Look for "Connect Wallet" or "Add NWC" and paste it in</Text>
+                  </View>
+                  <View style={st.nwcStep}>
+                    <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>4</Text>
+                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Done — your agent can now send and receive sats</Text>
+                  </View>
+                </View>
+                <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.06)", borderColor: "rgba(147,51,234,0.2)" }]}>
+                  <Ionicons name="shield-checkmark-outline" size={16} color="#9333EA" />
+                  <Text style={[st.tipText, { color: colors.textSecondary }]}>
+                    Spending limits you set are enforced automatically. The agent can only spend what you allow.
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {newKeyRevealed.connectionType === "api" && (
               <View style={[st.usageCard, { backgroundColor: colors.bg + "99", borderColor: colors.border + "40" }]}>
                 <View style={st.usageHeader}>
@@ -577,6 +613,62 @@ export default function AgentKeysScreen() {
           </View>
         ) : null}
 
+        {keys.some(k => k.connectionType === "nwc") && (
+          <>
+            <Text style={[st.sectionHeader, { color: colors.textMuted }]}>HOW TO USE NOSTR WALLET CONNECT</Text>
+            <View style={[st.apiCard, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Copy the connection string</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Tap your NWC key above, then tap the copy button to copy the connection string. It starts with "nostr+walletconnect://".</Text>
+                </View>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Open your agent or NWC app</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Any app that supports Nostr Wallet Connect will work — AI agents, Nostr clients, payment tools, and more.</Text>
+                </View>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>3</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Paste the connection string</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Look for "Connect Wallet", "Add NWC Connection", or "Wallet Connect" in the app's settings. Paste the string there.</Text>
+                </View>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>4</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>That's it — you're connected</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>The agent can now check your balance, send payments, and create invoices through your wallet. No API calls or coding needed.</Text>
+                </View>
+              </View>
+
+              <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.06)", borderColor: "rgba(147,51,234,0.2)" }]}>
+                <Ionicons name="information-circle-outline" size={16} color="#9333EA" />
+                <Text style={[st.tipText, { color: colors.textSecondary }]}>
+                  NWC uses the Nostr relay network — no server URL needed. The connection string contains everything. Spending limits are enforced on every transaction.
+                </Text>
+              </View>
+
+            </View>
+          </>
+        )}
+
         {keys.some(k => k.connectionType === "api") && (
           <>
             <Text style={[st.sectionHeader, { color: colors.textMuted }]}>HOW TO USE YOUR API KEY</Text>
@@ -864,6 +956,11 @@ const st = StyleSheet.create({
 
   tipBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, borderRadius: 12, borderWidth: 1, padding: 12 },
   tipText: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18, flex: 1 },
+
+  nwcStepList: { gap: 10, paddingLeft: 2 },
+  nwcStep: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  nwcStepNum: { fontFamily: "Nunito_700Bold", fontSize: 14, width: 20 },
+  nwcStepText: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18, flex: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
   modalCard: { width: "100%", maxWidth: 384, borderRadius: 24, padding: 32, alignItems: "center", borderWidth: 1 },
