@@ -340,26 +340,38 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const prevTxCountRef = useRef(transactions.length);
+  const seenTxIdsRef = useRef<Set<string> | null>(null);
+  const initialLoadDoneRef = useRef(false);
   useEffect(() => {
-    if (transactions.length > prevTxCountRef.current) {
-      const newTxs = transactions.slice(0, transactions.length - prevTxCountRef.current);
-      const receivedTxs = newTxs.filter((tx: any) => tx.type === "receive" && tx.status === "completed");
-      if (receivedTxs.length > 0) {
-        const totalAmount = receivedTxs.reduce((sum: number, tx: any) => sum + (tx.amountSats || 0), 0);
-        const desc = receivedTxs.length > 1 ? `${receivedTxs.length} incoming payments` : (receivedTxs[0] as any).description || "Incoming payment";
-        if (receiveOpen) {
-          setReceiveOpen(false);
-          resetReceiveState();
-          receiveSheetTranslateY.value = 0;
-        }
-        refetchBalance();
-        playBellSound();
-        setCelebration({ amount: totalAmount, description: desc });
-        setTimeout(() => setCelebration(null), 5500);
-      }
+    if (!transactions.length) return;
+    const currentIds = new Set(transactions.map((tx: any) => tx.id || `${tx.timestamp}-${tx.amountSats}`));
+    if (!initialLoadDoneRef.current) {
+      seenTxIdsRef.current = currentIds;
+      initialLoadDoneRef.current = true;
+      return;
     }
-    prevTxCountRef.current = transactions.length;
+    const prevIds = seenTxIdsRef.current!;
+    const newReceived = transactions.filter((tx: any) => {
+      const txId = tx.id || `${tx.timestamp}-${tx.amountSats}`;
+      return !prevIds.has(txId) && tx.type === "receive" && tx.status === "completed";
+    });
+    if (newReceived.length > 0) {
+      const totalAmount = newReceived.reduce((sum: number, tx: any) => sum + (tx.amountSats || 0), 0);
+      const desc = newReceived.length > 1
+        ? `${newReceived.length} incoming payments`
+        : (newReceived[0] as any).description || "Incoming payment";
+      if (receiveOpen) {
+        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250, easing: Easing.in(Easing.cubic) }, () => {
+          runOnJS(setReceiveOpen)(false);
+          runOnJS(resetReceiveState)();
+        });
+      }
+      refetchBalance();
+      playBellSound();
+      setCelebration({ amount: totalAmount, description: desc });
+      setTimeout(() => setCelebration(null), 5500);
+    }
+    seenTxIdsRef.current = currentIds;
   }, [transactions]);
 
   const formatted = formatSats(sats);
