@@ -123,6 +123,7 @@ export default function AgentKeysScreen() {
       });
       if (res.ok) {
         const key = await res.json();
+        key.spentToday = key.spentToday ?? 0;
         setKeys((prev) => [...prev, key]);
         setNewKeyName("");
         setNewKeyLimit("");
@@ -182,7 +183,7 @@ export default function AgentKeysScreen() {
 
   const spentPercent = (key: AgentKey) => {
     if (!key.maxDailySats || key.maxDailySats === 0) return 0;
-    return Math.min(100, (key.spentToday / key.maxDailySats) * 100);
+    return Math.min(100, ((key.spentToday ?? 0) / key.maxDailySats) * 100);
   };
 
   const barColor = (pct: number) => pct > 80 ? "#EF4444" : pct > 50 ? "#EAB308" : "#22C55E";
@@ -416,7 +417,7 @@ export default function AgentKeysScreen() {
                     <View style={st.progressSection}>
                       <View style={st.progressHeader}>
                         <Text style={[st.progressLabel, { color: colors.textMuted }]}>SPENT TODAY</Text>
-                        <Text style={[st.progressValue, { color: colors.text }]}>{key.spentToday.toLocaleString()} / {key.maxDailySats.toLocaleString()}</Text>
+                        <Text style={[st.progressValue, { color: colors.text }]}>{(key.spentToday ?? 0).toLocaleString()} / {(key.maxDailySats ?? 0).toLocaleString()}</Text>
                       </View>
                       <View style={[st.progressBar, { backgroundColor: colors.bgElevated }]}>
                         <View style={[st.progressFill, { width: `${pct}%`, backgroundColor: barColor(pct) }]} />
