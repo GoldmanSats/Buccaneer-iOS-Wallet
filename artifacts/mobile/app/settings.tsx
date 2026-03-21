@@ -538,6 +538,7 @@ const s = StyleSheet.create({
   currencyPicker: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center" as const,
     gap: 8,
     padding: 16,
   },
