@@ -27,7 +27,7 @@ const MIDNIGHT = {
 };
 
 const DAYLIGHT = {
-  bg: "#F7F3ED",
+  bg: "#F5F0E8",
   bgCard: "#FFFFFF",
   bgElevated: "#E8E3DA",
   bgInput: "#E8E3DA",
@@ -48,8 +48,8 @@ const DAYLIGHT = {
   blue: "#2563EB",
   yellow: "#EAB308",
   purple: "#7C3AED",
-  receiveIconBg: "#EAF7FA",
-  sendIconBg: "#FDE9E6",
+  receiveIconBg: "#DCEEF3",
+  sendIconBg: "#F8DDD8",
   receiveBtnText: "#0D6E7D",
   sendBtnText: "#B54215",
 };
