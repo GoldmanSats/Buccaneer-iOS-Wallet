@@ -54,8 +54,10 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "missing_name", message: "Name is required" });
     }
 
+    const connType = body.connectionType ?? "nwc";
     const secretKey = crypto.randomBytes(32).toString("hex");
-    const nwcUri = generateNwcUri(secretKey);
+    const nwcUri = connType === "nwc" ? generateNwcUri(secretKey) : null;
+    const apiToken = connType === "api" ? `bwk_${crypto.randomBytes(24).toString("hex")}` : null;
 
     const created = await db.insert(agentKeysTable).values({
       name: body.name,
@@ -63,7 +65,7 @@ router.post("/", async (req, res) => {
       secretKey,
       spendingLimitSats: body.spendingLimitSats ?? null,
       maxDailySats: body.maxDailySats ?? null,
-      connectionType: body.connectionType ?? "nwc",
+      connectionType: connType,
       isActive: true,
     }).returning();
 
@@ -73,15 +75,18 @@ router.post("/", async (req, res) => {
       keyId: k.id,
       action: "created",
       status: "success",
-      detail: `Key "${k.name}" created`,
+      detail: `Key "${k.name}" created (${connType})`,
     });
 
-    try { refreshNwcSubscriptions(); } catch (_e) {}
+    if (connType === "nwc") {
+      try { refreshNwcSubscriptions(); } catch (_e) {}
+    }
 
     res.status(201).json({
       id: k.id,
       name: k.name,
       nwcUri: k.nwcUri,
+      apiToken,
       spendingLimitSats: k.spendingLimitSats,
       maxDailySats: k.maxDailySats,
       connectionType: k.connectionType,

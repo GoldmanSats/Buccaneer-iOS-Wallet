@@ -26,7 +26,8 @@ const API = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/agent-keys`;
 interface AgentKey {
   id: number;
   name: string;
-  nwcUri: string;
+  nwcUri: string | null;
+  apiToken: string | null;
   spendingLimitSats: number | null;
   maxDailySats: number | null;
   spentToday: number;
@@ -167,7 +168,8 @@ export default function AgentKeysScreen() {
   };
 
   const copyUri = async (key: AgentKey) => {
-    await Clipboard.setStringAsync(key.nwcUri);
+    const value = key.connectionType === "api" ? (key.apiToken ?? "") : (key.nwcUri ?? "");
+    await Clipboard.setStringAsync(value);
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCopiedId(key.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -222,7 +224,7 @@ export default function AgentKeysScreen() {
               </View>
             </View>
             <View style={[st.revealUri, { backgroundColor: colors.bg + "99" }]}>
-              <Text style={[st.revealUriText, { color: colors.textSecondary }]} numberOfLines={4}>{newKeyRevealed.nwcUri}</Text>
+              <Text style={[st.revealUriText, { color: colors.textSecondary }]} numberOfLines={4}>{newKeyRevealed.connectionType === "api" ? newKeyRevealed.apiToken : newKeyRevealed.nwcUri}</Text>
             </View>
             <View style={st.revealActions}>
               <Pressable
