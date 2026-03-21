@@ -105,7 +105,7 @@ export default function ReceiveScreen() {
   };
 
   const qrData = invoice || `lightning:${lightningAddress}`;
-  const qrSize = mode === "amount" ? 180 : 280;
+  const qrSize = mode === "amount" ? 200 : 300;
 
   return (
     <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
@@ -126,7 +126,7 @@ export default function ReceiveScreen() {
         >
           <Text style={[styles.pageTitle, { color: colors.text }]}>Receive</Text>
 
-          <View style={[styles.qrContainer, { width: qrSize + 24, height: qrSize + 24 }]}>
+          <View style={[styles.qrContainer, { width: qrSize + 10, height: qrSize + 10 }]}>
             <Image
               source={{ uri: makeQrUrl(qrData, qrSize) }}
               style={{ width: qrSize, height: qrSize, borderRadius: 8 }}
