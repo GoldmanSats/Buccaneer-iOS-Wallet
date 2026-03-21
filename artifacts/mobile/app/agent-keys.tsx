@@ -239,7 +239,7 @@ export default function AgentKeysScreen() {
                   <Text style={[st.usageTitle, { color: colors.text }]}>Quick Start</Text>
                 </View>
                 <Text style={[st.usageDesc, { color: colors.textMuted }]}>
-                  Paste this connection string into any app or agent that supports Nostr Wallet Connect (NWC). It will automatically connect to your wallet.
+                  Copy this string and paste it directly into your chat with your AI agent. Just tell it "here's your wallet" — that's all it needs to start sending and receiving sats.
                 </Text>
                 <View style={st.nwcStepList}>
                   <View style={st.nwcStep}>
@@ -248,15 +248,11 @@ export default function AgentKeysScreen() {
                   </View>
                   <View style={st.nwcStep}>
                     <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>2</Text>
-                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Open your agent or NWC-compatible app</Text>
+                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Paste it into your chat with your agent (Telegram, Discord, etc.)</Text>
                   </View>
                   <View style={st.nwcStep}>
                     <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>3</Text>
-                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Look for "Connect Wallet" or "Add NWC" and paste it in</Text>
-                  </View>
-                  <View style={st.nwcStep}>
-                    <Text style={[st.nwcStepNum, { color: "#9333EA" }]}>4</Text>
-                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Done — your agent can now send and receive sats</Text>
+                    <Text style={[st.nwcStepText, { color: colors.textSecondary }]}>Tell the agent "this is your NWC wallet connection"</Text>
                   </View>
                 </View>
                 <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.06)", borderColor: "rgba(147,51,234,0.2)" }]}>
@@ -624,7 +620,7 @@ export default function AgentKeysScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[st.stepTitle, { color: colors.text }]}>Copy the connection string</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Tap your NWC key above, then tap the copy button to copy the connection string. It starts with "nostr+walletconnect://".</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Tap your NWC key above, then tap the copy button. The string starts with "nostr+walletconnect://".</Text>
                 </View>
               </View>
 
@@ -633,8 +629,8 @@ export default function AgentKeysScreen() {
                   <Text style={[st.stepNumText, { color: "#9333EA" }]}>2</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[st.stepTitle, { color: colors.text }]}>Open your agent or NWC app</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Any app that supports Nostr Wallet Connect will work — AI agents, Nostr clients, payment tools, and more.</Text>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Paste it into your agent chat</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Send the string directly to your AI agent — through Telegram, Discord, or however you talk to it.</Text>
                 </View>
               </View>
 
@@ -643,25 +639,15 @@ export default function AgentKeysScreen() {
                   <Text style={[st.stepNumText, { color: "#9333EA" }]}>3</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[st.stepTitle, { color: colors.text }]}>Paste the connection string</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Look for "Connect Wallet", "Add NWC Connection", or "Wallet Connect" in the app's settings. Paste the string there.</Text>
-                </View>
-              </View>
-
-              <View style={st.stepRow}>
-                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
-                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>4</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[st.stepTitle, { color: colors.text }]}>That's it — you're connected</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>The agent can now check your balance, send payments, and create invoices through your wallet. No API calls or coding needed.</Text>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Tell it "this is your wallet"</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>The agent will recognize the NWC string and use it to send payments, check balances, and create invoices on your behalf.</Text>
                 </View>
               </View>
 
               <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.06)", borderColor: "rgba(147,51,234,0.2)" }]}>
                 <Ionicons name="information-circle-outline" size={16} color="#9333EA" />
                 <Text style={[st.tipText, { color: colors.textSecondary }]}>
-                  NWC uses the Nostr relay network — no server URL needed. The connection string contains everything. Spending limits are enforced on every transaction.
+                  No server URL or API setup needed — the connection string has everything. Your spending limits are enforced on every transaction automatically.
                 </Text>
               </View>
 
