@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import BiometricLock from "@/components/BiometricLock";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 
@@ -78,9 +79,11 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <SettingsProvider>
-              <WalletProvider>
-                <RootLayoutNav />
-              </WalletProvider>
+              <BiometricLock>
+                <WalletProvider>
+                  <RootLayoutNav />
+                </WalletProvider>
+              </BiometricLock>
             </SettingsProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

@@ -25,6 +25,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
+import * as LocalAuthentication from "expo-local-authentication";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
@@ -213,7 +214,22 @@ export default function SettingsScreen() {
               value={settings.biometricsEnabled}
               trackColor={{ false: switchTrackOff, true: colors.gold }}
               thumbColor="#FFF"
-              onValueChange={(v) => updateSettings({ biometricsEnabled: v })}
+              onValueChange={async (v) => {
+                if (v && Platform.OS !== "web") {
+                  const compatible = await LocalAuthentication.hasHardwareAsync();
+                  const enrolled = await LocalAuthentication.isEnrolledAsync();
+                  if (!compatible || !enrolled) {
+                    if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    return;
+                  }
+                  const result = await LocalAuthentication.authenticateAsync({
+                    promptMessage: "Enable Face ID for Buccaneer Wallet",
+                    fallbackLabel: "Use Passcode",
+                  });
+                  if (!result.success) return;
+                }
+                updateSettings({ biometricsEnabled: v });
+              }}
             />
           </View>
         </View>
