@@ -4,5 +4,7 @@ export const modules: ModuleMap = {
   "./components/mockups/daylight-home/CreamCoral.tsx": () => import("../components/mockups/daylight-home/CreamCoral.tsx"),
   "./components/mockups/daylight-home/SandyShore.tsx": () => import("../components/mockups/daylight-home/SandyShore.tsx"),
   "./components/mockups/daylight-home/SeafoamLight.tsx": () => import("../components/mockups/daylight-home/SeafoamLight.tsx"),
-  "./components/mockups/daylight-home/WarmParchment.tsx": () => import("../components/mockups/daylight-home/WarmParchment.tsx")
+  "./components/mockups/daylight-home/WarmParchment.tsx": () => import("../components/mockups/daylight-home/WarmParchment.tsx"),
+  "./components/mockups/tx-glow/BorderShimmer.tsx": () => import("../components/mockups/tx-glow/BorderShimmer.tsx"),
+  "./components/mockups/tx-glow/SoftPulse.tsx": () => import("../components/mockups/tx-glow/SoftPulse.tsx")
 };
