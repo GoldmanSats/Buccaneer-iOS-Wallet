@@ -581,6 +581,7 @@ export default function HomeScreen() {
                           color: colors.text,
                           fontSize: symbolFontSize,
                           lineHeight: balanceFontSize,
+                          marginBottom: balanceFontSize * 0.25,
                         },
                       ]}
                     >
@@ -667,7 +668,7 @@ export default function HomeScreen() {
           }}
           style={styles.txHeaderRow}
         >
-          <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+          <MaterialCommunityIcons name="history" size={20} color={colors.textSecondary} />
           <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
           <Ionicons name={isLogExpanded ? "chevron-down" : "chevron-up"} size={18} color={colors.textMuted} />
         </Pressable>
