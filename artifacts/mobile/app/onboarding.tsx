@@ -52,15 +52,6 @@ function AnchorIcon({ size = 22, color = GOLD }: { size?: number; color?: string
   );
 }
 
-function BitcoinIcon({ size = 22, color = GOLD }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M9.5 2v2M14.5 2v2M9.5 20v2M14.5 20v2" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-      <Path d="M7 8h8.5a3 3 0 010 6H7V8z" stroke={color} strokeWidth="1.8" fill="none" />
-      <Path d="M7 14h9a3 3 0 010 6H7v-6z" stroke={color} strokeWidth="1.8" fill="none" />
-    </Svg>
-  );
-}
 
 type Screen = "welcome" | "restore" | "loading";
 
@@ -241,7 +232,7 @@ export default function OnboardingScreen() {
             </View>
             <View style={styles.featureDivider} />
             <View style={styles.featureItem}>
-              <BitcoinIcon size={24} color={GOLD} />
+              <Text style={styles.btcSymbol}>₿</Text>
               <Text style={styles.featureLabel}>BTC ONLY</Text>
             </View>
           </View>
@@ -289,8 +280,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   logoContainer: { alignItems: "center", justifyContent: "center", marginBottom: 8 },
-  appIcon: { width: 140, height: 140, borderRadius: 28 },
-  loadingAppIcon: { width: 180, height: 180, borderRadius: 36 },
+  appIcon: { width: 140, height: 140 },
+  loadingAppIcon: { width: 180, height: 180 },
   appName: {
     fontFamily: "Chewy_400Regular",
     fontSize: 36,
@@ -324,6 +315,11 @@ const styles = StyleSheet.create({
     color: "#8FA3C8",
     letterSpacing: 1.5,
   },
+  btcSymbol: {
+    fontFamily: "Chewy_400Regular",
+    fontSize: 24,
+    color: GOLD,
+  },
   featureDivider: {
     width: 1,
     height: 40,
@@ -335,7 +331,7 @@ const styles = StyleSheet.create({
   },
   buttonWrap: { width: "100%" },
   button: {
-    borderRadius: 16,
+    borderRadius: 50,
     overflow: "hidden",
     shadowColor: GOLD,
     shadowOffset: { width: 0, height: 4 },
@@ -358,7 +354,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   restoreButton: {
-    borderRadius: 16,
+    borderRadius: 50,
     borderWidth: 1,
     borderColor: "rgba(143,163,200,0.2)",
     backgroundColor: NAVY_BUTTON,
