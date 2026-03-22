@@ -217,7 +217,7 @@ export default function OnboardingScreen() {
 
           <Text style={styles.appName}>Buccaneer Wallet</Text>
           <Text style={styles.tagline}>
-            The self-custody lightning wallet built{"\n"}for pirates, not saylors.
+            A self-custody lightning wallet built{"\n"}for everyday payments
           </Text>
 
           <View style={styles.features}>
