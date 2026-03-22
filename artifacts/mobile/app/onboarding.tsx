@@ -165,8 +165,8 @@ export default function OnboardingScreen() {
           <Animated.View style={[styles.logoContainer, bobbingStyle]}>
             <Image source={appIconSource} style={styles.loadingAppIcon} />
           </Animated.View>
-          <Text style={styles.loadingTitle}>Setting Sail...</Text>
-          <Text style={styles.loadingSubtitle}>Initializing your wallet</Text>
+          <Text style={styles.loadingTitle}>Initializing Wallet...</Text>
+          <Text style={styles.loadingSubtitle}>It may take a minute to weigh anchor</Text>
           <ActivityIndicator color={GOLD} size="large" style={{ marginTop: 20 }} />
         </View>
       </View>
