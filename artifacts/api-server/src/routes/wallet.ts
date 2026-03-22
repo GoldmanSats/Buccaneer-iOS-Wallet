@@ -166,21 +166,34 @@ router.get("/unclaimed-deposits", async (_req, res) => {
 
 router.get("/btc-price", async (req, res) => {
   const currency = String(req.query["currency"] ?? "USD").toUpperCase();
+  const symbols: Record<string, string> = {
+    USD: "$", EUR: "€", GBP: "£", NZD: "NZ$", AUD: "A$", CAD: "CA$", JPY: "¥", CHF: "Fr",
+    BRL: "R$", MXN: "MX$", SEK: "kr", NOK: "kr", DKK: "kr", PLN: "zł", CZK: "Kč",
+    HUF: "Ft", SGD: "S$", HKD: "HK$", INR: "₹", KRW: "₩", THB: "฿", ZAR: "R",
+  };
   try {
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=${currency.toLowerCase()}`
+      `https://api.coinbase.com/v2/exchange-rates?currency=BTC`
     );
     if (!response.ok) throw new Error("Price fetch failed");
-    const data = await response.json() as { bitcoin: Record<string, number> };
-    const price = data.bitcoin[currency.toLowerCase()] ?? 0;
-
-    const symbols: Record<string, string> = {
-      USD: "$", EUR: "€", GBP: "£", NZD: "NZ$", AUD: "A$", CAD: "CA$", JPY: "¥", CHF: "Fr",
-    };
+    const data = await response.json() as { data: { rates: Record<string, string> } };
+    const rateStr = data.data.rates[currency];
+    if (!rateStr) throw new Error(`Currency ${currency} not found`);
+    const price = parseFloat(rateStr);
 
     res.json({ currency, price, symbol: symbols[currency] ?? currency });
   } catch (_err) {
-    res.json({ currency, price: 85000, symbol: "$" });
+    try {
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=${currency.toLowerCase()}`
+      );
+      if (!response.ok) throw new Error("CoinGecko failed");
+      const data = await response.json() as { bitcoin: Record<string, number> };
+      const price = data.bitcoin[currency.toLowerCase()] ?? 0;
+      res.json({ currency, price, symbol: symbols[currency] ?? currency });
+    } catch (_err2) {
+      res.json({ currency, price: 0, symbol: symbols[currency] ?? currency });
+    }
   }
 });
 

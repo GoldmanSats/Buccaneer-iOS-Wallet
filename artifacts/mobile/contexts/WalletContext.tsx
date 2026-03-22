@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSettings } from "./SettingsContext";
 
 const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
 
@@ -63,6 +64,7 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
 
   const { data: balance, isLoading: isBalanceLoading, refetch: refetchBalance } = useQuery<Balance>({
     queryKey: ["balance"],
@@ -85,9 +87,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   });
 
   const { data: btcPrice } = useQuery<BtcPrice>({
-    queryKey: ["btc-price"],
+    queryKey: ["btc-price", settings.fiatCurrency],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/wallet/btc-price`);
+      const res = await fetch(`${API_BASE}/wallet/btc-price?currency=${encodeURIComponent(settings.fiatCurrency)}`);
       if (!res.ok) throw new Error("Failed to fetch price");
       return res.json();
     },
