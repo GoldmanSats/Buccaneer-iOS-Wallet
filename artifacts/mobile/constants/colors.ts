@@ -27,7 +27,7 @@ const MIDNIGHT = {
 };
 
 const DAYLIGHT = {
-  bg: "#F5F0E8",
+  bg: "#F8F4ED",
   bgCard: "#FFFFFF",
   bgElevated: "#E8E3DA",
   bgInput: "#E8E3DA",
