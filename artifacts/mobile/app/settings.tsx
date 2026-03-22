@@ -124,7 +124,7 @@ export default function SettingsScreen() {
     router.replace("/onboarding");
   };
 
-  const switchTrackOff = isDark ? "#243354" : "#A9A296";
+  const switchTrackOff = isDark ? "#243354" : "#C5BFB3";
   const cardBorder = colors.border + "80";
 
   const rowSeparator = { borderBottomWidth: 1, borderBottomColor: colors.border + "80" } as const;
