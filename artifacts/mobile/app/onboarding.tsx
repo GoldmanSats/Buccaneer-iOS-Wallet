@@ -32,6 +32,12 @@ import {
   formatBackupDate,
   type WalletBackup,
 } from "@/utils/icloudBackup";
+import {
+  generateMnemonic,
+  validateMnemonic,
+  saveSeedToSecureStore,
+  initBreezSdk,
+} from "@/utils/breezService";
 
 const appIconSource = require("@/assets/images/app-icon.png");
 
@@ -87,32 +93,44 @@ export default function OnboardingScreen() {
     transform: [{ scale: scale.value }],
   }));
 
-  const initWallet = async (markBackupDone = false) => {
+  const [initError, setInitError] = useState<string | null>(null);
+
+  const initWallet = async (seedWords?: string[], markBackupDone = false) => {
     setScreen("loading");
     setIsInitializing(true);
+    setInitError(null);
 
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/status`);
-      await res.json();
-    } catch (_e) {}
+      let mnemonic: string;
 
-    try {
-      const seedRes = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/seed-phrase`);
-      if (seedRes.ok) {
-        const data = await seedRes.json();
-        if (data.words && data.words.length >= 12) {
-          await saveWalletBackup(data.words);
-        }
+      if (seedWords && seedWords.length >= 12) {
+        mnemonic = seedWords.join(" ");
+      } else {
+        mnemonic = await generateMnemonic();
       }
-    } catch (_e) {}
 
-    setTimeout(async () => {
-      await updateSettings({
-        onboardingDone: true,
-        ...(markBackupDone ? { backupCompleted: true } : {}),
-      });
-      router.replace("/(tabs)");
-    }, 2000);
+      await saveSeedToSecureStore(mnemonic);
+
+      const words = mnemonic.split(" ");
+      await saveWalletBackup(words);
+
+      if (Platform.OS !== "web") {
+        await initBreezSdk(mnemonic);
+      }
+
+      setTimeout(async () => {
+        await updateSettings({
+          onboardingDone: true,
+          ...(markBackupDone ? { backupCompleted: true } : {}),
+        });
+        router.replace("/(tabs)");
+      }, 2500);
+    } catch (err: any) {
+      console.error("[Onboarding] Wallet init error:", err.message);
+      setInitError(err.message || "Failed to initialize wallet. Please try again.");
+      setIsInitializing(false);
+      setScreen("welcome");
+    }
   };
 
   const handleStart = async () => {
@@ -122,14 +140,18 @@ export default function OnboardingScreen() {
     scale.value = withSpring(0.95, {}, () => {
       scale.value = withSpring(1);
     });
-    await initWallet();
+    await initWallet(undefined, false);
   };
 
   const handleRestoreFromIcloud = async () => {
     if (Platform.OS !== "web") {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    await initWallet(true);
+    if (icloudBackup?.seedWords) {
+      await initWallet(icloudBackup.seedWords, true);
+    } else {
+      await initWallet(undefined, true);
+    }
   };
 
   const handleRestoreFromSeed = async () => {
@@ -138,10 +160,16 @@ export default function OnboardingScreen() {
       setRestoreError("Enter 12 or 24 seed words separated by spaces");
       return;
     }
+    const mnemonic = words.join(" ");
+    const valid = await validateMnemonic(mnemonic);
+    if (!valid) {
+      setRestoreError("Invalid seed phrase. Please check your words and try again.");
+      return;
+    }
     if (Platform.OS !== "web") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    await initWallet(true);
+    await initWallet(words, true);
   };
 
   const handleRestorePress = async () => {
@@ -351,6 +379,11 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.bottomSection}>
+          {initError && (
+            <View style={{ marginBottom: 12, paddingHorizontal: 20 }}>
+              <Text style={{ color: "#E76F51", fontSize: 14, textAlign: "center", fontFamily: "Nunito_400Regular" }}>{initError}</Text>
+            </View>
+          )}
           <Animated.View style={[styles.buttonWrap, buttonStyle]}>
             <Pressable testID="start-voyage-button" style={styles.button} onPress={handleStart}>
               <LinearGradient

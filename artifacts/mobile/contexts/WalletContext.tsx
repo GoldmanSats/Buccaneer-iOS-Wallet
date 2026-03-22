@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Platform } from "react-native";
 import { useSettings } from "./SettingsContext";
-
-const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
+import * as BreezService from "@/utils/breezService";
 
 interface Balance {
   balanceSats: number;
@@ -61,19 +61,48 @@ interface WalletContextValue {
   getNodeInfo: () => Promise<NodeInfo>;
   getSdkStatus: () => Promise<{ initialized: boolean; error: string | null }>;
   isOffline: boolean;
+  sdkReady: boolean;
 }
 
+const FIAT_SYMBOLS: Record<string, string> = {
+  USD: "$", EUR: "€", GBP: "£", NZD: "NZ$", AUD: "A$", CAD: "C$", JPY: "¥", CHF: "CHF",
+};
+
 const WalletContext = createContext<WalletContextValue | null>(null);
+
+const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
+const USE_ON_DEVICE = Platform.OS !== "web";
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { settings } = useSettings();
   const [isOffline, setIsOffline] = useState(false);
+  const [sdkReady, setSdkReady] = useState(!USE_ON_DEVICE);
+
+  useEffect(() => {
+    if (!USE_ON_DEVICE) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await BreezService.initBreezSdk();
+        if (!cancelled) setSdkReady(true);
+      } catch (err) {
+        console.error("[WalletContext] SDK init failed:", err);
+        if (!cancelled) setIsOffline(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const { data: balance, isLoading: isBalanceLoading, refetch: refetchBalance } = useQuery<Balance>({
     queryKey: ["balance"],
     queryFn: async () => {
       try {
+        if (USE_ON_DEVICE) {
+          const b = await BreezService.getBalance();
+          setIsOffline(false);
+          return b;
+        }
         const res = await fetch(`${API_BASE}/wallet/balance`);
         if (!res.ok) throw new Error("Failed to fetch balance");
         setIsOffline(false);
@@ -85,29 +114,83 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     },
     refetchInterval: 5000,
     retry: 1,
+    enabled: USE_ON_DEVICE ? sdkReady : true,
   });
 
   const { data: txData, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery<{ transactions: Transaction[]; total: number }>({
     queryKey: ["transactions"],
     queryFn: async () => {
+      if (USE_ON_DEVICE) {
+        const payments = await BreezService.listPayments();
+        const memos = await BreezService.getMemos();
+        const transactions: Transaction[] = payments.map((p: any) => ({
+          id: p.id,
+          type: p.type,
+          amountSats: p.amountSats,
+          feeSats: p.feeSats,
+          description: p.description,
+          memo: memos[p.id] || "",
+          timestamp: p.timestamp,
+          status: p.status,
+          paymentHash: p.paymentHash,
+        }));
+        return { transactions, total: transactions.length };
+      }
       const res = await fetch(`${API_BASE}/wallet/transactions`);
       if (!res.ok) throw new Error("Failed to fetch transactions");
       return res.json();
     },
     refetchInterval: 5000,
+    enabled: USE_ON_DEVICE ? sdkReady : true,
   });
 
   const { data: btcPrice } = useQuery<BtcPrice>({
     queryKey: ["btc-price", settings.fiatCurrency],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/wallet/btc-price?currency=${encodeURIComponent(settings.fiatCurrency)}`);
-      if (!res.ok) throw new Error("Failed to fetch price");
-      return res.json();
+      try {
+        const currency = settings.fiatCurrency || "USD";
+        const res = await fetch(
+          `https://api.coinbase.com/v2/prices/BTC-${currency}/spot`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const price = parseFloat(data.data?.amount || "0");
+          if (price > 0) {
+            return {
+              currency,
+              price,
+              symbol: FIAT_SYMBOLS[currency] || currency,
+            };
+          }
+        }
+      } catch {}
+      try {
+        const currency = (settings.fiatCurrency || "USD").toLowerCase();
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=${currency}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const price = data.bitcoin?.[currency] || 0;
+          return {
+            currency: settings.fiatCurrency || "USD",
+            price,
+            symbol: FIAT_SYMBOLS[settings.fiatCurrency || "USD"] || settings.fiatCurrency,
+          };
+        }
+      } catch {}
+      return { currency: settings.fiatCurrency || "USD", price: 0, symbol: "$" };
     },
     refetchInterval: 60000,
   });
 
-  const sendPayment = useCallback(async (bolt11: string, amountSats?: number) => {
+  const sendPaymentFn = useCallback(async (bolt11: string, amountSats?: number) => {
+    if (USE_ON_DEVICE) {
+      const result = await BreezService.sendPayment(bolt11, amountSats);
+      await queryClient.invalidateQueries({ queryKey: ["balance"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      return result;
+    }
     const res = await fetch(`${API_BASE}/wallet/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -121,6 +204,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const createInvoice = useCallback(async (amountSats: number, description?: string) => {
+    if (USE_ON_DEVICE) {
+      return BreezService.receivePayment(amountSats, description);
+    }
     const res = await fetch(`${API_BASE}/wallet/receive`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -131,7 +217,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return data;
   }, []);
 
-  const decodeInvoice = useCallback(async (bolt11: string) => {
+  const decodeInvoiceFn = useCallback(async (bolt11: string) => {
+    if (USE_ON_DEVICE) {
+      return BreezService.decodeInvoice(bolt11);
+    }
     const res = await fetch(`${API_BASE}/wallet/decode-invoice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -143,6 +232,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const parseInputFn = useCallback(async (input: string): Promise<ParsedInput> => {
+    if (USE_ON_DEVICE) {
+      return BreezService.parseInput(input) as Promise<ParsedInput>;
+    }
     const res = await fetch(`${API_BASE}/wallet/parse`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,6 +246,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMemo = useCallback(async (txId: string, memo: string) => {
+    if (USE_ON_DEVICE) {
+      await BreezService.saveMemo(txId, memo);
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      return;
+    }
     const res = await fetch(`${API_BASE}/wallet/transactions/${encodeURIComponent(txId)}/memo`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -164,6 +261,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const getNodeInfoFn = useCallback(async (): Promise<NodeInfo> => {
+    if (USE_ON_DEVICE) {
+      return BreezService.getNodeInfo();
+    }
     const res = await fetch(`${API_BASE}/wallet/node-info`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.message ?? "Failed to get node info");
@@ -171,6 +271,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getSdkStatusFn = useCallback(async () => {
+    if (USE_ON_DEVICE) {
+      return BreezService.getSdkStatus();
+    }
     const res = await fetch(`${API_BASE}/wallet/status`);
     return res.json();
   }, []);
@@ -183,15 +286,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     isTransactionsLoading,
     refetchBalance,
     refetchTransactions,
-    sendPayment,
+    sendPayment: sendPaymentFn,
     createInvoice,
-    decodeInvoice,
+    decodeInvoice: decodeInvoiceFn,
     parseInput: parseInputFn,
     updateMemo,
     getNodeInfo: getNodeInfoFn,
     getSdkStatus: getSdkStatusFn,
     isOffline,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPayment, createInvoice, decodeInvoice, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline]);
+    sdkReady,
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

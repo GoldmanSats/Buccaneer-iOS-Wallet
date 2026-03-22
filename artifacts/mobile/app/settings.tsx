@@ -29,6 +29,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { deleteSeedFromSecureStore, disconnectSdk } from "@/utils/breezService";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "NZD", "AUD", "CAD", "JPY", "CHF"];
 const FIAT_LABELS: Record<string, string> = {
@@ -120,6 +121,10 @@ export default function SettingsScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
     setShowDeleteModal(false);
+    try {
+      await disconnectSdk();
+      await deleteSeedFromSecureStore();
+    } catch {}
     await updateSettings({ onboardingDone: false, backupCompleted: false });
     router.replace("/onboarding");
   };

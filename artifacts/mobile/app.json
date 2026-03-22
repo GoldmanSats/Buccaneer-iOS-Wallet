@@ -16,7 +16,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.buccaneer.wallet",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Buccaneer Wallet uses Face ID to secure your wallet"
+      }
     },
     "android": {
       "package": "com.buccaneer.wallet"
@@ -32,7 +35,15 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Buccaneer Wallet uses Face ID to protect your wallet"
+        }
+      ],
+      "expo-local-authentication",
+      "@breeztech/breez-sdk-spark-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

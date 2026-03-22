@@ -22,6 +22,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import * as BreezService from "@/utils/breezService";
 
 type Stage = "scan" | "paste" | "sending" | "success" | "error";
 
@@ -126,15 +127,22 @@ export default function SendScreen() {
     setIsFeeLoading(true);
     setEstimatedFee(null);
     try {
-      const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
-      const resp = await fetch(`${API_BASE}/wallet/prepare-send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ destination, amountSats }),
-      });
-      if (resp.ok && reqId === feeRequestRef.current) {
-        const data = await resp.json();
-        setEstimatedFee(data.feesSat ?? null);
+      if (Platform.OS !== "web") {
+        const result = await BreezService.prepareSendPayment(destination, amountSats);
+        if (reqId === feeRequestRef.current) {
+          setEstimatedFee(result.feeSats || 0);
+        }
+      } else {
+        const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
+        const resp = await fetch(`${API_BASE}/wallet/prepare-send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination, amountSats }),
+        });
+        if (resp.ok && reqId === feeRequestRef.current) {
+          const data = await resp.json();
+          setEstimatedFee(data.feesSat ?? null);
+        }
       }
     } catch {}
     if (reqId === feeRequestRef.current) setIsFeeLoading(false);

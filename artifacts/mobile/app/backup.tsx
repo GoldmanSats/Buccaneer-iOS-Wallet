@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import { saveWalletBackup } from "@/utils/icloudBackup";
+import { getSeedFromSecureStore } from "@/utils/breezService";
 
 type Stage = "choose" | "seed" | "verify" | "done";
 
@@ -63,24 +64,28 @@ export default function BackupScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
+  const [seedError, setSeedError] = useState<string | null>(null);
+
   const handleWriteDown = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
+    setSeedError(null);
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/seed-phrase`);
-      if (res.ok) {
-        const data = await res.json();
-        setSeedWords(data.words || []);
+      const seed = await getSeedFromSecureStore();
+      if (seed) {
+        setSeedWords(seed.split(" "));
       } else {
-        // Demo mode
-        setSeedWords(["abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident"]);
+        setSeedError("Could not retrieve your seed phrase. Your wallet may not have been created yet.");
+        setIsLoading(false);
+        return;
       }
     } catch (_e) {
-      setSeedWords(["abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident"]);
-    } finally {
+      setSeedError("Failed to access secure storage. Please try again.");
       setIsLoading(false);
-      setStage("seed");
+      return;
     }
+    setIsLoading(false);
+    setStage("seed");
   };
 
   const handleCloudBackup = async () => {
@@ -89,10 +94,9 @@ export default function BackupScreen() {
       await saveWalletBackup(seedWords);
     } else {
       try {
-        const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/seed-phrase`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.words?.length >= 12) await saveWalletBackup(data.words);
+        const seed = await getSeedFromSecureStore();
+        if (seed) {
+          await saveWalletBackup(seed.split(" "));
         }
       } catch (_e) {}
     }
@@ -194,6 +198,12 @@ export default function BackupScreen() {
                 )}
               </Pressable>
             </View>
+
+            {seedError && (
+              <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+                <Text style={{ color: "#E76F51", fontSize: 14, textAlign: "center", fontFamily: "Nunito_400Regular" }}>{seedError}</Text>
+              </View>
+            )}
           </Animated.View>
         )}
 
