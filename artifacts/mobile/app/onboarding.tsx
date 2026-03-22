@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,11 +19,19 @@ import Animated, {
   withSpring,
   withRepeat,
   withTiming,
+  FadeIn,
+  FadeInDown,
 } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import Svg, { Path, Circle } from "react-native-svg";
+import {
+  checkForBackup,
+  saveWalletBackup,
+  formatBackupDate,
+  type WalletBackup,
+} from "@/utils/icloudBackup";
 
 const appIconSource = require("@/assets/images/app-icon.png");
 
@@ -52,8 +60,7 @@ function AnchorIcon({ size = 22, color = GOLD }: { size?: number; color?: string
   );
 }
 
-
-type Screen = "welcome" | "restore" | "loading";
+type Screen = "welcome" | "restore" | "icloud-found" | "loading";
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
@@ -62,11 +69,13 @@ export default function OnboardingScreen() {
   const [seedInput, setSeedInput] = useState("");
   const [restoreError, setRestoreError] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
+  const [icloudBackup, setIcloudBackup] = useState<WalletBackup | null>(null);
+  const [checkingBackup, setCheckingBackup] = useState(false);
 
   const scale = useSharedValue(1);
   const bobbing = useSharedValue(0);
 
-  React.useEffect(() => {
+  useEffect(() => {
     bobbing.value = withRepeat(withTiming(8, { duration: 2000 }), -1, true);
   }, []);
 
@@ -78,14 +87,7 @@ export default function OnboardingScreen() {
     transform: [{ scale: scale.value }],
   }));
 
-  const handleStart = async () => {
-    if (Platform.OS !== "web") {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    scale.value = withSpring(0.95, {}, () => {
-      scale.value = withSpring(1);
-    });
-
+  const initWallet = async (markBackupDone = false) => {
     setScreen("loading");
     setIsInitializing(true);
 
@@ -94,13 +96,43 @@ export default function OnboardingScreen() {
       await res.json();
     } catch (_e) {}
 
+    try {
+      const seedRes = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/seed-phrase`);
+      if (seedRes.ok) {
+        const data = await seedRes.json();
+        if (data.words && data.words.length >= 12) {
+          await saveWalletBackup(data.words);
+        }
+      }
+    } catch (_e) {}
+
     setTimeout(async () => {
-      await updateSettings({ onboardingDone: true });
+      await updateSettings({
+        onboardingDone: true,
+        ...(markBackupDone ? { backupCompleted: true } : {}),
+      });
       router.replace("/(tabs)");
     }, 2000);
   };
 
-  const handleRestore = async () => {
+  const handleStart = async () => {
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    scale.value = withSpring(0.95, {}, () => {
+      scale.value = withSpring(1);
+    });
+    await initWallet();
+  };
+
+  const handleRestoreFromIcloud = async () => {
+    if (Platform.OS !== "web") {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    await initWallet(true);
+  };
+
+  const handleRestoreFromSeed = async () => {
     const words = seedInput.trim().split(/\s+/).filter(Boolean);
     if (words.length !== 12 && words.length !== 24) {
       setRestoreError("Enter 12 or 24 seed words separated by spaces");
@@ -109,14 +141,20 @@ export default function OnboardingScreen() {
     if (Platform.OS !== "web") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+    await initWallet(true);
+  };
 
-    setScreen("loading");
-    setIsInitializing(true);
+  const handleRestorePress = async () => {
+    setCheckingBackup(true);
+    const backup = await checkForBackup();
+    setCheckingBackup(false);
 
-    setTimeout(async () => {
-      await updateSettings({ onboardingDone: true, backupCompleted: true });
-      router.replace("/(tabs)");
-    }, 2000);
+    if (backup) {
+      setIcloudBackup(backup);
+      setScreen("icloud-found");
+    } else {
+      setScreen("restore");
+    }
   };
 
   if (screen === "loading") {
@@ -130,6 +168,80 @@ export default function OnboardingScreen() {
           <Text style={styles.loadingTitle}>Setting Sail...</Text>
           <Text style={styles.loadingSubtitle}>Initializing your wallet</Text>
           <ActivityIndicator color={GOLD} size="large" style={{ marginTop: 20 }} />
+        </View>
+      </View>
+    );
+  }
+
+  if (screen === "icloud-found") {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.icloudContent}>
+          <View style={styles.icloudHeader}>
+            <Pressable onPress={() => setScreen("welcome")} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#8FA3C8" />
+            </Pressable>
+          </View>
+
+          <View style={styles.icloudCenter}>
+            <Animated.View entering={FadeIn.duration(400)}>
+              <View style={styles.icloudIconWrap}>
+                <View style={styles.icloudIconInner}>
+                  <Ionicons name="cloud-done" size={48} color={GOLD} />
+                </View>
+              </View>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.icloudTextGroup}>
+              <Text style={styles.icloudTitle}>Wallet Found!</Text>
+              <Text style={styles.icloudSubtitle}>
+                We found a Buccaneer Wallet backup on this device
+              </Text>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.icloudCard}>
+              <View style={styles.icloudCardRow}>
+                <View style={styles.icloudCardIconWrap}>
+                  <Image source={appIconSource} style={styles.icloudCardIcon} />
+                </View>
+                <View style={styles.icloudCardText}>
+                  <Text style={styles.icloudCardName}>Buccaneer Wallet</Text>
+                  <Text style={styles.icloudCardDate}>
+                    Backed up {icloudBackup ? formatBackupDate(icloudBackup.backedUpAt) : ""}
+                  </Text>
+                </View>
+                <View style={styles.icloudCardCheck}>
+                  <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
+                </View>
+              </View>
+            </Animated.View>
+          </View>
+
+          <View style={styles.icloudBottom}>
+            <Animated.View entering={FadeInDown.delay(600).duration(400)} style={{ width: "100%" }}>
+              <Pressable style={styles.button} onPress={handleRestoreFromIcloud}>
+                <LinearGradient
+                  colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Ionicons name="cloud-download-outline" size={20} color={NAVY} />
+                  <Text style={styles.buttonText}>Restore This Wallet</Text>
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(700).duration(400)} style={{ width: "100%" }}>
+              <Pressable
+                onPress={() => setScreen("restore")}
+                style={styles.restoreButton}
+              >
+                <Text style={styles.restoreButtonText}>Use Seed Phrase Instead</Text>
+              </Pressable>
+            </Animated.View>
+          </View>
         </View>
       </View>
     );
@@ -173,7 +285,7 @@ export default function OnboardingScreen() {
             {seedInput.trim().split(/\s+/).filter(Boolean).length} / 12 words
           </Text>
 
-          <Pressable style={styles.restoreBtn} onPress={handleRestore}>
+          <Pressable style={styles.restoreBtn} onPress={handleRestoreFromSeed}>
             <LinearGradient
               colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
               start={{ x: 0, y: 0 }}
@@ -253,10 +365,18 @@ export default function OnboardingScreen() {
           </Animated.View>
 
           <Pressable
-            onPress={() => setScreen("restore")}
-            style={styles.restoreButton}
+            onPress={handleRestorePress}
+            disabled={checkingBackup}
+            style={[styles.restoreButton, checkingBackup && { opacity: 0.7 }]}
           >
-            <Text style={styles.restoreButtonText}>Restore from Backup</Text>
+            {checkingBackup ? (
+              <View style={styles.restoreButtonInner}>
+                <ActivityIndicator color="#8FA3C8" size="small" />
+                <Text style={styles.restoreButtonText}>Checking for backup...</Text>
+              </View>
+            ) : (
+              <Text style={styles.restoreButtonText}>Restore from Backup</Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -368,6 +488,11 @@ const styles = StyleSheet.create({
     color: "#CDDAED",
     letterSpacing: 0.3,
   },
+  restoreButtonInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   loadingContent: {
     flex: 1,
     alignItems: "center",
@@ -385,6 +510,103 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#8FA3C8",
   },
+
+  icloudContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: "space-between",
+  },
+  icloudHeader: {
+    paddingTop: 16,
+  },
+  icloudCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 24,
+  },
+  icloudIconWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(201,162,77,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(201,162,77,0.2)",
+  },
+  icloudIconInner: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(201,162,77,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  icloudTextGroup: {
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  icloudTitle: {
+    fontFamily: "Chewy_400Regular",
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  icloudSubtitle: {
+    fontFamily: "Nunito_400Regular",
+    fontSize: 15,
+    color: "#8FA3C8",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  icloudCard: {
+    width: "100%",
+    backgroundColor: NAVY2,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(201,162,77,0.2)",
+  },
+  icloudCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  icloudCardIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  icloudCardIcon: {
+    width: 48,
+    height: 48,
+  },
+  icloudCardText: {
+    flex: 1,
+    gap: 2,
+  },
+  icloudCardName: {
+    fontFamily: "Nunito_700Bold",
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
+  icloudCardDate: {
+    fontFamily: "Nunito_400Regular",
+    fontSize: 13,
+    color: "#8FA3C8",
+  },
+  icloudCardCheck: {
+    marginLeft: 4,
+  },
+  icloudBottom: {
+    paddingBottom: Platform.OS === "ios" ? 40 : 30,
+    gap: 12,
+    alignItems: "center",
+  },
+
   restoreContent: {
     flex: 1,
     paddingHorizontal: 24,
@@ -456,7 +678,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   restoreBtn: {
-    borderRadius: 16,
+    borderRadius: 50,
     overflow: "hidden",
     marginTop: 8,
   },

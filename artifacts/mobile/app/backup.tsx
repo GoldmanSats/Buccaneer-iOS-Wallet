@@ -16,6 +16,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { saveWalletBackup } from "@/utils/icloudBackup";
 
 type Stage = "choose" | "seed" | "verify" | "done";
 
@@ -84,6 +85,17 @@ export default function BackupScreen() {
 
   const handleCloudBackup = async () => {
     if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (seedWords.length >= 12) {
+      await saveWalletBackup(seedWords);
+    } else {
+      try {
+        const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/wallet/seed-phrase`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.words?.length >= 12) await saveWalletBackup(data.words);
+        }
+      } catch (_e) {}
+    }
     await updateSettings({ backupCompleted: true });
     setStage("done");
   };

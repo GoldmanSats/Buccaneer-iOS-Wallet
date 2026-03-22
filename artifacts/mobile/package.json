@@ -63,6 +63,7 @@
     "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "^55.0.9",
     "expo-clipboard": "^55.0.8",
+    "expo-secure-store": "^55.0.9",
     "react-native-qrcode-svg": "^6.3.21"
   }
 }

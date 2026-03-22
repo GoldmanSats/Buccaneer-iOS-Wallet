@@ -15,6 +15,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - **API framework**: Express 5
 - **Mobile**: Expo SDK 54 + React Native (Expo Router), bundle ID: `com.buccaneer.wallet`
 - **Audio**: `expo-audio` v1.1.1 (migrated from deprecated expo-av)
+- **Secure Storage**: `expo-secure-store` (iOS Keychain backup for wallet seed)
 - **Fonts**: Chewy (display/headings/balance), Nunito (body/UI text — 400, 500, 600, 700, 800)
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
