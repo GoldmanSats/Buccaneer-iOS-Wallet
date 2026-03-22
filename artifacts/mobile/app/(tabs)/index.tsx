@@ -581,7 +581,7 @@ export default function HomeScreen() {
                           color: colors.text,
                           fontSize: symbolFontSize,
                           lineHeight: balanceFontSize,
-                          marginBottom: balanceFontSize * 0.25,
+                          top: -(balanceFontSize * 0.15),
                         },
                       ]}
                     >
