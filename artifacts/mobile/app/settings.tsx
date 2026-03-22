@@ -213,6 +213,7 @@ export default function SettingsScreen() {
             <Switch
               value={settings.biometricsEnabled}
               trackColor={{ false: switchTrackOff, true: colors.gold }}
+              ios_backgroundColor={switchTrackOff}
               thumbColor="#FFF"
               onValueChange={async (v) => {
                 if (v && Platform.OS !== "web") {
@@ -323,6 +324,7 @@ export default function SettingsScreen() {
             <Switch
               value={settings.soundEffectsEnabled}
               trackColor={{ false: switchTrackOff, true: colors.gold }}
+              ios_backgroundColor={switchTrackOff}
               thumbColor="#FFF"
               onValueChange={(v) => updateSettings({ soundEffectsEnabled: v })}
             />
@@ -339,6 +341,7 @@ export default function SettingsScreen() {
             <Switch
               value={!settings.isDarkMode}
               trackColor={{ false: switchTrackOff, true: colors.gold }}
+              ios_backgroundColor={switchTrackOff}
               thumbColor="#FFF"
               onValueChange={(v) => updateSettings({ isDarkMode: !v })}
             />
