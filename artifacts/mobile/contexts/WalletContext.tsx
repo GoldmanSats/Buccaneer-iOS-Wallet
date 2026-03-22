@@ -20,6 +20,8 @@ interface Transaction {
   timestamp: string;
   status: string;
   paymentHash: string;
+  agentName?: string;
+  agentKeyId?: number;
 }
 
 interface BtcPrice {

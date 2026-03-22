@@ -345,7 +345,7 @@ export async function prepareSendPayment(destination: string, amountSats?: numbe
   lastPrepareResponse = prepared;
   const sanitized = sanitizeBigInt(prepared);
   return {
-    feesSat: sanitized.feeSat || 0,
+    feesSat: sanitized.fees || sanitized.feeSat || 0,
     destination,
     amountSat: sanitized.amountSat || amountSats || 0,
     prepareResponse: prepared,
@@ -369,12 +369,14 @@ export async function sendPayment(
     amount: amountSats ? BigInt(amountSats) : undefined,
   };
   const prepared = await sdk.prepareSendPayment(prepRequest);
+  const prepSanitized = sanitizeBigInt(prepared);
+  const prepareFee = prepSanitized.fees || prepSanitized.feeSat || prepSanitized.feesSat || 0;
   const result = await sdk.sendPayment({ prepareResponse: prepared });
   const sanitized = sanitizeBigInt(result);
 
   const payment = sanitized.payment || sanitized;
   const paidAmountSats = payment.amountSat || payment.amount || amountSats || 0;
-  const feeSats = payment.feeSat || payment.feesSat || 0;
+  const feeSats = payment.fees || payment.feeSat || payment.feesSat || prepareFee || 0;
 
   try {
     await db.insert(transactionCacheTable).values({
@@ -539,7 +541,7 @@ export async function listPayments(): Promise<any[]> {
         id: p.id || p.details?.txId || String(p.timestamp),
         type: p.paymentType === "send" ? "send" : "receive",
         amountSats: p.amount || p.amountSat || 0,
-        feeSats: p.fee || p.feesSat || 0,
+        feeSats: p.fees || p.fee || p.feeSat || p.feesSat || 0,
         description: p.details?.description || p.description || "",
         timestamp: p.timestamp ? new Date(p.timestamp * 1000).toISOString() : new Date().toISOString(),
         status,

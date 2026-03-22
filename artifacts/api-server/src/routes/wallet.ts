@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { transactionMemosTable } from "@workspace/db";
+import { transactionMemosTable, transactionCacheTable, agentLogsTable, agentKeysTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   getBalance,
@@ -41,10 +41,80 @@ router.get("/transactions", async (req, res) => {
     const memos = await db.select().from(transactionMemosTable);
     const memoMap = new Map(memos.map(m => [m.txId, m.memo]));
 
-    const enriched = txs.map(tx => ({
-      ...tx,
-      memo: memoMap.get(tx.id) ?? "",
-    }));
+    const cachedTxs = await db.select().from(transactionCacheTable);
+    const cacheMap = new Map(cachedTxs.map(c => [c.txId, c]));
+
+    const agentLogs = await db.select({
+      id: agentLogsTable.id,
+      keyId: agentLogsTable.keyId,
+      action: agentLogsTable.action,
+      amount: agentLogsTable.amount,
+      status: agentLogsTable.status,
+      detail: agentLogsTable.detail,
+      createdAt: agentLogsTable.createdAt,
+    }).from(agentLogsTable);
+
+    const agentKeys = await db.select({
+      id: agentKeysTable.id,
+      name: agentKeysTable.name,
+    }).from(agentKeysTable);
+    const keyNameMap = new Map(agentKeys.map(k => [k.id, k.name]));
+
+    const agentSendLogs = agentLogs.filter(l =>
+      (l.action === "pay_invoice" || l.action === "send") && l.status === "success"
+    );
+
+    const agentHashMap = new Map<string, { agentName: string; agentKeyId: number }>();
+    const agentAmountMap = new Map<string, { agentName: string; agentKeyId: number }>();
+    for (const log of agentSendLogs) {
+      const agentInfo = {
+        agentName: keyNameMap.get(log.keyId) || "AI Agent",
+        agentKeyId: log.keyId,
+      };
+      if (log.detail?.startsWith("txhash:")) {
+        const hash = log.detail.split("|")[0]!.replace("txhash:", "");
+        if (hash) agentHashMap.set(hash, agentInfo);
+      }
+      if (log.amount && log.amount > 0) {
+        const key = `${log.amount}-${Math.floor(new Date(log.createdAt!).getTime() / 60000)}`;
+        agentAmountMap.set(key, agentInfo);
+      }
+    }
+
+    const enriched = txs.map(tx => {
+      const cached = cacheMap.get(tx.id);
+      const feeSats = tx.feeSats || (cached?.feeSats ?? 0);
+
+      let agentName: string | undefined;
+      let agentKeyId: number | undefined;
+
+      if (tx.type === "send") {
+        const hashMatch = tx.paymentHash ? agentHashMap.get(tx.paymentHash) : undefined;
+        if (hashMatch) {
+          agentName = hashMatch.agentName;
+          agentKeyId = hashMatch.agentKeyId;
+        } else if (tx.amountSats > 0) {
+          const txTime = Math.floor(new Date(tx.timestamp).getTime() / 60000);
+          for (let offset = -1; offset <= 1; offset++) {
+            const key = `${tx.amountSats}-${txTime + offset}`;
+            const match = agentAmountMap.get(key);
+            if (match) {
+              agentName = match.agentName;
+              agentKeyId = match.agentKeyId;
+              break;
+            }
+          }
+        }
+      }
+
+      return {
+        ...tx,
+        feeSats,
+        memo: memoMap.get(tx.id) ?? "",
+        agentName,
+        agentKeyId,
+      };
+    });
 
     const paginated = enriched.slice(offset, offset + limit);
     res.json({ transactions: paginated, total: enriched.length });

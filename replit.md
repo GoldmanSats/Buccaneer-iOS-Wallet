@@ -72,7 +72,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 ### API Routes (all under `/api`)
 - `GET /healthz` — health check
 - `GET /wallet/balance` — Breez getInfo()
-- `GET /wallet/transactions` — Breez listPayments() with memos
+- `GET /wallet/transactions` — Breez listPayments() with memos, cached fees, agent attribution
 - `PATCH /wallet/transactions/:id/memo` — update transaction memo
 - `POST /wallet/send` — Breez sendPayment() (supports amountSats for variable invoices)
 - `POST /wallet/receive` — Breez prepareReceivePayment + receivePayment

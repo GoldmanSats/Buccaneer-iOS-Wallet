@@ -225,7 +225,7 @@ async function handleNwcRequest(
           action: "pay_invoice",
           amount: result.amountSats,
           status: "success",
-          detail: `Paid ${result.amountSats} sats, fee: ${result.feeSats}`,
+          detail: `txhash:${result.paymentHash}|Paid ${result.amountSats} sats, fee: ${result.feeSats}`,
         });
 
         return {

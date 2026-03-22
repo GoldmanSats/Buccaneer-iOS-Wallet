@@ -96,6 +96,8 @@ interface TxType {
   status: string;
   paymentHash?: string;
   method?: string;
+  agentName?: string;
+  agentKeyId?: number;
 }
 
 function TransactionItem({
@@ -109,9 +111,10 @@ function TransactionItem({
   const isReceive = tx.type === "receive";
   const isPending = tx.status === "pending";
   const isPendingDeposit = isPending && tx.method === "deposit";
+  const isAgent = !!tx.agentName;
   const displayText = isPendingDeposit
     ? "On-chain deposit"
-    : tx.memo || (isReceive ? "Received" : "Sent");
+    : tx.memo || (isAgent ? tx.agentName! : (isReceive ? "Received" : "Sent"));
 
   const isDark = colors === MIDNIGHT;
   const iconBg = isPendingDeposit
@@ -148,17 +151,22 @@ function TransactionItem({
       onPress={() => onPress(tx)}
       testID={`tx-item-${tx.id}`}
     >
-      <View style={[txStyles.iconCircle, { backgroundColor: iconBg }]}>
+      <View style={[txStyles.iconCircle, { backgroundColor: isAgent ? "rgba(139,92,246,0.12)" : iconBg }]}>
         {isPendingDeposit && (
           <View style={txStyles.pendingBadge}>
             <Ionicons name="reload" size={8} color="#FFF" />
           </View>
         )}
+        {isAgent && (
+          <View style={txStyles.agentBadge}>
+            <Ionicons name="sparkles" size={8} color="#FFF" />
+          </View>
+        )}
         <Ionicons
-          name={isReceive ? "arrow-back-outline" : "arrow-up-outline"}
+          name={isAgent ? "sparkles-outline" : (isReceive ? "arrow-back-outline" : "arrow-up-outline")}
           size={20}
-          color={iconColor}
-          style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
+          color={isAgent ? "#8B5CF6" : iconColor}
+          style={isAgent ? undefined : { transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
         />
       </View>
 
@@ -200,6 +208,7 @@ const txStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 8, borderRadius: 16, gap: 16 },
   iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   pendingBadge: { position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: "#EAB308", alignItems: "center", justifyContent: "center", zIndex: 1 },
+  agentBadge: { position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: "#8B5CF6", alignItems: "center", justifyContent: "center", zIndex: 1 } as any,
   meta: { flex: 1, gap: 2 },
   desc: { fontFamily: "Nunito_700Bold", fontSize: 14, lineHeight: 18 },
   time: { fontFamily: "Nunito_400Regular", fontSize: 12, marginTop: 2 },
@@ -715,19 +724,25 @@ export default function HomeScreen() {
               {selectedTx && (() => {
               const isReceive = selectedTx.type === "receive";
               const isPendingDeposit = selectedTx.status === "pending" && selectedTx.method === "deposit";
-              const iconBg = isPendingDeposit ? "rgba(234,179,8,0.15)" : isReceive ? "rgba(23,162,184,0.10)" : "rgba(232,106,51,0.10)";
-              const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
+              const isAgent = !!selectedTx.agentName;
+              const iconBg = isAgent ? "rgba(139,92,246,0.15)" : isPendingDeposit ? "rgba(234,179,8,0.15)" : isReceive ? "rgba(23,162,184,0.10)" : "rgba(232,106,51,0.10)";
+              const iconColor = isAgent ? "#8B5CF6" : isPendingDeposit ? "#EAB308" : isReceive ? colors.teal : colors.coral;
               return (
                 <View style={styles.txDetailContent}>
                   <View style={[styles.txDetailIcon, { backgroundColor: iconBg }]}>
                     <Ionicons
-                      name={isReceive ? "arrow-back-outline" : "arrow-up-outline"}
+                      name={isAgent ? "sparkles-outline" : (isReceive ? "arrow-back-outline" : "arrow-up-outline")}
                       size={40} color={iconColor}
-                      style={{ transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
+                      style={isAgent ? undefined : { transform: [{ rotate: isReceive ? "-45deg" : "45deg" }] }}
                     />
                     {isPendingDeposit && (
                       <View style={[txStyles.pendingBadge, { width: 24, height: 24, borderRadius: 12, top: -4, right: -4 }]}>
                         <Ionicons name="reload" size={14} color="#FFF" />
+                      </View>
+                    )}
+                    {isAgent && (
+                      <View style={[txStyles.agentBadge, { width: 24, height: 24, borderRadius: 12, top: -4, right: -4 }]}>
+                        <Ionicons name="sparkles" size={12} color="#FFF" />
                       </View>
                     )}
                   </View>
@@ -761,6 +776,15 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                   </View>
+                  {isAgent && (
+                    <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
+                      <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Initiated by</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Ionicons name="sparkles" size={14} color="#8B5CF6" />
+                        <Text style={[styles.detailValue, { color: "#8B5CF6" }]}>{selectedTx.agentName}</Text>
+                      </View>
+                    </View>
+                  )}
                   {selectedTx.method === "deposit" && (
                     <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
                       <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Method</Text>

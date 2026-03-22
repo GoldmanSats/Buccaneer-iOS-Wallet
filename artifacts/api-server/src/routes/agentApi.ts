@@ -61,7 +61,7 @@ router.post("/send", async (req: AuthenticatedRequest, res) => {
 
     const result = await sendPayment(body.bolt11, body.amountSats);
     await recordAgentSpend(req.agentKey!.id, amountSats);
-    await logAgentAction(req.agentKey!.id, "send", "success", `Sent ${amountSats} sats`, amountSats);
+    await logAgentAction(req.agentKey!.id, "send", "success", `txhash:${result.paymentHash}|Sent ${amountSats} sats`, amountSats);
     res.json(result);
   } catch (err) {
     await logAgentAction(req.agentKey!.id, "send", "error", String(err));
