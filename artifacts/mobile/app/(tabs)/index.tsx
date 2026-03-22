@@ -275,7 +275,6 @@ export default function HomeScreen() {
   const receiveSheetTranslateY = useSharedValue(0);
   const txDetailTranslateY = useSharedValue(0);
   const txLogScrollOffset = useRef(0);
-  const receiveScrollOffset = useRef(0);
 
   const receiveSheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: receiveSheetTranslateY.value }],
@@ -789,31 +788,16 @@ export default function HomeScreen() {
           <View style={styles.modalOverlay}>
             <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
+              <GestureDetector gesture={receiveDismissGesture}>
               <Animated.View
                 style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
               >
-                <GestureDetector gesture={receiveDismissGesture}>
-                <Animated.View>
                 <Pressable onPress={closeReceiveDrawer} style={styles.receiveDragZone}>
                   <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
                   <Text style={[styles.receiveTitle, { color: colors.text }]}>Receive</Text>
                 </Pressable>
-                </Animated.View>
-                </GestureDetector>
 
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.receiveScrollContent}
-                  keyboardShouldPersistTaps="handled"
-                  scrollEnabled={receiveMode !== "amount"}
-                  scrollEventThrottle={16}
-                  onScroll={(e) => { receiveScrollOffset.current = e.nativeEvent.contentOffset.y; }}
-                  onScrollEndDrag={(e) => {
-                    if (receiveScrollOffset.current <= 0 && (e.nativeEvent.velocity?.y ?? 0) > 0.3) {
-                      closeReceiveDrawer();
-                    }
-                  }}
-                >
+                <View style={styles.receiveScrollContent}>
                 {receiveMode !== "amount" && (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
                     <QRCode
@@ -961,8 +945,9 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 )}
-                </ScrollView>
+                </View>
               </Animated.View>
+              </GestureDetector>
             </KeyboardAvoidingView>
           </View>
         </View>
