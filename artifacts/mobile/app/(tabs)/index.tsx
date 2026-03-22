@@ -176,20 +176,18 @@ function TransactionItem({
           {isReceive ? "+" : "-"}{formatSats(tx.amountSats)} sats
         </Text>
         <View style={txStyles.statusRow}>
-          {(tx.feeSats ?? 0) > 0 && (
-            <Text style={[txStyles.feeText, { color: colors.textMuted }]}>Fee: {tx.feeSats}</Text>
+          {!isReceive && (tx.feeSats ?? 0) > 0 && (
+            <Text style={[txStyles.feeText, { color: colors.textMuted }]}>Fee: {formatSats(tx.feeSats ?? 0)} sats</Text>
           )}
           {isPendingDeposit ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
               <Ionicons name="reload" size={8} color="#EAB308" />
               <Text style={{ fontSize: 9, fontFamily: "Nunito_700Bold", color: "#EAB308" }}>PENDING</Text>
             </View>
-          ) : tx.status === "completed" ? (
-            <Ionicons name="checkmark-circle" size={12} color={colors.green} />
           ) : tx.status === "pending" ? (
             <Ionicons name="reload" size={12} color="#EAB308" />
           ) : tx.status === "failed" ? (
-            <Text style={{ fontSize: 9, fontFamily: "Nunito_700Bold", color: colors.red }}>FAILED</Text>
+            <Ionicons name="close-circle" size={12} color={colors.red} />
           ) : null}
         </View>
       </View>
@@ -754,12 +752,12 @@ export default function HomeScreen() {
                   <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
                     <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Status</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      {selectedTx.status === "completed" && <Ionicons name="checkmark-circle" size={16} color={colors.green} />}
                       {selectedTx.status === "pending" && <Ionicons name="reload" size={16} color="#EAB308" />}
+                      {selectedTx.status === "failed" && <Ionicons name="close-circle" size={16} color={colors.red} />}
                       <Text style={[styles.detailValue, {
-                        color: selectedTx.status === "completed" ? colors.green : selectedTx.status === "pending" ? "#EAB308" : selectedTx.status === "failed" ? colors.red : colors.text,
+                        color: selectedTx.status === "completed" ? colors.text : selectedTx.status === "pending" ? "#EAB308" : selectedTx.status === "failed" ? colors.red : colors.text,
                       }]}>
-                        {isPendingDeposit ? "Confirming on-chain" : selectedTx.status}
+                        {isPendingDeposit ? "Confirming on-chain" : selectedTx.status === "completed" ? "Completed" : selectedTx.status}
                       </Text>
                     </View>
                   </View>
@@ -772,7 +770,7 @@ export default function HomeScreen() {
                   {(selectedTx.feeSats ?? 0) > 0 && (
                     <View style={[styles.detailRow, { borderBottomColor: colors.border + "80" }]}>
                       <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Fee</Text>
-                      <Text style={[styles.detailValue, { color: colors.text }]}>{selectedTx.feeSats} sats</Text>
+                      <Text style={[styles.detailValue, { color: colors.text }]}>{formatSats(selectedTx.feeSats ?? 0)} sats</Text>
                     </View>
                   )}
                   {!isPendingDeposit && (
