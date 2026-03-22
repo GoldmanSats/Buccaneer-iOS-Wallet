@@ -249,7 +249,7 @@ export default function SettingsScreen() {
               <Text style={[s.rowLabel, { color: colors.text }]}>Fiat Currency</Text>
               <Text style={[s.rowSub, { color: colors.textMuted }]}>Select local currency</Text>
             </View>
-            <View style={[s.pillSelect, { backgroundColor: colors.bgElevated }]}>
+            <View style={[s.pillSelect, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
               <Text style={[s.pillText, { color: colors.textSecondary }]}>{FIAT_LABELS[settings.fiatCurrency] || settings.fiatCurrency}</Text>
               <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
             </View>
@@ -528,13 +528,15 @@ const s = StyleSheet.create({
   pillSelect: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
-    paddingLeft: 12,
-    paddingRight: 8,
-    paddingVertical: 6,
+    minWidth: 70,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
   },
-  pillText: { fontFamily: "Nunito_700Bold", fontSize: 13 },
+  pillText: { fontFamily: "Nunito_600SemiBold", fontSize: 13 },
   currencyPicker: {
     flexDirection: "row",
     flexWrap: "wrap",
