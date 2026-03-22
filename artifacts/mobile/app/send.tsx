@@ -30,7 +30,8 @@ export default function SendScreen() {
   const { settings } = useSettings();
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
-  const { sendPayment, decodeInvoice, parseInput, btcPrice } = useWallet();
+  const { sendPayment, decodeInvoice, parseInput, btcPrice, balance } = useWallet();
+  const sats = balance?.balanceSats ?? 0;
   const [stage, setStage] = useState<Stage>("scan");
   const [invoiceInput, setInvoiceInput] = useState("");
   const [decodedInvoice, setDecodedInvoice] = useState<{
@@ -45,6 +46,7 @@ export default function SendScreen() {
   const [result, setResult] = useState<{ feeSats: number; amountSats: number } | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
   const [permission, requestPermission] = useCameraPermissions();
+  const [sendAmountInput, setSendAmountInput] = useState("");
   const successScale = useSharedValue(0);
 
   const successStyle = useAnimatedStyle(() => ({
@@ -79,6 +81,7 @@ export default function SendScreen() {
     setCameraActive(false);
     const cleaned = normalizeQrData(data);
     setInvoiceInput(cleaned);
+    setStage("paste");
     await handleDecodeInput(cleaned);
   };
 
@@ -111,53 +114,60 @@ export default function SendScreen() {
     try {
       const parsed = await parseInput(input.trim());
 
+      let decoded: typeof decodedInvoice = null;
+
       if (parsed.type === "bolt11" && parsed.invoice) {
-        const decoded = await decodeInvoice(parsed.invoice);
-        if (decoded.isExpired) {
+        const dec = await decodeInvoice(parsed.invoice);
+        if (dec.isExpired) {
           setError("This invoice has expired");
           setIsDecoding(false);
           return;
         }
-        setDecodedInvoice({ ...decoded, type: "bolt11" });
+        decoded = { ...dec, type: "bolt11" };
         setInvoiceInput(parsed.invoice);
-        setStage("review");
       } else if (parsed.type === "lightning_address") {
-        setDecodedInvoice({
+        decoded = {
           type: "lightning_address",
           address: parsed.address,
           description: `Pay to ${parsed.address}`,
           isExpired: false,
-        });
-        setStage("review");
+        };
       } else if (parsed.type === "bitcoin") {
-        setDecodedInvoice({
+        decoded = {
           type: "bitcoin",
           address: parsed.address,
           amountSats: parsed.amountSats,
           description: "On-chain payment",
           isExpired: false,
-        });
-        setStage("review");
+        };
       } else if (parsed.type === "lnurl") {
-        setDecodedInvoice({
+        decoded = {
           type: "lnurl",
           address: parsed.address,
           description: "LNURL payment",
           isExpired: false,
-        });
-        setStage("review");
+        };
       } else {
         try {
-          const decoded = await decodeInvoice(input.trim());
-          if (decoded.isExpired) {
+          const dec = await decodeInvoice(input.trim());
+          if (dec.isExpired) {
             setError("This invoice has expired");
             setIsDecoding(false);
             return;
           }
-          setDecodedInvoice({ ...decoded, type: "bolt11" });
-          setStage("review");
+          decoded = { ...dec, type: "bolt11" };
         } catch {
           setError("Could not recognize this payment format. Try pasting a Lightning invoice.");
+        }
+      }
+
+      if (decoded) {
+        setDecodedInvoice(decoded);
+        if (decoded.amountSats && decoded.amountSats > 0) {
+          setStage("review");
+        } else {
+          setSendAmountInput("");
+          setStage("paste");
         }
       }
     } catch (e) {
@@ -169,10 +179,15 @@ export default function SendScreen() {
 
   const handleSend = async () => {
     if (!invoiceInput) return;
+    const amountToSend = decodedInvoice?.amountSats || (sendAmountInput ? parseInt(sendAmountInput, 10) : undefined);
+    if (!amountToSend || amountToSend <= 0) {
+      setError("Please enter an amount");
+      return;
+    }
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setStage("sending");
     try {
-      const res = await sendPayment(invoiceInput.trim(), decodedInvoice?.amountSats);
+      const res = await sendPayment(invoiceInput.trim(), amountToSend);
       setResult(res);
       successScale.value = withSpring(1, { damping: 12 });
       setStage("success");
@@ -272,41 +287,124 @@ export default function SendScreen() {
                 </View>
                 <TextInput
                   testID="invoice-input"
-                  style={[styles.invoiceTextArea, { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, color: colors.text, borderColor: colors.border + "60" }]}
+                  style={[
+                    styles.invoiceTextArea,
+                    { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, color: colors.text, borderColor: decodedInvoice ? (isDark ? colors.coral : colors.coralDark) : colors.border + "60" },
+                    decodedInvoice && { minHeight: 60 },
+                  ]}
                   placeholder="Paste lightning invoice, Bitcoin address, or LNURL..."
                   placeholderTextColor={colors.textMuted + "80"}
                   value={invoiceInput}
-                  onChangeText={setInvoiceInput}
+                  onChangeText={(t) => {
+                    setInvoiceInput(t);
+                    if (decodedInvoice) {
+                      setDecodedInvoice(null);
+                      setSendAmountInput("");
+                    }
+                  }}
                   multiline
                   textAlignVertical="top"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  editable={!decodedInvoice}
                 />
+
+                {decodedInvoice && (
+                  <View style={styles.parsedBadgeRow}>
+                    <View style={[styles.badge, { backgroundColor: isDark ? "rgba(74,144,217,0.15)" : "rgba(74,144,217,0.10)" }]}>
+                      <MaterialCommunityIcons name="lightning-bolt" size={12} color="#4A90D9" />
+                      <Text style={styles.badgeText}>{getPaymentTypeLabel()}</Text>
+                    </View>
+                    <Text style={[styles.parsedSubtext, { color: colors.textMuted }]}>Instant payment</Text>
+                  </View>
+                )}
               </View>
+
+              {decodedInvoice && decodedInvoice.type === "bitcoin" && (
+                <View style={[styles.warningBanner, { backgroundColor: isDark ? "rgba(201,162,77,0.1)" : "rgba(250,186,26,0.08)", borderColor: isDark ? "rgba(201,162,77,0.3)" : "rgba(250,186,26,0.3)" }]}>
+                  <Ionicons name="warning-outline" size={16} color={colors.gold} />
+                  <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                    On-chain payments use submarine swaps and may take longer with additional fees.
+                  </Text>
+                </View>
+              )}
+
+              {decodedInvoice && !decodedInvoice.amountSats && (
+                <Animated.View entering={FadeIn}>
+                  <Text style={[styles.amountLabel, { color: colors.text }]}>Enter Amount to Send</Text>
+                  <View style={[styles.amountInputRow, { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, borderColor: colors.border }]}>
+                    <TextInput
+                      testID="send-amount-input"
+                      style={[styles.amountInputField, { color: colors.text }]}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted + "80"}
+                      value={sendAmountInput}
+                      onChangeText={(t) => setSendAmountInput(t.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                    />
+                    <Text style={[styles.amountUnit, { color: colors.textMuted }]}>sats</Text>
+                  </View>
+                  <View style={styles.balanceRow}>
+                    <Text style={[styles.balanceText, { color: colors.textMuted }]}>
+                      Available: {sats.toLocaleString()} sats
+                    </Text>
+                    <Pressable
+                      style={[styles.maxBtn, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(13,110,125,0.12)" }]}
+                      onPress={() => setSendAmountInput(String(sats))}
+                    >
+                      <Text style={[styles.maxBtnText, { color: isDark ? colors.teal : colors.tealDark }]}>Max</Text>
+                    </Pressable>
+                  </View>
+                  {sendAmountInput && satsToFiat(parseInt(sendAmountInput, 10) || 0) && (
+                    <Text style={[styles.fiatConversion, { color: colors.textMuted }]}>
+                      ≈ {satsToFiat(parseInt(sendAmountInput, 10) || 0)}
+                    </Text>
+                  )}
+                </Animated.View>
+              )}
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
               <View style={{ flex: 1 }} />
 
               <View style={styles.scanActions}>
-                <Pressable
-                  testID="send-invoice-button"
-                  style={styles.sendCoralBtn}
-                  onPress={() => handleDecodeInput(invoiceInput)}
-                  disabled={!invoiceInput.trim() || isDecoding}
-                >
-                  {isDecoding ? (
-                    <ActivityIndicator color="#FFF" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="arrow-forward-outline" size={18} color="#FFF" style={{ transform: [{ rotate: "-45deg" }] }} />
-                      <Text style={styles.sendCoralBtnText}>Continue</Text>
-                    </>
-                  )}
-                </Pressable>
+                {decodedInvoice ? (
+                  <Pressable
+                    testID="confirm-send-button"
+                    style={styles.confirmBtn}
+                    onPress={handleSend}
+                    disabled={!decodedInvoice.amountSats && (!sendAmountInput || parseInt(sendAmountInput, 10) <= 0)}
+                  >
+                    <LinearGradient
+                      colors={["#E76F51", "#C45A3D"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.confirmGradient}
+                    >
+                      <Ionicons name="arrow-up" size={20} color="#FFF" />
+                      <Text style={styles.confirmText}>Send</Text>
+                    </LinearGradient>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    testID="send-invoice-button"
+                    style={styles.sendCoralBtn}
+                    onPress={() => handleDecodeInput(invoiceInput)}
+                    disabled={!invoiceInput.trim() || isDecoding}
+                  >
+                    {isDecoding ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="arrow-forward-outline" size={18} color="#FFF" style={{ transform: [{ rotate: "-45deg" }] }} />
+                        <Text style={styles.sendCoralBtnText}>Continue</Text>
+                      </>
+                    )}
+                  </Pressable>
+                )}
 
-                <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); }} style={styles.cancelBtn}>
-                  <Text style={[styles.cancelText, { color: colors.textMuted }]}>Back to Scanner</Text>
+                <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); setDecodedInvoice(null); setSendAmountInput(""); }} style={styles.cancelBtn}>
+                  <Text style={[styles.cancelText, { color: colors.textMuted }]}>{decodedInvoice ? "Cancel" : "Back to Scanner"}</Text>
                 </Pressable>
               </View>
             </Animated.View>
@@ -375,7 +473,7 @@ export default function SendScreen() {
                 </LinearGradient>
               </Pressable>
 
-              <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); }} style={styles.cancelBtn}>
+              <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); setDecodedInvoice(null); setSendAmountInput(""); }} style={styles.cancelBtn}>
                 <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
               </Pressable>
             </Animated.View>
@@ -571,6 +669,43 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   confirmText: { fontFamily: "Nunito_700Bold", fontSize: 16, color: "#FFF" },
+  parsedBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  parsedSubtext: { fontFamily: "Nunito_400Regular", fontSize: 12 },
+  amountLabel: { fontFamily: "Nunito_700Bold", fontSize: 16, marginBottom: 8 },
+  amountInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  amountInputField: {
+    flex: 1,
+    fontFamily: "Nunito_700Bold",
+    fontSize: 18,
+  },
+  amountUnit: { fontFamily: "Nunito_600SemiBold", fontSize: 14, marginLeft: 8 },
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8,
+  },
+  balanceText: { fontFamily: "Nunito_400Regular", fontSize: 13 },
+  maxBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  maxBtnText: { fontFamily: "Nunito_700Bold", fontSize: 13 },
+  fiatConversion: { fontFamily: "Nunito_400Regular", fontSize: 13, textAlign: "right", marginTop: 4 },
   cancelBtn: { alignItems: "center", paddingVertical: 8 },
   cancelText: { fontFamily: "Nunito_400Regular", fontSize: 14 },
   centerState: {
