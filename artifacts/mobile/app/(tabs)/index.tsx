@@ -654,7 +654,9 @@ export default function HomeScreen() {
           scrollEventThrottle={16}
           onScroll={(e) => { txLogScrollOffset.current = e.nativeEvent.contentOffset.y; }}
           onScrollEndDrag={(e) => {
-            if (txLogScrollOffset.current <= 0 && (e.nativeEvent.velocity?.y ?? 0) > 0.3) {
+            const offsetY = e.nativeEvent.contentOffset.y;
+            const velocityY = e.nativeEvent.velocity?.y ?? 0;
+            if (offsetY <= 0 && (velocityY > 0.3 || offsetY < -30)) {
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setIsLogExpanded(false);
             }
