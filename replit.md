@@ -36,7 +36,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 │       │   ├── _layout.tsx  # Root Stack (fonts, providers)
 │       │   ├── (tabs)/index.tsx  # Home screen (balance, txs, send/receive)
 │       │   ├── onboarding.tsx    # Welcome + restore flow + "Setting Sail" loading
-│       │   ├── send.tsx          # Send: QR scan, paste, image picker, BIP21/LN addr
+│       │   ├── send.tsx          # Send: single-screen flow (QR scan → paste → inline amount/fee → send)
 │       │   ├── receive.tsx       # Receive (Lightning address QR + keypad)
 │       │   ├── settings.tsx      # Captain's Quarters (full settings)
 │       │   ├── backup.tsx        # Seed phrase backup flow (choose/seed/verify/done)

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import {
   getBalance,
   sendPayment,
+  prepareSendPayment,
   receivePayment,
   listPayments,
   decodeInvoice,
@@ -68,6 +69,22 @@ router.patch("/transactions/:id/memo", async (req, res) => {
     res.json({ txId, memo });
   } catch (err) {
     res.status(500).json({ error: "memo_error", message: String(err) });
+  }
+});
+
+router.post("/prepare-send", async (req, res) => {
+  const body = req.body as { destination: string; amountSats?: number };
+  if (!body.destination) {
+    return res.status(400).json({ error: "missing_destination", message: "Payment destination is required" });
+  }
+  try {
+    const result = await prepareSendPayment(body.destination, body.amountSats);
+    res.json({
+      feesSat: result.feesSat,
+      amountSat: result.amountSat,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "prepare_failed", message: String(err) });
   }
 });
 

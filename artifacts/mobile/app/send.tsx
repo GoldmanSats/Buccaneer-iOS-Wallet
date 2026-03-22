@@ -13,7 +13,7 @@ import {
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeIn, FadeInDown, useSharedValue, withSpring, useAnimatedStyle } from "react-native-reanimated";
+import Animated, { FadeIn, useSharedValue, withSpring, useAnimatedStyle } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
@@ -23,7 +23,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 
-type Stage = "scan" | "paste" | "review" | "sending" | "success" | "error";
+type Stage = "scan" | "paste" | "sending" | "success" | "error";
 
 export default function SendScreen() {
   const insets = useSafeAreaInsets();
@@ -47,6 +47,8 @@ export default function SendScreen() {
   const [cameraActive, setCameraActive] = useState(true);
   const [permission, requestPermission] = useCameraPermissions();
   const [sendAmountInput, setSendAmountInput] = useState("");
+  const [estimatedFee, setEstimatedFee] = useState<number | null>(null);
+  const [isFeeLoading, setIsFeeLoading] = useState(false);
   const successScale = useSharedValue(0);
 
   const successStyle = useAnimatedStyle(() => ({
@@ -107,14 +109,47 @@ export default function SendScreen() {
     } catch (_e) {}
   };
 
+  const feeRequestRef = useRef(0);
+
+  const resetSendState = () => {
+    setInvoiceInput("");
+    setDecodedInvoice(null);
+    setSendAmountInput("");
+    setEstimatedFee(null);
+    setIsFeeLoading(false);
+    setError("");
+    feeRequestRef.current++;
+  };
+
+  const fetchFeeEstimate = async (destination: string, amountSats?: number) => {
+    const reqId = ++feeRequestRef.current;
+    setIsFeeLoading(true);
+    setEstimatedFee(null);
+    try {
+      const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
+      const resp = await fetch(`${API_BASE}/wallet/prepare-send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ destination, amountSats }),
+      });
+      if (resp.ok && reqId === feeRequestRef.current) {
+        const data = await resp.json();
+        setEstimatedFee(data.feesSat ?? null);
+      }
+    } catch {}
+    if (reqId === feeRequestRef.current) setIsFeeLoading(false);
+  };
+
   const handleDecodeInput = async (input: string) => {
     if (!input.trim()) return;
     setIsDecoding(true);
     setError("");
+    setEstimatedFee(null);
     try {
       const parsed = await parseInput(input.trim());
 
       let decoded: typeof decodedInvoice = null;
+      let canonicalDest = input.trim();
 
       if (parsed.type === "bolt11" && parsed.invoice) {
         const dec = await decodeInvoice(parsed.invoice);
@@ -124,6 +159,7 @@ export default function SendScreen() {
           return;
         }
         decoded = { ...dec, type: "bolt11" };
+        canonicalDest = parsed.invoice;
         setInvoiceInput(parsed.invoice);
       } else if (parsed.type === "lightning_address") {
         decoded = {
@@ -132,6 +168,7 @@ export default function SendScreen() {
           description: `Pay to ${parsed.address}`,
           isExpired: false,
         };
+        canonicalDest = parsed.address;
       } else if (parsed.type === "bitcoin") {
         decoded = {
           type: "bitcoin",
@@ -140,6 +177,7 @@ export default function SendScreen() {
           description: "On-chain payment",
           isExpired: false,
         };
+        canonicalDest = parsed.address;
       } else if (parsed.type === "lnurl") {
         decoded = {
           type: "lnurl",
@@ -147,6 +185,7 @@ export default function SendScreen() {
           description: "LNURL payment",
           isExpired: false,
         };
+        canonicalDest = parsed.address;
       } else {
         try {
           const dec = await decodeInvoice(input.trim());
@@ -163,11 +202,10 @@ export default function SendScreen() {
 
       if (decoded) {
         setDecodedInvoice(decoded);
+        setSendAmountInput("");
+        setStage("paste");
         if (decoded.amountSats && decoded.amountSats > 0) {
-          setStage("review");
-        } else {
-          setSendAmountInput("");
-          setStage("paste");
+          fetchFeeEstimate(canonicalDest, decoded.amountSats);
         }
       }
     } catch (e) {
@@ -320,13 +358,21 @@ export default function SendScreen() {
                 )}
               </View>
 
-              {decodedInvoice && decodedInvoice.type === "bitcoin" && (
-                <View style={[styles.warningBanner, { backgroundColor: isDark ? "rgba(201,162,77,0.1)" : "rgba(250,186,26,0.08)", borderColor: isDark ? "rgba(201,162,77,0.3)" : "rgba(250,186,26,0.3)" }]}>
-                  <Ionicons name="warning-outline" size={16} color={colors.gold} />
-                  <Text style={[styles.warningText, { color: colors.textSecondary }]}>
-                    On-chain payments use submarine swaps and may take longer with additional fees.
-                  </Text>
-                </View>
+              {decodedInvoice && decodedInvoice.amountSats && decodedInvoice.amountSats > 0 && (
+                <Animated.View entering={FadeIn} style={{ alignItems: "center", gap: 4, paddingVertical: 8 }}>
+                  <Text style={[styles.amountLabel, { color: colors.textMuted, textAlign: "center" }]}>Amount to send</Text>
+                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+                    <Text style={[styles.fixedAmountDisplay, { color: colors.text }]}>
+                      {decodedInvoice.amountSats.toLocaleString()}
+                    </Text>
+                    <Text style={[styles.fixedAmountUnit, { color: isDark ? colors.coral : colors.coralDark }]}>sats</Text>
+                  </View>
+                  {satsToFiat(decodedInvoice.amountSats) && (
+                    <Text style={[styles.fiatConversion, { color: colors.textMuted }]}>
+                      ≈ {satsToFiat(decodedInvoice.amountSats)}
+                    </Text>
+                  )}
+                </Animated.View>
               )}
 
               {decodedInvoice && !decodedInvoice.amountSats && (
@@ -339,8 +385,17 @@ export default function SendScreen() {
                       placeholder="0"
                       placeholderTextColor={colors.textMuted + "80"}
                       value={sendAmountInput}
-                      onChangeText={(t) => setSendAmountInput(t.replace(/[^0-9]/g, ""))}
+                      onChangeText={(t) => {
+                        setSendAmountInput(t.replace(/[^0-9]/g, ""));
+                        setEstimatedFee(null);
+                      }}
                       keyboardType="number-pad"
+                      onBlur={() => {
+                        const amt = parseInt(sendAmountInput, 10);
+                        if (amt > 0 && invoiceInput) {
+                          fetchFeeEstimate(invoiceInput.trim(), amt);
+                        }
+                      }}
                     />
                     <Text style={[styles.amountUnit, { color: colors.textMuted }]}>sats</Text>
                   </View>
@@ -350,7 +405,10 @@ export default function SendScreen() {
                     </Text>
                     <Pressable
                       style={[styles.maxBtn, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(13,110,125,0.12)" }]}
-                      onPress={() => setSendAmountInput(String(sats))}
+                      onPress={() => {
+                        setSendAmountInput(String(sats));
+                        if (sats > 0 && invoiceInput) fetchFeeEstimate(invoiceInput.trim(), sats);
+                      }}
                     >
                       <Text style={[styles.maxBtnText, { color: isDark ? colors.teal : colors.tealDark }]}>Max</Text>
                     </Pressable>
@@ -361,6 +419,35 @@ export default function SendScreen() {
                     </Text>
                   )}
                 </Animated.View>
+              )}
+
+              {decodedInvoice && (
+                <View style={[styles.feeCard, { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, borderColor: colors.border }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+                    <Text style={[styles.feeLabel, { color: colors.textMuted }]}>Estimated Network Fee</Text>
+                  </View>
+                  {isFeeLoading ? (
+                    <ActivityIndicator color={colors.textMuted} size="small" style={{ marginTop: 6 }} />
+                  ) : estimatedFee !== null ? (
+                    <Text style={[styles.feeValue, { color: colors.text }]}>
+                      ~{estimatedFee.toLocaleString()} sats
+                    </Text>
+                  ) : (
+                    <Text style={[styles.feeValue, { color: isDark ? colors.coral : colors.coralDark }]}>
+                      Calculated on send
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {decodedInvoice && decodedInvoice.type === "bitcoin" && (
+                <View style={[styles.warningBanner, { backgroundColor: isDark ? "rgba(201,162,77,0.1)" : "rgba(250,186,26,0.08)", borderColor: isDark ? "rgba(201,162,77,0.3)" : "rgba(250,186,26,0.3)" }]}>
+                  <Ionicons name="warning-outline" size={16} color={colors.gold} />
+                  <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                    On-chain payments use submarine swaps and may take longer with additional fees.
+                  </Text>
+                </View>
               )}
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -403,81 +490,13 @@ export default function SendScreen() {
                   </Pressable>
                 )}
 
-                <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); setDecodedInvoice(null); setSendAmountInput(""); }} style={styles.cancelBtn}>
+                <Pressable onPress={() => { resetSendState(); setStage("scan"); setCameraActive(true); }} style={styles.cancelBtn}>
                   <Text style={[styles.cancelText, { color: colors.textMuted }]}>{decodedInvoice ? "Cancel" : "Back to Scanner"}</Text>
                 </Pressable>
               </View>
             </Animated.View>
           )}
 
-          {stage === "review" && decodedInvoice && (
-            <Animated.View entering={FadeInDown} style={[styles.reviewCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-              <View style={[styles.reviewHeader, { borderBottomColor: colors.border }]}>
-                <MaterialCommunityIcons name="lightning-bolt" size={24} color={colors.gold} />
-                <Text style={[styles.reviewTitle, { color: colors.text }]}>Confirm Payment</Text>
-              </View>
-
-              <View style={styles.reviewRow}>
-                <Text style={[styles.reviewLabel, { color: colors.textMuted }]}>Amount</Text>
-                <View style={styles.reviewValueCol}>
-                  <Text style={[styles.reviewAmount, { color: colors.text }]}>
-                    {decodedInvoice.amountSats
-                      ? `${decodedInvoice.amountSats.toLocaleString()} sats`
-                      : "Variable amount"}
-                  </Text>
-                  {decodedInvoice.amountSats && satsToFiat(decodedInvoice.amountSats) ? (
-                    <Text style={[styles.reviewFiat, { color: colors.textMuted }]}>≈ {satsToFiat(decodedInvoice.amountSats)}</Text>
-                  ) : null}
-                </View>
-              </View>
-
-              {decodedInvoice.description ? (
-                <View style={styles.reviewRow}>
-                  <Text style={[styles.reviewLabel, { color: colors.textMuted }]}>Note</Text>
-                  <Text style={[styles.reviewValue, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {decodedInvoice.description}
-                  </Text>
-                </View>
-              ) : null}
-
-              <View style={styles.reviewRow}>
-                <Text style={[styles.reviewLabel, { color: colors.textMuted }]}>Network</Text>
-                <View style={styles.badge}>
-                  <MaterialCommunityIcons name="lightning-bolt" size={12} color="#4A90D9" />
-                  <Text style={styles.badgeText}>{getPaymentTypeLabel()}</Text>
-                </View>
-              </View>
-
-              {decodedInvoice.type === "bitcoin" && (
-                <View style={[styles.warningBanner, { backgroundColor: isDark ? "rgba(201,162,77,0.1)" : "rgba(250,186,26,0.08)", borderColor: isDark ? "rgba(201,162,77,0.3)" : "rgba(250,186,26,0.3)" }]}>
-                  <Ionicons name="warning-outline" size={16} color={colors.gold} />
-                  <Text style={[styles.warningText, { color: colors.textSecondary }]}>
-                    On-chain payments use submarine swaps and may take longer with additional fees.
-                  </Text>
-                </View>
-              )}
-
-              <Pressable
-                testID="confirm-send-button"
-                style={styles.confirmBtn}
-                onPress={handleSend}
-              >
-                <LinearGradient
-                  colors={["#E76F51", "#C45A3D"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.confirmGradient}
-                >
-                  <Ionicons name="arrow-up" size={20} color="#FFF" />
-                  <Text style={styles.confirmText}>Send</Text>
-                </LinearGradient>
-              </Pressable>
-
-              <Pressable onPress={() => { setStage("scan"); setCameraActive(true); setError(""); setDecodedInvoice(null); setSendAmountInput(""); }} style={styles.cancelBtn}>
-                <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
-              </Pressable>
-            </Animated.View>
-          )}
 
           {stage === "sending" && (
             <Animated.View entering={FadeIn} style={styles.centerState}>
@@ -513,7 +532,7 @@ export default function SendScreen() {
               <Text style={[styles.stateSubtitle, { color: colors.textMuted }]} numberOfLines={3}>{error}</Text>
               <Pressable
                 style={[styles.retryBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
-                onPress={() => { setStage("scan"); setError(""); setCameraActive(true); }}
+                onPress={() => { resetSendState(); setStage("scan"); setCameraActive(true); }}
               >
                 <Text style={[styles.retryBtnText, { color: colors.textSecondary }]}>Try Again</Text>
               </Pressable>
@@ -616,31 +635,6 @@ const styles = StyleSheet.create({
   },
   dashedBtnText: { fontFamily: "Nunito_600SemiBold", fontSize: 15 },
   errorText: { fontFamily: "Nunito_400Regular", fontSize: 13, color: "#E63946", textAlign: "center" },
-  reviewCard: {
-    borderRadius: 20,
-    padding: 24,
-    gap: 20,
-    borderWidth: 1,
-  },
-  reviewHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  reviewTitle: { fontFamily: "Nunito_700Bold", fontSize: 18 },
-  reviewRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  reviewLabel: { fontFamily: "Nunito_400Regular", fontSize: 14 },
-  reviewValueCol: { flex: 1, alignItems: "flex-end" },
-  reviewAmount: { fontFamily: "Nunito_700Bold", fontSize: 22 },
-  reviewFiat: { fontFamily: "Nunito_500Medium", fontSize: 14, marginTop: 2 },
-  reviewValue: { fontFamily: "Nunito_500Medium", fontSize: 14, flex: 1, textAlign: "right" },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -706,6 +700,16 @@ const styles = StyleSheet.create({
   },
   maxBtnText: { fontFamily: "Nunito_700Bold", fontSize: 13 },
   fiatConversion: { fontFamily: "Nunito_400Regular", fontSize: 13, textAlign: "right", marginTop: 4 },
+  fixedAmountDisplay: { fontFamily: "Chewy_400Regular", fontSize: 48 },
+  fixedAmountUnit: { fontFamily: "Nunito_700Bold", fontSize: 22, marginBottom: 6 },
+  feeCard: {
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    gap: 4,
+  },
+  feeLabel: { fontFamily: "Nunito_400Regular", fontSize: 12 },
+  feeValue: { fontFamily: "Nunito_700Bold", fontSize: 15, marginTop: 2 },
   cancelBtn: { alignItems: "center", paddingVertical: 8 },
   cancelText: { fontFamily: "Nunito_400Regular", fontSize: 14 },
   centerState: {
