@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -273,49 +273,7 @@ export default function HomeScreen() {
     });
 
   const receiveSheetTranslateY = useSharedValue(0);
-
-  const receiveDismissGesture = Gesture.Pan()
-    .activeOffsetY([0, 15])
-    .failOffsetX([-15, 15])
-    .onUpdate((e) => {
-      if (e.translationY > 0) {
-        receiveSheetTranslateY.value = e.translationY;
-      }
-    })
-    .onEnd((e) => {
-      if (e.translationY > 60 || e.velocityY > 400) {
-        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
-          runOnJS(setReceiveOpen)(false);
-          runOnJS(resetReceiveState)();
-        });
-      } else {
-        receiveSheetTranslateY.value = withTiming(0, { duration: 200 });
-      }
-    });
-
   const txDetailTranslateY = useSharedValue(0);
-
-  const txDetailDismissGesture = Gesture.Pan()
-    .activeOffsetY([0, 15])
-    .failOffsetX([-15, 15])
-    .onUpdate((e) => {
-      if (e.translationY > 0) {
-        txDetailTranslateY.value = e.translationY;
-      }
-    })
-    .onEnd((e) => {
-      if (e.translationY > 60 || e.velocityY > 400) {
-        txDetailTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
-          runOnJS(setSelectedTx)(null);
-        });
-      } else {
-        txDetailTranslateY.value = withTiming(0, { duration: 200 });
-      }
-    });
-
-  const txDetailAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: txDetailTranslateY.value }],
-  }));
 
   const receiveSheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: receiveSheetTranslateY.value }],
@@ -672,12 +630,10 @@ export default function HomeScreen() {
 
       {/* Transaction Detail Sheet */}
       <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
-          <GestureDetector gesture={txDetailDismissGesture}>
-          <Animated.View
-            style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }, txDetailAnimStyle]}
+          <View
+            style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }]}
           >
             <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
             {selectedTx && (() => {
@@ -765,19 +721,15 @@ export default function HomeScreen() {
                 </View>
               );
             })()}
-          </Animated.View>
-          </GestureDetector>
+          </View>
         </View>
-        </GestureHandlerRootView>
       </Modal>
 
       {/* Receive Drawer */}
       <Modal visible={receiveOpen} transparent animationType="none" onRequestClose={closeReceiveDrawer}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
-            <GestureDetector gesture={receiveDismissGesture}>
             <Animated.View
               style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
             >
@@ -936,10 +888,8 @@ export default function HomeScreen() {
                 )}
               </ScrollView>
             </Animated.View>
-            </GestureDetector>
           </KeyboardAvoidingView>
         </View>
-        </GestureHandlerRootView>
       </Modal>
 
       {/* Celebration overlay */}
