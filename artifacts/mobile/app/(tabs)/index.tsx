@@ -185,7 +185,7 @@ function TransactionItem({
         </Text>
         <View style={txStyles.statusRow}>
           {!isReceive && (tx.feeSats ?? 0) > 0 && (
-            <Text style={[txStyles.feeText, { color: colors.textMuted }]}>Fee: {formatSats(tx.feeSats ?? 0)} sats</Text>
+            <Text style={[txStyles.feeText, { color: colors.textMuted }]}>Fee: {formatSats(tx.feeSats ?? 0)}</Text>
           )}
           {isPendingDeposit ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
@@ -196,6 +196,8 @@ function TransactionItem({
             <Ionicons name="reload" size={12} color="#EAB308" />
           ) : tx.status === "failed" ? (
             <Ionicons name="close-circle" size={12} color={colors.red} />
+          ) : tx.status === "completed" ? (
+            <Ionicons name="checkmark-circle" size={14} color={colors.green} />
           ) : null}
         </View>
       </View>
@@ -613,7 +615,8 @@ export default function HomeScreen() {
               pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(23,162,184,0.10)" : "rgba(23,162,184,0.20)" }]}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(23,162,184,0.08)" : "rgba(23,162,184,0.10)" }]} pointerEvents="none" />
+            <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(23,162,184,0.20)" }]}>
               <Ionicons name="arrow-back-outline" size={24} color={isDark ? colors.teal : colors.tealDark} style={{ transform: [{ rotate: "-45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.receiveBtnText }]}>Receive</Text>
@@ -631,7 +634,8 @@ export default function HomeScreen() {
               pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(232,106,51,0.10)" : "rgba(232,106,51,0.20)" }]}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(232,106,51,0.05)" : "rgba(232,106,51,0.05)" }]} pointerEvents="none" />
+            <View style={[styles.actionIconCircle, { backgroundColor: isDark ? "rgba(232,106,51,0.15)" : "rgba(232,106,51,0.20)" }]}>
               <Ionicons name="arrow-up-outline" size={24} color={isDark ? colors.coral : colors.coralDark} style={{ transform: [{ rotate: "45deg" }] }} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.sendBtnText }]}>Send</Text>

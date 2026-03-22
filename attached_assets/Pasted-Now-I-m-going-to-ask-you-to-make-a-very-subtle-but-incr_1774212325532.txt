@@ -1,0 +1,27 @@
+Now I’m going to ask you to make a very subtle, but incredibly important aesthetic change that will give our app a premium feel. I’ve included a screenshot to give you a sense for what I want.  THE KEY DESIGN CONCEPT: "Color Diffusion"
+The most important visual effect in this app is what we call color diffusion — the accent color (teal for receive, orange for send) doesn't just sit on the icon. It softly washes across the entire surface of the element, like a watercolor stain. This is what makes the app feel premium rather than flat.
+How It Works on the Receive/Send Buttons
+The buttons are NOT just a neutral card with a colored icon circle on top. There are three layers working together:
+1. The card background itself is tinted — the entire card surface has a very pale version of the accent color baked in:
+    * Receive card: #EAF7FA (pale icy teal) in light mode, or card color in dark mode
+    * Send card: #FDE9E6 (pale blush pink) in light mode, or card color in dark mode
+2. A full-bleed semi-transparent overlay sits on top of the card (using position: absolute; inset: 0):
+    * Receive: rgba(secondary, 0.10) — a 10% wash of the secondary blue
+    * Send: rgba(accent, 0.05) — a 5% wash of the coral accent
+    * On hover, these increase to 20% and 10% respectively
+3. The icon circle uses the accent at 20% opacity as its background:
+    * Receive circle: rgba(23, 162, 184, 0.2) with #0D6E7D icon
+    * Send circle: rgba(232, 106, 51, 0.2) with #B54215 icon
+The combined effect: your eye sees the teal/orange concentrated at the icon, but the same hue bleeding softly all the way to the edges of the card. It's subtle but critical.
+In dark mode: The card backgrounds become the standard dark card color (hsl(220, 45%, 15%)), but the overlay and icon circle still use the semi-transparent accent colors, so you still get that soft glow effect on the dark surface.
+How It Works on Transaction Log Rows
+Each transaction row creates color cohesion by using the SAME color family for both the icon circle (left) and the amount text (right):
+* Receive rows: Icon circle = #17A2B8 at 20% opacity bg, #0D6E7D icon. Amount text = #0D6E7D. Both teal family.
+* Send rows: Icon circle = #E86A33 at 20% opacity bg, #B54215 icon. Amount text = #B54215. Both orange family.
+Your eye connects the colored icon on the left to the colored amount on the right, and the row "feels" like it has a color identity — even though the row background itself is transparent. The color emanates from two anchor points (icon + amount) and your brain fills in the connection between them.
+What the wrong version looks like: If the icon circles are too opaque (solid colored circles instead of 20% tinted), or if the amount text is just white/default instead of the accent color, the effect breaks. You get isolated colored dots instead of a cohesive color atmosphere.
+Dark Mode Specifics for Color Diffusion
+In dark mode, the opacity values are HALVED to avoid the colors being too bright on the dark background:
+* Icon circles: 10% opacity instead of 20% (e.g., rgba(23, 162, 184, 0.1) instead of 0.2)
+* Hover states: 20% instead of 30%
+* This keeps the diffusion subtle and moody rather than garish

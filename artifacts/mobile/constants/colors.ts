@@ -48,8 +48,8 @@ const DAYLIGHT = {
   blue: "#2563EB",
   yellow: "#EAB308",
   purple: "#7C3AED",
-  receiveIconBg: "#DCEEF3",
-  sendIconBg: "#F8DDD8",
+  receiveIconBg: "#EAF7FA",
+  sendIconBg: "#FDE9E6",
   receiveBtnText: "#0D6E7D",
   sendBtnText: "#B54215",
 };
