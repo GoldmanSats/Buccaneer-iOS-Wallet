@@ -9,7 +9,6 @@ import {
   Platform,
   TextInput,
   Dimensions,
-  Modal,
   Image,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -23,8 +22,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  FadeInDown,
-  FadeIn,
   Easing,
   runOnJS,
 } from "react-native-reanimated";
@@ -102,11 +99,12 @@ interface TxType {
 }
 
 function TransactionItem({
-  tx, onPress, colors,
+  tx, onPress, colors, glowing,
 }: {
   tx: TxType;
   onPress: (tx: TxType) => void;
   colors: typeof MIDNIGHT;
+  glowing?: boolean;
 }) {
   const isReceive = tx.type === "receive";
   const isPending = tx.status === "pending";
@@ -124,12 +122,28 @@ function TransactionItem({
   const iconColor = isPendingDeposit ? "#EAB308" : isReceive ? (isDark ? colors.teal : colors.tealDark) : (isDark ? colors.coral : colors.coralDark);
   const amountColor = isPendingDeposit ? "#EAB308" : isReceive ? (isDark ? colors.teal : colors.tealDark) : (isDark ? colors.coral : colors.coralDark);
 
+  const glowOpacity = useSharedValue(glowing ? 1 : 0);
+  useEffect(() => {
+    if (glowing) {
+      glowOpacity.value = 1;
+      glowOpacity.value = withTiming(0, { duration: 2000, easing: Easing.out(Easing.cubic) });
+    }
+  }, [glowing]);
+  const glowColor = isReceive
+    ? (isDark ? "rgba(23,162,184," : "rgba(13,110,125,")
+    : (isDark ? "rgba(232,106,51," : "rgba(181,66,21,");
+  const glowAnimStyle = useAnimatedStyle(() => ({
+    backgroundColor: `${glowColor}${(glowOpacity.value * (isDark ? 0.20 : 0.12)).toFixed(3)})`,
+  }));
+
   return (
+    <Animated.View style={[txStyles.row, glowAnimStyle,
+      isPendingDeposit && { backgroundColor: "rgba(234,179,8,0.05)", borderWidth: 1, borderColor: "rgba(234,179,8,0.2)" },
+    ]}>
     <Pressable
       style={({ pressed }) => [
-        txStyles.row,
-        isPendingDeposit && { backgroundColor: "rgba(234,179,8,0.05)", borderWidth: 1, borderColor: "rgba(234,179,8,0.2)" },
-        pressed && { opacity: 0.7, backgroundColor: colors.bgCard + "80" },
+        { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+        pressed && { opacity: 0.7 },
       ]}
       onPress={() => onPress(tx)}
       testID={`tx-item-${tx.id}`}
@@ -180,6 +194,7 @@ function TransactionItem({
         </View>
       </View>
     </Pressable>
+    </Animated.View>
   );
 }
 
@@ -209,7 +224,7 @@ export default function HomeScreen() {
   const [isLogExpanded, setIsLogExpanded] = useState(false);
   const [selectedTx, setSelectedTx] = useState<TxType | null>(null);
   const [editingMemo, setEditingMemo] = useState("");
-  const [celebration, setCelebration] = useState<{ amount: number; description: string } | null>(null);
+  const [glowTxId, setGlowTxId] = useState<string | null>(null);
 
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [receiveMode, setReceiveMode] = useState<"default" | "amount" | "generated">("default");
@@ -329,6 +344,7 @@ export default function HomeScreen() {
   }, []);
 
   const seenTxIdsRef = useRef<Set<string> | null>(null);
+  const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDoneRef = useRef(false);
   useEffect(() => {
     if (!transactions.length) return;
@@ -344,10 +360,8 @@ export default function HomeScreen() {
       return !prevIds.has(txId) && tx.type === "receive" && tx.status === "completed";
     });
     if (newReceived.length > 0) {
-      const totalAmount = newReceived.reduce((sum: number, tx: any) => sum + (tx.amountSats || 0), 0);
-      const desc = newReceived.length > 1
-        ? `${newReceived.length} incoming payments`
-        : (newReceived[0] as any).description || "Incoming payment";
+      const sorted = [...newReceived].sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+      const mostRecent = sorted[0];
       if (receiveOpen) {
         receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250, easing: Easing.in(Easing.cubic) }, () => {
           runOnJS(setReceiveOpen)(false);
@@ -356,11 +370,16 @@ export default function HomeScreen() {
       }
       refetchBalance();
       playBellSound();
-      setCelebration({ amount: totalAmount, description: desc });
-      setTimeout(() => setCelebration(null), 5500);
+      if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
+      setGlowTxId(mostRecent.id);
+      glowTimerRef.current = setTimeout(() => setGlowTxId(null), 2500);
     }
     seenTxIdsRef.current = currentIds;
   }, [transactions]);
+
+  useEffect(() => {
+    return () => { if (glowTimerRef.current) clearTimeout(glowTimerRef.current); };
+  }, []);
 
   const formatted = formatSats(sats);
   const digitCount = formatted.replace(/,/g, "").length;
@@ -676,7 +695,7 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.txList}>
               {transactions.map((tx: any) => (
-                <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} />
+                <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} glowing={glowTxId === tx.id} />
               ))}
             </View>
           )}
@@ -955,25 +974,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Celebration overlay */}
-      {celebration && (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setCelebration(null)}>
-          <Pressable style={styles.celebrationOverlay} onPress={() => setCelebration(null)} testID="celebration-overlay">
-            <Animated.View entering={FadeInDown.springify().damping(15)} style={styles.celebrationContent}>
-              <View style={styles.celebrationBell}>
-                <Ionicons name="notifications" size={36} color="#FBBF24" />
-              </View>
-              <Text style={styles.celebrationTitle}>Coins Aboard!</Text>
-              <View style={styles.celebrationAmountRow}>
-                <Text style={styles.celebrationAmount}>+{formatSats(celebration.amount)}</Text>
-                <Text style={styles.celebrationSats}>sats</Text>
-              </View>
-              <Text style={styles.celebrationDesc}>{celebration.description}</Text>
-              <Text style={styles.celebrationDismiss}>Tap anywhere to dismiss</Text>
-            </Animated.View>
-          </Pressable>
-        </Modal>
-      )}
     </View>
   );
 }
@@ -1132,23 +1132,4 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, width: "100%",
   },
 
-  celebrationOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
-  celebrationContent: { alignItems: "center", paddingHorizontal: 32 },
-  celebrationBell: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(251,191,36,0.15)",
-    alignItems: "center", justifyContent: "center", marginBottom: 24,
-    borderWidth: 2, borderColor: "rgba(251,191,36,0.3)",
-  },
-  celebrationTitle: {
-    fontFamily: "Chewy_400Regular", fontSize: 36, color: "#FFFFFF", marginBottom: 8,
-    textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
-  },
-  celebrationAmountRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 12 },
-  celebrationAmount: {
-    fontFamily: "Chewy_400Regular", fontSize: 60, color: "#FBBF24",
-    textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
-  },
-  celebrationSats: { fontFamily: "Nunito_700Bold", fontSize: 24, color: "rgba(251,191,36,0.8)", marginBottom: 8 },
-  celebrationDesc: { fontFamily: "Nunito_500Medium", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 32 },
-  celebrationDismiss: { fontFamily: "Nunito_400Regular", fontSize: 12, color: "rgba(255,255,255,0.3)" },
 });
