@@ -274,10 +274,16 @@ export default function HomeScreen() {
 
   const receiveSheetTranslateY = useSharedValue(0);
   const txDetailTranslateY = useSharedValue(0);
+  const txLogScrollOffset = useRef(0);
 
   const receiveSheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: receiveSheetTranslateY.value }],
   }));
+
+  const txDetailAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: txDetailTranslateY.value }],
+  }));
+
 
   const handleBalanceTap = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -390,6 +396,43 @@ export default function HomeScreen() {
       runOnJS(resetReceiveState)();
     });
   };
+
+  const receiveDismissGesture = Gesture.Pan()
+    .activeOffsetY([0, 15])
+    .failOffsetX([-15, 15])
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        receiveSheetTranslateY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY > 60 || e.velocityY > 400) {
+        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
+          runOnJS(setReceiveOpen)(false);
+          runOnJS(resetReceiveState)();
+        });
+      } else {
+        receiveSheetTranslateY.value = withTiming(0, { duration: 200 });
+      }
+    });
+
+  const txDetailDismissGesture = Gesture.Pan()
+    .activeOffsetY([0, 15])
+    .failOffsetX([-15, 15])
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        txDetailTranslateY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY > 60 || e.velocityY > 400) {
+        txDetailTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
+          runOnJS(setSelectedTx)(null);
+        });
+      } else {
+        txDetailTranslateY.value = withTiming(0, { duration: 200 });
+      }
+    });
 
   const handleReceiveGenerate = async () => {
     const satsVal = parseInt(receiveAmountInput);
@@ -569,7 +612,6 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Transaction Log — anchored to bottom, expands upward */}
-      <GestureDetector gesture={txPanGesture}>
       <Animated.View
         style={[
           styles.txPanelOverlay,
@@ -588,6 +630,8 @@ export default function HomeScreen() {
           txPanelAnimStyle,
         ]}
       >
+        <GestureDetector gesture={txPanGesture}>
+        <Animated.View>
         <Pressable
           onPress={() => {
             if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -599,12 +643,22 @@ export default function HomeScreen() {
           <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
           <Ionicons name={isLogExpanded ? "chevron-down" : "chevron-up"} size={18} color={colors.textMuted} />
         </Pressable>
+        </Animated.View>
+        </GestureDetector>
 
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={isLogExpanded}
+          scrollEventThrottle={16}
+          onScroll={(e) => { txLogScrollOffset.current = e.nativeEvent.contentOffset.y; }}
+          onScrollEndDrag={(e) => {
+            if (txLogScrollOffset.current <= 0 && (e.nativeEvent.velocity?.y ?? 0) > 0.3) {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsLogExpanded(false);
+            }
+          }}
         >
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
@@ -626,17 +680,18 @@ export default function HomeScreen() {
           )}
         </ScrollView>
       </Animated.View>
-      </GestureDetector>
 
       {/* Transaction Detail Sheet */}
-      <Modal visible={!!selectedTx} transparent animationType="slide" onRequestClose={() => setSelectedTx(null)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
-          <View
-            style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }]}
-          >
-            <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
-            {selectedTx && (() => {
+      {!!selectedTx && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setSelectedTx(null)} />
+            <GestureDetector gesture={txDetailDismissGesture}>
+            <Animated.View
+              style={[styles.txDetailSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 12 }, txDetailAnimStyle]}
+            >
+              <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
+              {selectedTx && (() => {
               const isReceive = selectedTx.type === "receive";
               const isPendingDeposit = selectedTx.status === "pending" && selectedTx.method === "deposit";
               const iconBg = isPendingDeposit ? "rgba(234,179,8,0.15)" : isReceive ? "rgba(23,162,184,0.10)" : "rgba(232,106,51,0.10)";
@@ -721,17 +776,21 @@ export default function HomeScreen() {
                 </View>
               );
             })()}
+            </Animated.View>
+            </GestureDetector>
           </View>
         </View>
-      </Modal>
+      )}
 
       {/* Receive Drawer */}
-      <Modal visible={receiveOpen} transparent animationType="none" onRequestClose={closeReceiveDrawer}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
-            <Animated.View
-              style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
+      {receiveOpen && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.modalBackdrop} onPress={closeReceiveDrawer} />
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ justifyContent: "flex-end" }}>
+              <GestureDetector gesture={receiveDismissGesture}>
+              <Animated.View
+                style={[styles.receiveSheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, receiveSheetAnimStyle]}
             >
               <Pressable onPress={closeReceiveDrawer} style={styles.receiveDragZone}>
                 <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
@@ -887,10 +946,12 @@ export default function HomeScreen() {
                   </View>
                 )}
               </ScrollView>
-            </Animated.View>
-          </KeyboardAvoidingView>
+              </Animated.View>
+              </GestureDetector>
+            </KeyboardAvoidingView>
+          </View>
         </View>
-      </Modal>
+      )}
 
       {/* Celebration overlay */}
       {celebration && (
