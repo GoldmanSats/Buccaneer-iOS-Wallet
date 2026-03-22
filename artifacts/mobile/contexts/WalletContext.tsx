@@ -58,6 +58,7 @@ interface WalletContextValue {
   updateMemo: (txId: string, memo: string) => Promise<void>;
   getNodeInfo: () => Promise<NodeInfo>;
   getSdkStatus: () => Promise<{ initialized: boolean; error: string | null }>;
+  isOffline: boolean;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -65,15 +66,23 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 export function WalletProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { settings } = useSettings();
+  const [isOffline, setIsOffline] = useState(false);
 
   const { data: balance, isLoading: isBalanceLoading, refetch: refetchBalance } = useQuery<Balance>({
     queryKey: ["balance"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/wallet/balance`);
-      if (!res.ok) throw new Error("Failed to fetch balance");
-      return res.json();
+      try {
+        const res = await fetch(`${API_BASE}/wallet/balance`);
+        if (!res.ok) throw new Error("Failed to fetch balance");
+        setIsOffline(false);
+        return res.json();
+      } catch (err) {
+        setIsOffline(true);
+        throw err;
+      }
     },
     refetchInterval: 5000,
+    retry: 1,
   });
 
   const { data: txData, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery<{ transactions: Transaction[]; total: number }>({
@@ -179,7 +188,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     updateMemo,
     getNodeInfo: getNodeInfoFn,
     getSdkStatus: getSdkStatusFn,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPayment, createInvoice, decodeInvoice, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn]);
+    isOffline,
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPayment, createInvoice, decodeInvoice, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

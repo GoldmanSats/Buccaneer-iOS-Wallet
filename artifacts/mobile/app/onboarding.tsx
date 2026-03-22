@@ -8,6 +8,7 @@ import {
   Platform,
   TextInput,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +23,8 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
+
+const appIconSource = require("@/assets/images/app-icon.png");
 
 const { width, height } = Dimensions.get("window");
 
@@ -139,7 +142,7 @@ export default function OnboardingScreen() {
         <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
         <View style={styles.loadingContent}>
           <Animated.View style={[styles.logoContainer, bobbingStyle]}>
-            <GalleonSVG />
+            <Image source={appIconSource} style={styles.appIcon} />
           </Animated.View>
           <Text style={styles.loadingTitle}>Setting Sail...</Text>
           <Text style={styles.loadingSubtitle}>Initializing your wallet</Text>
@@ -225,7 +228,7 @@ export default function OnboardingScreen() {
 
       <View style={styles.content}>
         <Animated.View style={[styles.logoContainer, bobbingStyle]}>
-          <GalleonSVG />
+          <Image source={appIconSource} style={styles.appIcon} />
         </Animated.View>
 
         <View style={styles.titleGroup}>
@@ -285,6 +288,7 @@ const styles = StyleSheet.create({
     gap: 28,
   },
   logoContainer: { alignItems: "center", justifyContent: "center" },
+  appIcon: { width: 180, height: 180, borderRadius: 36 },
   titleGroup: { alignItems: "center", gap: 2 },
   appName: { fontFamily: "Chewy_400Regular", fontSize: 52, color: "#FFFFFF", letterSpacing: 2, lineHeight: 60 },
   appSubtitle: { fontFamily: "Chewy_400Regular", fontSize: 36, color: GOLD, letterSpacing: 4, lineHeight: 40 },

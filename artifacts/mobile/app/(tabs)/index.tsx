@@ -28,7 +28,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
-import { Audio } from "expo-av";
+import { useAudioPlayer } from "expo-audio";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
@@ -218,7 +218,7 @@ export default function HomeScreen() {
     balance, transactions, btcPrice,
     isBalanceLoading, isTransactionsLoading,
     refetchBalance, refetchTransactions,
-    updateMemo, createInvoice,
+    updateMemo, createInvoice, isOffline,
   } = useWallet();
 
   const [isLogExpanded, setIsLogExpanded] = useState(false);
@@ -329,19 +329,15 @@ export default function HomeScreen() {
   const fiatAmount = btcPrice ? (sats / 100_000_000) * btcPrice.price : 0;
   const hasFiatPrice = !!btcPrice;
 
-  const playBellSound = useCallback(async () => {
+  const bellPlayer = useAudioPlayer(require("@/assets/sounds/ships_bell.wav"));
+  const playBellSound = useCallback(() => {
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        require("@/assets/sounds/ships_bell.wav")
-      );
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.didJustFinish) sound.unloadAsync();
-      });
+      bellPlayer.seekTo(0);
+      bellPlayer.play();
     } catch (e) {
       console.warn("Bell sound failed", e);
     }
-  }, []);
+  }, [bellPlayer]);
 
   const seenTxIdsRef = useRef<Set<string> | null>(null);
   const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -501,6 +497,12 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      {isOffline && (
+        <View style={[styles.offlineBanner, { paddingTop: insets.top + 4 }]}>
+          <Ionicons name="cloud-offline-outline" size={14} color="#FFFFFF" />
+          <Text style={styles.offlineText}>No connection — pull down to retry</Text>
+        </View>
+      )}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: TX_COLLAPSED_HEIGHT + 24 }]}
@@ -1132,4 +1134,18 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, width: "100%",
   },
 
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#B54215",
+    paddingBottom: 8,
+    zIndex: 100,
+  },
+  offlineText: {
+    fontFamily: "Nunito_600SemiBold",
+    fontSize: 13,
+    color: "#FFFFFF",
+  },
 });

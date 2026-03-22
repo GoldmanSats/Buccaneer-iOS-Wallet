@@ -59,7 +59,7 @@
     "@expo-google-fonts/chewy": "^0.4.0",
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo-google-fonts/pirata-one": "^0.4.1",
-    "expo-av": "^16.0.8",
+    "expo-audio": "^1.1.1",
     "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "^55.0.9",
     "expo-clipboard": "^55.0.8",

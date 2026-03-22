@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Buccaneer Wallet",
-    "slug": "mobile",
+    "slug": "buccaneer-wallet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "buccaneer-wallet",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,13 @@
       "backgroundColor": "#0B1426"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.buccaneer.wallet",
+      "buildNumber": "1"
     },
-    "android": {},
+    "android": {
+      "package": "com.buccaneer.wallet"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
