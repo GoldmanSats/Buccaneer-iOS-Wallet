@@ -9,6 +9,7 @@ export const modules: ModuleMap = {
   "./components/mockups/daylight-palettes/PaletteB.tsx": () => import("../components/mockups/daylight-palettes/PaletteB.tsx"),
   "./components/mockups/daylight-palettes/PaletteC.tsx": () => import("../components/mockups/daylight-palettes/PaletteC.tsx"),
   "./components/mockups/daylight-palettes/PaletteD.tsx": () => import("../components/mockups/daylight-palettes/PaletteD.tsx"),
+  "./components/mockups/daylight-palettes/SwatchCompare.tsx": () => import("../components/mockups/daylight-palettes/SwatchCompare.tsx"),
   "./components/mockups/tx-glow/BorderShimmer.tsx": () => import("../components/mockups/tx-glow/BorderShimmer.tsx"),
   "./components/mockups/tx-glow/SoftPulse.tsx": () => import("../components/mockups/tx-glow/SoftPulse.tsx")
 };
