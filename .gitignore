@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Breez SDK data (sensitive wallet data)
+.breez-data/
+*/.breez-data/
