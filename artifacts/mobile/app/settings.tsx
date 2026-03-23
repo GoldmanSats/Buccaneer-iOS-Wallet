@@ -340,7 +340,7 @@ export default function SettingsScreen() {
               <Ionicons name={isDark ? "moon-outline" : "sunny-outline"} size={20} color={isDark ? "#6366F1" : "#EAB308"} />
             </View>
             <View style={s.rowText}>
-              <Text style={[s.rowLabel, { color: colors.text }]}>Daytime Mode</Text>
+              <Text style={[s.rowLabel, { color: colors.text }]}>Daylight Mode</Text>
               <Text style={[s.rowSub, { color: colors.textMuted }]}>Sail under the glare of daylight</Text>
             </View>
             <Switch
