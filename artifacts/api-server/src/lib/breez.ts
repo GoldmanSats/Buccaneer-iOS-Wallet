@@ -1,8 +1,10 @@
 import { createRequire } from "module";
+import { fileURLToPath } from "url";
 import { db } from "@workspace/db";
 import { transactionCacheTable } from "@workspace/db";
 
-const require = createRequire(import.meta.url);
+const _requireUrl = typeof import.meta?.url === "string" ? import.meta.url : `file://${__filename ?? process.argv[1]}`;
+const require = createRequire(_requireUrl);
 
 let sdkInstance: any = null;
 let sdkInitializing: Promise<any> | null = null;
