@@ -362,7 +362,11 @@ async function processEvent(event: {
   content: string;
   created_at: number;
 }) {
-  if (event.kind !== NWC_KIND) return;
+  console.log(`[NWC] processEvent called: kind=${event.kind} id=${event.id?.slice(0,12)}...`);
+  if (event.kind !== NWC_KIND) {
+    console.log(`[NWC] Ignoring non-NWC event kind=${event.kind}`);
+    return;
+  }
 
   if (!verifyEventSignature(event)) {
     console.warn("[NWC] Rejected event with invalid signature:", event.id);
@@ -370,7 +374,11 @@ async function processEvent(event: {
   }
 
   const pTag = event.tags.find((t) => t[0] === "p")?.[1];
-  if (!pTag) return;
+  if (!pTag) {
+    console.warn("[NWC] Event missing p tag:", event.id);
+    return;
+  }
+  console.log(`[NWC] Event p-tag target: ${pTag.slice(0, 12)}...`);
 
   const keys = await db.select().from(agentKeysTable);
   const matchingKey = keys.find((k) => {
@@ -482,7 +490,7 @@ async function subscribeToKeys() {
     };
 
     relayWs!.send(JSON.stringify(["REQ", "nwc-sub", filter]));
-    console.log(`[NWC] Subscribed to ${pubkeys.length} NWC key(s)`);
+    console.log(`[NWC] Subscribed to ${pubkeys.length} NWC key(s): ${pubkeys.map(p => p.slice(0,12) + '...').join(', ')}`);
 
     await publishInfoEvents(keys);
 
@@ -519,7 +527,9 @@ function connectToRelay() {
       const msg = JSON.parse(data.toString());
       if (Array.isArray(msg)) {
         if (msg[0] === "EVENT" && msg[2]) {
-          processEvent(msg[2]);
+          const evt = msg[2];
+          console.log(`[NWC] Received EVENT kind=${evt.kind} id=${evt.id?.slice(0,12)}... from=${evt.pubkey?.slice(0,12)}...`);
+          processEvent(evt);
         } else if (msg[0] === "EOSE") {
           console.log("[NWC] End of stored events");
         } else if (msg[0] === "OK") {
@@ -531,6 +541,8 @@ function connectToRelay() {
           }
         } else if (msg[0] === "NOTICE") {
           console.log("[NWC] Relay notice:", msg[1]);
+        } else if (msg[0] === "CLOSED") {
+          console.warn("[NWC] Subscription closed by relay:", msg[1], msg[2]);
         }
       }
     } catch (e) {
