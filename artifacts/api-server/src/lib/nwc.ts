@@ -1,5 +1,6 @@
 import { WebSocket } from "ws";
 import * as secp256k1 from "@noble/secp256k1";
+import { schnorr } from "@noble/curves/secp256k1";
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
@@ -39,9 +40,7 @@ interface NwcResponse {
 }
 
 function getPublicKey(secretKeyHex: string): string {
-  const privKeyBytes = hexToBytes(secretKeyHex);
-  const pubKeyBytes = secp256k1.getPublicKey(privKeyBytes, true);
-  return bytesToHex(pubKeyBytes.slice(1));
+  return bytesToHex(schnorr.getPublicKey(hexToBytes(secretKeyHex)));
 }
 
 function serializeEvent(event: {
@@ -81,10 +80,8 @@ async function signEvent(event: {
   tags: string[][];
   content: string;
 }, secretKeyHex: string): Promise<string> {
-  const privKeyBytes = hexToBytes(secretKeyHex);
-  const msgHash = hexToBytes(event.id);
-  const sig = await secp256k1.signAsync(msgHash, privKeyBytes);
-  return bytesToHex(sig.toCompactRawBytes());
+  const sig = schnorr.sign(hexToBytes(event.id), hexToBytes(secretKeyHex));
+  return bytesToHex(sig);
 }
 
 async function encryptNip04(
@@ -345,12 +342,11 @@ function verifyEventSignature(event: {
       console.error("[NWC] Event ID mismatch");
       return false;
     }
-    const isValid = secp256k1.verify(
+    return schnorr.verify(
       hexToBytes(event.sig),
       hexToBytes(event.id),
       hexToBytes(event.pubkey)
     );
-    return isValid;
   } catch (e) {
     console.error("[NWC] Signature verification error:", e);
     return false;
@@ -430,56 +426,78 @@ async function processEvent(event: {
   }
 }
 
-function subscribeToKeys() {
+const SUPPORTED_METHODS = "pay_invoice make_invoice get_balance get_info list_transactions lookup_invoice";
+let infoEventInterval: ReturnType<typeof setInterval> | null = null;
+
+async function publishInfoEvents(keys: (typeof agentKeysTable.$inferSelect)[]) {
   if (!relayWs || relayWs.readyState !== WebSocket.OPEN) return;
 
-  db.select()
-    .from(agentKeysTable)
-    .then((keys) => {
-      const pubkeys = keys
-        .filter((k) => k.isActive && k.connectionType === "nwc")
-        .map((k) => {
-          try {
-            return getPublicKey(k.secretKey);
-          } catch {
-            return null;
-          }
-        })
-        .filter(Boolean) as string[];
-
-      if (pubkeys.length === 0) {
-        console.log("[NWC] No active NWC keys to subscribe to");
-        return;
-      }
-
-      const filter = {
-        kinds: [NWC_KIND],
-        "#p": pubkeys,
-        since: Math.floor(Date.now() / 1000) - 60,
+  const nwcKeys = keys.filter((k) => k.isActive && k.connectionType === "nwc");
+  for (const key of nwcKeys) {
+    try {
+      const pubkey = getPublicKey(key.secretKey);
+      const infoEvent = {
+        pubkey,
+        created_at: Math.floor(Date.now() / 1000),
+        kind: NWC_INFO_KIND,
+        tags: [["d", pubkey]],
+        content: SUPPORTED_METHODS,
       };
+      const id = getEventId(infoEvent);
+      const sig = await signEvent({ ...infoEvent, id }, key.secretKey);
+      const signed = { ...infoEvent, id, sig };
+      relayWs!.send(JSON.stringify(["EVENT", signed]));
+      console.log(`[NWC] Published info event (kind 13194) for key "${key.name}" pubkey=${pubkey.slice(0, 12)}...`);
+    } catch (e) {
+      console.error(`[NWC] Failed to publish info event for key "${key.name}":`, e);
+    }
+  }
+}
 
-      relayWs!.send(JSON.stringify(["REQ", "nwc-sub", filter]));
-      console.log(`[NWC] Subscribed to ${pubkeys.length} NWC key(s)`);
+async function subscribeToKeys() {
+  if (!relayWs || relayWs.readyState !== WebSocket.OPEN) return;
 
-      for (const key of keys.filter((k) => k.isActive && k.connectionType === "nwc")) {
+  try {
+    const keys = await db.select().from(agentKeysTable);
+    const pubkeys = keys
+      .filter((k) => k.isActive && k.connectionType === "nwc")
+      .map((k) => {
         try {
-          const pubkey = getPublicKey(key.secretKey);
-          const infoEvent = {
-            pubkey,
-            created_at: Math.floor(Date.now() / 1000),
-            kind: NWC_INFO_KIND,
-            tags: [],
-            content: "get_info get_balance pay_invoice make_invoice list_transactions lookup_invoice",
-          };
-          const id = getEventId(infoEvent);
-          signEvent({ ...infoEvent, id }, key.secretKey).then((sig) => {
-            const signed = { ...infoEvent, id, sig };
-            relayWs!.send(JSON.stringify(["EVENT", signed]));
-          });
-        } catch (_e) {}
+          return getPublicKey(k.secretKey);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as string[];
+
+    if (pubkeys.length === 0) {
+      console.log("[NWC] No active NWC keys to subscribe to");
+      return;
+    }
+
+    const filter = {
+      kinds: [NWC_KIND],
+      "#p": pubkeys,
+      since: Math.floor(Date.now() / 1000) - 60,
+    };
+
+    relayWs!.send(JSON.stringify(["REQ", "nwc-sub", filter]));
+    console.log(`[NWC] Subscribed to ${pubkeys.length} NWC key(s)`);
+
+    await publishInfoEvents(keys);
+
+    if (infoEventInterval) clearInterval(infoEventInterval);
+    infoEventInterval = setInterval(async () => {
+      try {
+        const freshKeys = await db.select().from(agentKeysTable);
+        await publishInfoEvents(freshKeys);
+      } catch (e) {
+        console.error("[NWC] Failed to re-publish info events:", e);
       }
-    })
-    .catch((e) => console.error("[NWC] Failed to load keys:", e));
+    }, 5 * 60 * 1000);
+  } catch (e) {
+    console.error("[NWC] Failed to load keys:", e);
+  }
 }
 
 function connectToRelay() {
@@ -504,6 +522,13 @@ function connectToRelay() {
           processEvent(msg[2]);
         } else if (msg[0] === "EOSE") {
           console.log("[NWC] End of stored events");
+        } else if (msg[0] === "OK") {
+          const [, eventId, accepted, reason] = msg;
+          if (accepted) {
+            console.log(`[NWC] Relay accepted event ${(eventId as string)?.slice(0, 12)}...`);
+          } else {
+            console.warn(`[NWC] Relay REJECTED event ${(eventId as string)?.slice(0, 12)}...: ${reason}`);
+          }
         } else if (msg[0] === "NOTICE") {
           console.log("[NWC] Relay notice:", msg[1]);
         }
@@ -534,6 +559,10 @@ export function startNwcRelay() {
 
 export function stopNwcRelay() {
   isRunning = false;
+  if (infoEventInterval) {
+    clearInterval(infoEventInterval);
+    infoEventInterval = null;
+  }
   if (reconnectTimeout) {
     clearTimeout(reconnectTimeout);
     reconnectTimeout = null;

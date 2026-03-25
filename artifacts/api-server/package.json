@@ -11,6 +11,7 @@
   "dependencies": {
     "@breeztech/breez-sdk-liquid": "^0.12.1",
     "@breeztech/breez-sdk-spark": "0.12.1",
+    "@noble/curves": "1.8.1",
     "@noble/hashes": "^2.0.1",
     "@noble/secp256k1": "2.1.0",
     "@workspace/api-zod": "workspace:*",
