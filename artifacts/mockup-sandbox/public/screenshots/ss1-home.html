@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Nunito:wght@400;600;700;800&family=Chewy&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1242px; height: 2688px;
+  background: linear-gradient(180deg, #0B1426 0%, #101d38 50%, #0B1426 100%);
+  font-family: 'Nunito', sans-serif;
+  color: #FFFFFF;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar { height: 132px; display: flex; align-items: center; justify-content: space-between; padding: 40px 80px 0; font-size: 42px; font-weight: 700; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 40px 80px; }
+.header-title { font-family: 'Pirata One', cursive; font-size: 72px; color: #C9A24D; }
+.backup-badge { background: #E86A33; padding: 16px 36px; border-radius: 40px; font-size: 34px; font-weight: 700; }
+.balance-area { text-align: center; padding: 100px 0 60px; }
+.balance-label { font-size: 42px; color: #8FA3C8; margin-bottom: 20px; }
+.balance-amount { font-family: 'Chewy', cursive; font-size: 180px; color: #FFFFFF; letter-spacing: 2px; }
+.balance-unit { font-family: 'Nunito', sans-serif; font-size: 60px; color: #C9A24D; margin-top: 10px; }
+.balance-fiat { font-size: 48px; color: #8FA3C8; margin-top: 20px; }
+.action-buttons { display: flex; justify-content: center; gap: 60px; padding: 80px 80px; }
+.action-btn { flex: 1; height: 180px; border-radius: 60px; display: flex; align-items: center; justify-content: center; font-family: 'Nunito', sans-serif; font-size: 52px; font-weight: 800; border: none; cursor: pointer; }
+.btn-send { background: rgba(232,106,51,0.15); color: #E86A33; border: 3px solid rgba(232,106,51,0.3); }
+.btn-receive { background: rgba(23,162,184,0.15); color: #17A2B8; border: 3px solid rgba(23,162,184,0.3); }
+.tx-panel { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(21,31,53,0.95); backdrop-filter: blur(20px); border-radius: 100px 100px 0 0; padding: 50px 70px 120px; }
+.tx-handle { width: 120px; height: 12px; background: #4A6080; border-radius: 6px; margin: 0 auto 50px; }
+.tx-title { font-family: 'Pirata One', cursive; font-size: 52px; color: #C9A24D; margin-bottom: 50px; }
+.tx-item { display: flex; align-items: center; gap: 40px; padding: 40px 0; border-bottom: 2px solid rgba(30,45,80,0.5); }
+.tx-icon { width: 120px; height: 120px; border-radius: 60px; display: flex; align-items: center; justify-content: center; font-size: 52px; }
+.tx-icon-receive { background: rgba(23,162,184,0.15); color: #17A2B8; }
+.tx-icon-send { background: rgba(232,106,51,0.15); color: #E86A33; }
+.tx-details { flex: 1; }
+.tx-memo { font-size: 40px; font-weight: 700; }
+.tx-time { font-size: 32px; color: #8FA3C8; margin-top: 8px; }
+.tx-amount { text-align: right; }
+.tx-sats { font-size: 42px; font-weight: 800; }
+.tx-sats-pos { color: #17A2B8; }
+.tx-sats-neg { color: #E86A33; }
+.tx-fiat { font-size: 30px; color: #8FA3C8; margin-top: 8px; }
+.wheel-icon { width: 80px; height: 80px; }
+.promo-banner { position: absolute; top: 0; left: 0; right: 0; background: linear-gradient(135deg, #0B1426 0%, #151F35 100%); padding: 120px 80px 60px; text-align: center; z-index: 10; }
+.promo-text { font-family: 'Pirata One', cursive; font-size: 80px; color: #C9A24D; line-height: 1.3; }
+.promo-sub { font-size: 44px; color: #8FA3C8; margin-top: 30px; line-height: 1.5; }
+.glow-teal { box-shadow: 0 0 60px rgba(23,162,184,0.3); }
+.glow-orange { box-shadow: 0 0 60px rgba(232,106,51,0.3); }
+</style>
+</head>
+<body>
+<div class="status-bar">
+  <span>9:41</span>
+  <span style="display:flex;gap:20px;align-items:center;">
+    <svg width="50" height="32" viewBox="0 0 50 32" fill="white"><rect x="0" y="20" width="8" height="12" rx="2"/><rect x="12" y="14" width="8" height="18" rx="2"/><rect x="24" y="8" width="8" height="24" rx="2"/><rect x="36" y="2" width="8" height="30" rx="2"/></svg>
+    <svg width="70" height="36" viewBox="0 0 70 36" fill="none" stroke="white" stroke-width="3"><rect x="2" y="6" width="56" height="24" rx="6"/><rect x="60" y="12" width="6" height="12" rx="2" fill="white"/><rect x="6" y="10" width="42" height="16" rx="3" fill="#22C55E"/></svg>
+  </span>
+</div>
+<div class="header">
+  <div class="header-title">Buccaneer</div>
+  <svg class="wheel-icon" viewBox="0 0 100 100" fill="none" stroke="#C9A24D" stroke-width="4">
+    <circle cx="50" cy="50" r="40"/><circle cx="50" cy="50" r="12"/>
+    <line x1="50" y1="10" x2="50" y2="38"/><line x1="50" y1="62" x2="50" y2="90"/>
+    <line x1="10" y1="50" x2="38" y2="50"/><line x1="62" y1="50" x2="90" y2="50"/>
+    <line x1="21.7" y1="21.7" x2="38.8" y2="38.8"/><line x1="61.2" y1="61.2" x2="78.3" y2="78.3"/>
+    <line x1="78.3" y1="21.7" x2="61.2" y2="38.8"/><line x1="38.8" y1="61.2" x2="21.7" y2="78.3"/>
+  </svg>
+</div>
+<div class="balance-area">
+  <div class="balance-label">Available Balance</div>
+  <div class="balance-amount">247,500</div>
+  <div class="balance-unit">sats</div>
+  <div class="balance-fiat">≈ $24.75 USD</div>
+</div>
+<div class="action-buttons">
+  <div class="action-btn btn-send glow-orange">⚓ Send</div>
+  <div class="action-btn btn-receive glow-teal">🪙 Receive</div>
+</div>
+<div class="tx-panel">
+  <div class="tx-handle"></div>
+  <div class="tx-title">Ship's Log</div>
+  <div class="tx-item">
+    <div class="tx-icon tx-icon-receive">↓</div>
+    <div class="tx-details">
+      <div class="tx-memo">Payment received</div>
+      <div class="tx-time">Today, 2:34 PM</div>
+    </div>
+    <div class="tx-amount">
+      <div class="tx-sats tx-sats-pos">+50,000</div>
+      <div class="tx-fiat">≈ $5.00</div>
+    </div>
+  </div>
+  <div class="tx-item">
+    <div class="tx-icon tx-icon-send">↑</div>
+    <div class="tx-details">
+      <div class="tx-memo">Coffee shop</div>
+      <div class="tx-time">Today, 11:20 AM</div>
+    </div>
+    <div class="tx-amount">
+      <div class="tx-sats tx-sats-neg">-12,500</div>
+      <div class="tx-fiat">≈ $1.25</div>
+    </div>
+  </div>
+  <div class="tx-item">
+    <div class="tx-icon tx-icon-receive">↓</div>
+    <div class="tx-details">
+      <div class="tx-memo">Treasure found!</div>
+      <div class="tx-time">Yesterday, 8:15 PM</div>
+    </div>
+    <div class="tx-amount">
+      <div class="tx-sats tx-sats-pos">+100,000</div>
+      <div class="tx-fiat">≈ $10.00</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

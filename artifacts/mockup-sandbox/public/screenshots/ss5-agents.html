@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Nunito:wght@400;600;700;800&family=Chewy&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1242px; height: 2688px;
+  background: #0B1426;
+  font-family: 'Nunito', sans-serif;
+  color: #FFFFFF;
+  overflow: hidden;
+}
+.status-bar { height: 132px; display: flex; align-items: center; justify-content: space-between; padding: 40px 80px 0; font-size: 42px; font-weight: 700; }
+.header { display: flex; align-items: center; justify-content: center; padding: 50px 80px; position: relative; }
+.header-title { font-family: 'Pirata One', cursive; font-size: 72px; color: #C9A24D; }
+.back-btn { position: absolute; left: 80px; font-size: 60px; color: #C9A24D; }
+.subtitle { text-align: center; font-size: 40px; color: #8FA3C8; margin: 0 80px 60px; line-height: 1.5; }
+.agent-card { background: #151F35; border: 3px solid #1E2D50; border-radius: 40px; margin: 30px 80px; padding: 50px; }
+.agent-header { display: flex; align-items: center; gap: 30px; margin-bottom: 30px; }
+.agent-avatar { width: 100px; height: 100px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 52px; }
+.avatar-blue { background: rgba(59,130,246,0.2); }
+.avatar-purple { background: rgba(139,92,246,0.2); }
+.avatar-teal { background: rgba(23,162,184,0.2); }
+.agent-name { font-size: 46px; font-weight: 800; }
+.agent-type { font-size: 32px; color: #8FA3C8; margin-top: 6px; }
+.agent-status { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.status-dot { width: 20px; height: 20px; border-radius: 10px; }
+.dot-active { background: #22C55E; box-shadow: 0 0 12px rgba(34,197,94,0.5); }
+.dot-inactive { background: #4A6080; }
+.status-text { font-size: 34px; font-weight: 700; }
+.text-active { color: #22C55E; }
+.text-inactive { color: #4A6080; }
+.agent-limits { display: flex; gap: 30px; margin-top: 30px; }
+.limit-badge { flex: 1; background: rgba(201,162,77,0.08); border: 2px solid rgba(201,162,77,0.2); border-radius: 24px; padding: 24px; text-align: center; }
+.limit-label { font-size: 28px; color: #8FA3C8; margin-bottom: 8px; }
+.limit-value { font-size: 38px; font-weight: 800; color: #C9A24D; }
+.agent-activity { margin-top: 30px; padding-top: 30px; border-top: 2px solid rgba(30,45,80,0.5); }
+.activity-title { font-size: 34px; color: #8FA3C8; margin-bottom: 16px; }
+.activity-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; }
+.activity-desc { font-size: 34px; }
+.activity-amount { font-size: 34px; font-weight: 700; color: #E86A33; }
+.activity-time { font-size: 28px; color: #4A6080; }
+.connection-types { display: flex; gap: 30px; margin: 30px 80px; }
+.conn-type { flex: 1; background: #151F35; border: 3px solid #1E2D50; border-radius: 30px; padding: 36px; text-align: center; }
+.conn-type-active { border-color: #C9A24D; background: rgba(201,162,77,0.05); }
+.conn-icon { font-size: 48px; margin-bottom: 12px; }
+.conn-label { font-size: 34px; font-weight: 700; }
+.conn-label-active { color: #C9A24D; }
+.add-btn-area { padding: 40px 80px; position: absolute; bottom: 100px; left: 0; right: 0; }
+.add-btn { width: 100%; background: linear-gradient(135deg, #C9A24D 0%, #a07c35 100%); border-radius: 60px; padding: 52px; text-align: center; font-size: 48px; font-weight: 800; color: #0B1426; box-shadow: 0 8px 40px rgba(201,162,77,0.3); }
+</style>
+</head>
+<body>
+<div class="status-bar">
+  <span>9:41</span>
+  <span style="display:flex;gap:20px;align-items:center;">
+    <svg width="50" height="32" viewBox="0 0 50 32" fill="white"><rect x="0" y="20" width="8" height="12" rx="2"/><rect x="12" y="14" width="8" height="18" rx="2"/><rect x="24" y="8" width="8" height="24" rx="2"/><rect x="36" y="2" width="8" height="30" rx="2"/></svg>
+    <svg width="70" height="36" viewBox="0 0 70 36" fill="none" stroke="white" stroke-width="3"><rect x="2" y="6" width="56" height="24" rx="6"/><rect x="60" y="12" width="6" height="12" rx="2" fill="white"/><rect x="6" y="10" width="42" height="16" rx="3" fill="#22C55E"/></svg>
+  </span>
+</div>
+<div class="header">
+  <div class="back-btn">⚓</div>
+  <div class="header-title">The Robot Crew</div>
+</div>
+<div class="subtitle">Grant AI agents controlled access to your wallet with spending limits and activity logs</div>
+
+<div class="connection-types">
+  <div class="conn-type conn-type-active">
+    <div class="conn-icon">🔑</div>
+    <div class="conn-label conn-label-active">REST API</div>
+  </div>
+  <div class="conn-type">
+    <div class="conn-icon">🔗</div>
+    <div class="conn-label" style="color:#8FA3C8">NWC</div>
+  </div>
+</div>
+
+<div class="agent-card">
+  <div class="agent-header">
+    <div class="agent-avatar avatar-blue">🤖</div>
+    <div>
+      <div class="agent-name">Trading Bot</div>
+      <div class="agent-type">REST API Key</div>
+    </div>
+    <div class="agent-status">
+      <div class="status-dot dot-active"></div>
+      <div class="status-text text-active">Active</div>
+    </div>
+  </div>
+  <div class="agent-limits">
+    <div class="limit-badge">
+      <div class="limit-label">Per Transaction</div>
+      <div class="limit-value">10,000 sats</div>
+    </div>
+    <div class="limit-badge">
+      <div class="limit-label">Daily Limit</div>
+      <div class="limit-value">50,000 sats</div>
+    </div>
+  </div>
+  <div class="agent-activity">
+    <div class="activity-title">Recent Activity</div>
+    <div class="activity-row">
+      <span class="activity-desc">Market buy order</span>
+      <span class="activity-amount">-5,200 sats</span>
+    </div>
+    <div class="activity-row">
+      <span class="activity-desc">DCA purchase</span>
+      <span class="activity-amount">-2,100 sats</span>
+    </div>
+    <div style="text-align:right;margin-top:8px;"><span class="activity-time">Last active 12 min ago</span></div>
+  </div>
+</div>
+
+<div class="agent-card">
+  <div class="agent-header">
+    <div class="agent-avatar avatar-purple">🧠</div>
+    <div>
+      <div class="agent-name">AI Assistant</div>
+      <div class="agent-type">NWC Connection</div>
+    </div>
+    <div class="agent-status">
+      <div class="status-dot dot-active"></div>
+      <div class="status-text text-active">Active</div>
+    </div>
+  </div>
+  <div class="agent-limits">
+    <div class="limit-badge">
+      <div class="limit-label">Per Transaction</div>
+      <div class="limit-value">1,000 sats</div>
+    </div>
+    <div class="limit-badge">
+      <div class="limit-label">Daily Limit</div>
+      <div class="limit-value">5,000 sats</div>
+    </div>
+  </div>
+</div>
+
+<div class="add-btn-area">
+  <div class="add-btn">+ Add New Agent Key</div>
+</div>
+</body>
+</html>

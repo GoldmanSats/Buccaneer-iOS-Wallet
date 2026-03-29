@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Nunito:wght@400;600;700;800&family=Chewy&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1242px; height: 2688px;
+  background: #0B1426;
+  font-family: 'Nunito', sans-serif;
+  color: #FFFFFF;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar { height: 132px; display: flex; align-items: center; justify-content: space-between; padding: 40px 80px 0; font-size: 42px; font-weight: 700; }
+.header { display: flex; align-items: center; justify-content: center; padding: 50px 80px; position: relative; }
+.header-title { font-family: 'Pirata One', cursive; font-size: 72px; color: #C9A24D; }
+.back-btn { position: absolute; left: 80px; font-size: 60px; color: #C9A24D; }
+.scanner-area { margin: 60px 80px; background: #151F35; border-radius: 60px; height: 1000px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border: 3px solid #1E2D50; overflow: hidden; }
+.scanner-bg { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(23,162,184,0.05) 0%, rgba(11,20,38,0.9) 100%); }
+.scanner-frame { width: 600px; height: 600px; position: relative; z-index: 2; }
+.corner { position: absolute; width: 80px; height: 80px; border-color: #C9A24D; border-style: solid; }
+.corner-tl { top: 0; left: 0; border-width: 8px 0 0 8px; border-radius: 16px 0 0 0; }
+.corner-tr { top: 0; right: 0; border-width: 8px 8px 0 0; border-radius: 0 16px 0 0; }
+.corner-bl { bottom: 0; left: 0; border-width: 0 0 8px 8px; border-radius: 0 0 0 16px; }
+.corner-br { bottom: 0; right: 0; border-width: 0 8px 8px 0; border-radius: 0 0 16px 0; }
+.scan-line { position: absolute; top: 50%; left: 10%; right: 10%; height: 4px; background: linear-gradient(90deg, transparent, #C9A24D, transparent); z-index: 3; }
+.scanner-label { font-size: 42px; color: #8FA3C8; margin-top: 80px; z-index: 2; }
+.input-section { margin: 60px 80px; }
+.input-label { font-size: 36px; color: #8FA3C8; margin-bottom: 20px; }
+.input-field { width: 100%; background: #0D1830; border: 3px solid #1E2D50; border-radius: 40px; padding: 44px 50px; font-size: 42px; color: #8FA3C8; font-family: 'Nunito', sans-serif; }
+.supported { display: flex; gap: 30px; margin-top: 60px; justify-content: center; flex-wrap: wrap; }
+.supported-badge { background: rgba(201,162,77,0.1); border: 2px solid rgba(201,162,77,0.3); color: #C9A24D; padding: 20px 40px; border-radius: 30px; font-size: 34px; font-weight: 700; }
+.confirm-area { position: absolute; bottom: 0; left: 0; right: 0; padding: 60px 80px 120px; }
+.confirm-btn { width: 100%; background: linear-gradient(135deg, #C9A24D 0%, #a07c35 100%); border: none; border-radius: 60px; padding: 52px; font-family: 'Nunito', sans-serif; font-size: 52px; font-weight: 800; color: #0B1426; text-align: center; box-shadow: 0 8px 40px rgba(201,162,77,0.3); }
+</style>
+</head>
+<body>
+<div class="status-bar">
+  <span>9:41</span>
+  <span style="display:flex;gap:20px;align-items:center;">
+    <svg width="50" height="32" viewBox="0 0 50 32" fill="white"><rect x="0" y="20" width="8" height="12" rx="2"/><rect x="12" y="14" width="8" height="18" rx="2"/><rect x="24" y="8" width="8" height="24" rx="2"/><rect x="36" y="2" width="8" height="30" rx="2"/></svg>
+    <svg width="70" height="36" viewBox="0 0 70 36" fill="none" stroke="white" stroke-width="3"><rect x="2" y="6" width="56" height="24" rx="6"/><rect x="60" y="12" width="6" height="12" rx="2" fill="white"/><rect x="6" y="10" width="42" height="16" rx="3" fill="#22C55E"/></svg>
+  </span>
+</div>
+<div class="header">
+  <div class="back-btn">⚓</div>
+  <div class="header-title">Fire the Cannons</div>
+</div>
+<div class="scanner-area">
+  <div class="scanner-bg"></div>
+  <div class="scanner-frame">
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    <div class="scan-line"></div>
+  </div>
+  <div class="scanner-label">Scan QR code to send sats</div>
+</div>
+<div class="input-section">
+  <div class="input-label">Or enter address manually</div>
+  <div class="input-field">Lightning address, invoice, or on-chain...</div>
+</div>
+<div class="supported">
+  <div class="supported-badge">⚡ Lightning</div>
+  <div class="supported-badge">🔗 On-Chain</div>
+  <div class="supported-badge">📧 LNURL</div>
+  <div class="supported-badge">🏴‍☠️ LN Address</div>
+</div>
+<div class="confirm-area">
+  <div class="confirm-btn">⚓ Scan & Send</div>
+</div>
+</body>
+</html>

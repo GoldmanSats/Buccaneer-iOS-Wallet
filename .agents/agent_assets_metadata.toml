@@ -1,0 +1,38 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "6joqsJ6XZtnYVaUqjMWzJ"
+uri = "file://screenshots/APP_STORE_LISTING.md"
+type = "text"
+title = "App Store Listing - Complete Kit"
+
+[[outputs]]
+id = "iHGWJGXNvMwEHq2UH-Rc8"
+uri = "file://screenshots/01-home-dashboard.jpg"
+type = "image"
+title = "Screenshot 1: Home Dashboard"
+
+[[outputs]]
+id = "aEWH8SXnP3uPeJpIhRQTK"
+uri = "file://screenshots/02-send-payment.jpg"
+type = "image"
+title = "Screenshot 2: Send Payment"
+
+[[outputs]]
+id = "d78XKGJrGeHi2zi4bL99E"
+uri = "file://screenshots/03-receive-sats.jpg"
+type = "image"
+title = "Screenshot 3: Receive Sats"
+
+[[outputs]]
+id = "lDgU_nYTKKysSIpFZHngQ"
+uri = "file://screenshots/04-settings.jpg"
+type = "image"
+title = "Screenshot 4: Captain's Quarters"
+
+[[outputs]]
+id = "dgDDwQkOqec4nqVyxLklF"
+uri = "file://screenshots/05-agent-keys.jpg"
+type = "image"
+title = "Screenshot 5: AI Agent Keys"

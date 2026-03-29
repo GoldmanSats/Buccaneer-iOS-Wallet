@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Nunito:wght@400;600;700;800&family=Chewy&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1242px; height: 2688px;
+  background: #0B1426;
+  font-family: 'Nunito', sans-serif;
+  color: #FFFFFF;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar { height: 132px; display: flex; align-items: center; justify-content: space-between; padding: 40px 80px 0; font-size: 42px; font-weight: 700; }
+.header { display: flex; align-items: center; justify-content: center; padding: 50px 80px; position: relative; }
+.header-title { font-family: 'Pirata One', cursive; font-size: 72px; color: #C9A24D; }
+.back-btn { position: absolute; left: 80px; font-size: 60px; color: #C9A24D; }
+.qr-section { display: flex; flex-direction: column; align-items: center; padding: 80px; }
+.qr-container { background: #FFFFFF; border-radius: 50px; padding: 60px; margin-bottom: 60px; box-shadow: 0 0 80px rgba(23,162,184,0.2); }
+.qr-grid { width: 560px; height: 560px; display: grid; grid-template-columns: repeat(21, 1fr); grid-template-rows: repeat(21, 1fr); gap: 1px; }
+.qr-cell { background: #0B1426; border-radius: 2px; }
+.qr-cell-w { background: #FFFFFF; }
+.qr-label { font-size: 42px; color: #8FA3C8; margin-bottom: 30px; }
+.amount-display { text-align: center; margin-bottom: 60px; }
+.amount-value { font-family: 'Chewy', cursive; font-size: 100px; color: #17A2B8; }
+.amount-unit { font-size: 48px; color: #8FA3C8; }
+.address-card { background: #151F35; border: 3px solid #1E2D50; border-radius: 40px; padding: 44px 50px; width: 100%; margin: 40px 80px; display: flex; align-items: center; justify-content: space-between; }
+.address-section { margin: 0 80px; width: calc(100% - 160px); }
+.address-label { font-size: 36px; color: #8FA3C8; margin-bottom: 16px; }
+.address-value { font-size: 38px; color: #C9A24D; font-family: monospace; word-break: break-all; }
+.copy-btn { background: rgba(201,162,77,0.15); border: 2px solid rgba(201,162,77,0.3); color: #C9A24D; padding: 20px 40px; border-radius: 30px; font-size: 36px; font-weight: 700; margin-left: 20px; white-space: nowrap; }
+.share-section { display: flex; gap: 40px; padding: 60px 80px; width: 100%; }
+.share-btn { flex: 1; background: rgba(23,162,184,0.15); border: 3px solid rgba(23,162,184,0.3); border-radius: 50px; padding: 44px; text-align: center; font-size: 42px; font-weight: 700; color: #17A2B8; }
+.share-btn-gold { background: linear-gradient(135deg, #C9A24D 0%, #a07c35 100%); color: #0B1426; border: none; box-shadow: 0 8px 40px rgba(201,162,77,0.3); }
+.ln-badge { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 40px 0; }
+.ln-icon { font-size: 48px; }
+.ln-text { font-size: 40px; color: #C9A24D; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="status-bar">
+  <span>9:41</span>
+  <span style="display:flex;gap:20px;align-items:center;">
+    <svg width="50" height="32" viewBox="0 0 50 32" fill="white"><rect x="0" y="20" width="8" height="12" rx="2"/><rect x="12" y="14" width="8" height="18" rx="2"/><rect x="24" y="8" width="8" height="24" rx="2"/><rect x="36" y="2" width="8" height="30" rx="2"/></svg>
+    <svg width="70" height="36" viewBox="0 0 70 36" fill="none" stroke="white" stroke-width="3"><rect x="2" y="6" width="56" height="24" rx="6"/><rect x="60" y="12" width="6" height="12" rx="2" fill="white"/><rect x="6" y="10" width="42" height="16" rx="3" fill="#22C55E"/></svg>
+  </span>
+</div>
+<div class="header">
+  <div class="back-btn">⚓</div>
+  <div class="header-title">Collect Yer Booty</div>
+</div>
+<div class="qr-section">
+  <div class="qr-label">Show this code to receive sats</div>
+  <div class="qr-container">
+    <svg width="560" height="560" viewBox="0 0 560 560">
+      <rect width="560" height="560" fill="white"/>
+      <rect x="40" y="40" width="140" height="140" rx="10" fill="#0B1426"/>
+      <rect x="60" y="60" width="100" height="100" rx="6" fill="white"/>
+      <rect x="80" y="80" width="60" height="60" rx="4" fill="#0B1426"/>
+      <rect x="380" y="40" width="140" height="140" rx="10" fill="#0B1426"/>
+      <rect x="400" y="60" width="100" height="100" rx="6" fill="white"/>
+      <rect x="420" y="80" width="60" height="60" rx="4" fill="#0B1426"/>
+      <rect x="40" y="380" width="140" height="140" rx="10" fill="#0B1426"/>
+      <rect x="60" y="400" width="100" height="100" rx="6" fill="white"/>
+      <rect x="80" y="420" width="60" height="60" rx="4" fill="#0B1426"/>
+      <rect x="220" y="40" width="26" height="26" fill="#0B1426"/>
+      <rect x="260" y="40" width="26" height="26" fill="#0B1426"/>
+      <rect x="300" y="40" width="26" height="26" fill="#0B1426"/>
+      <rect x="340" y="40" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="80" width="26" height="26" fill="#0B1426"/>
+      <rect x="300" y="80" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="120" width="26" height="26" fill="#0B1426"/>
+      <rect x="260" y="120" width="26" height="26" fill="#0B1426"/>
+      <rect x="340" y="120" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="160" width="26" height="26" fill="#0B1426"/>
+      <rect x="300" y="160" width="26" height="26" fill="#0B1426"/>
+      <rect x="40" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="80" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="120" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="260" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="340" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="420" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="500" y="220" width="26" height="26" fill="#0B1426"/>
+      <rect x="40" y="260" width="26" height="26" fill="#0B1426"/>
+      <rect x="160" y="260" width="26" height="26" fill="#0B1426"/>
+      <rect x="260" y="260" width="26" height="26" fill="#0B1426"/>
+      <rect x="380" y="260" width="26" height="26" fill="#0B1426"/>
+      <rect x="460" y="260" width="26" height="26" fill="#0B1426"/>
+      <rect x="80" y="300" width="26" height="26" fill="#0B1426"/>
+      <rect x="160" y="300" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="300" width="26" height="26" fill="#0B1426"/>
+      <rect x="300" y="300" width="26" height="26" fill="#0B1426"/>
+      <rect x="380" y="300" width="26" height="26" fill="#0B1426"/>
+      <rect x="500" y="300" width="26" height="26" fill="#0B1426"/>
+      <rect x="40" y="340" width="26" height="26" fill="#0B1426"/>
+      <rect x="120" y="340" width="26" height="26" fill="#0B1426"/>
+      <rect x="260" y="340" width="26" height="26" fill="#0B1426"/>
+      <rect x="340" y="340" width="26" height="26" fill="#0B1426"/>
+      <rect x="460" y="340" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="380" width="26" height="26" fill="#0B1426"/>
+      <rect x="300" y="380" width="26" height="26" fill="#0B1426"/>
+      <rect x="380" y="380" width="26" height="26" fill="#0B1426"/>
+      <rect x="460" y="380" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="420" width="26" height="26" fill="#0B1426"/>
+      <rect x="260" y="420" width="26" height="26" fill="#0B1426"/>
+      <rect x="340" y="420" width="26" height="26" fill="#0B1426"/>
+      <rect x="420" y="420" width="26" height="26" fill="#0B1426"/>
+      <rect x="500" y="420" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="460" width="26" height="26" fill="#0B1426"/>
+      <rect x="300" y="460" width="26" height="26" fill="#0B1426"/>
+      <rect x="380" y="460" width="26" height="26" fill="#0B1426"/>
+      <rect x="460" y="460" width="26" height="26" fill="#0B1426"/>
+      <rect x="220" y="500" width="26" height="26" fill="#0B1426"/>
+      <rect x="340" y="500" width="26" height="26" fill="#0B1426"/>
+      <rect x="420" y="500" width="26" height="26" fill="#0B1426"/>
+      <rect x="500" y="500" width="26" height="26" fill="#0B1426"/>
+      <image href="app-icon.png" x="230" y="230" width="100" height="100" rx="16"/>
+    </svg>
+  </div>
+  <div class="ln-badge">
+    <span class="ln-icon">⚡</span>
+    <span class="ln-text">Lightning + On-chain</span>
+  </div>
+</div>
+<div class="address-section">
+  <div class="address-label">Your Lightning Address</div>
+  <div style="background: #151F35; border: 3px solid #1E2D50; border-radius: 40px; padding: 44px 50px; display: flex; align-items: center; justify-content: space-between;">
+    <div class="address-value">pirate@breez.tips</div>
+    <div class="copy-btn">Copy</div>
+  </div>
+</div>
+<div class="share-section">
+  <div class="share-btn">📋 Copy Invoice</div>
+  <div class="share-btn share-btn-gold">📤 Share</div>
+</div>
+</body>
+</html>
