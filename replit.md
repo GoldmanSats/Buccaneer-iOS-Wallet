@@ -122,9 +122,16 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - `transaction_memos`: txId (PK), memo, updatedAt
 - `agent_logs`: keyId, action, amount, status, detail, createdAt
 
+### Security
+- `/api/wallet/seed-phrase` requires `X-Wallet-Owner` header matching `WALLET_OWNER_TOKEN` env var (403 without it)
+- Agent REST API (`/api/v1/*`) requires `Authorization: Bearer bwk_...` header
+- Mobile app reads seed from local SecureStore only — never calls the seed-phrase API
+- NWC agent keys stored in PostgreSQL with spending limits enforced per-tx and daily
+
 ### Secrets Required
 - `BREEZ_API_KEY` — Breez SDK API key (embedded in iOS build via EAS)
 - `WALLET_MNEMONIC` — Server-side only (for agent wallet); mobile users generate their own on-device
+- `WALLET_OWNER_TOKEN` — Required to access `/api/wallet/seed-phrase` endpoint (auto-generated)
 
 ### EAS Build
 - `eas.json` configured with development, preview, and production profiles

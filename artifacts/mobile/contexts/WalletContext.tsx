@@ -72,6 +72,13 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 
 const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
 const USE_ON_DEVICE = Platform.OS !== "web";
+const OWNER_TOKEN = process.env.EXPO_PUBLIC_WALLET_OWNER_TOKEN ?? "";
+
+function walletHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (OWNER_TOKEN) h["X-Wallet-Owner"] = OWNER_TOKEN;
+  return h;
+}
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -103,7 +110,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setIsOffline(false);
           return b;
         }
-        const res = await fetch(`${API_BASE}/wallet/balance`);
+        const res = await fetch(`${API_BASE}/wallet/balance`, { headers: walletHeaders() });
         if (!res.ok) throw new Error("Failed to fetch balance");
         setIsOffline(false);
         return res.json();
@@ -136,7 +143,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }));
         return { transactions, total: transactions.length };
       }
-      const res = await fetch(`${API_BASE}/wallet/transactions`);
+      const res = await fetch(`${API_BASE}/wallet/transactions`, { headers: walletHeaders() });
       if (!res.ok) throw new Error("Failed to fetch transactions");
       return res.json();
     },
@@ -193,7 +200,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     const res = await fetch(`${API_BASE}/wallet/send`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: walletHeaders(),
       body: JSON.stringify({ bolt11, amountSats }),
     });
     const data = await res.json();
@@ -209,7 +216,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     const res = await fetch(`${API_BASE}/wallet/receive`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: walletHeaders(),
       body: JSON.stringify({ amountSats, description }),
     });
     const data = await res.json();
@@ -223,7 +230,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     const res = await fetch(`${API_BASE}/wallet/decode-invoice`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: walletHeaders(),
       body: JSON.stringify({ bolt11 }),
     });
     const data = await res.json();
@@ -237,7 +244,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     const res = await fetch(`${API_BASE}/wallet/parse`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: walletHeaders(),
       body: JSON.stringify({ input }),
     });
     const data = await res.json();
@@ -253,7 +260,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     const res = await fetch(`${API_BASE}/wallet/transactions/${encodeURIComponent(txId)}/memo`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: walletHeaders(),
       body: JSON.stringify({ memo }),
     });
     if (!res.ok) throw new Error("Failed to update memo");
@@ -264,7 +271,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (USE_ON_DEVICE) {
       return BreezService.getNodeInfo();
     }
-    const res = await fetch(`${API_BASE}/wallet/node-info`);
+    const res = await fetch(`${API_BASE}/wallet/node-info`, { headers: walletHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message ?? "Failed to get node info");
     return data;

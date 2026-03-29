@@ -28,3 +28,9 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+WALLET_OWNER_TOKEN = "bf9a6cbff0c92978a764e596ba894b59face98b4847bc5f85aa7907f3c402b64"
+EXPO_PUBLIC_WALLET_OWNER_TOKEN = "bf9a6cbff0c92978a764e596ba894b59face98b4847bc5f85aa7907f3c402b64"

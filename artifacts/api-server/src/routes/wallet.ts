@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { transactionMemosTable, transactionCacheTable, agentLogsTable, agentKeysTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -22,6 +22,28 @@ import {
 } from "../lib/breez.js";
 
 const router: IRouter = Router();
+
+const PUBLIC_PATHS = ["/btc-price", "/status"];
+
+function walletOwnerAuth(req: Request, res: Response, next: NextFunction): void {
+  if (PUBLIC_PATHS.some(p => req.path === p)) {
+    next();
+    return;
+  }
+  const token = req.headers["x-wallet-owner"];
+  const expected = process.env["WALLET_OWNER_TOKEN"];
+  if (!expected) {
+    res.status(503).json({ error: "not_configured", message: "Wallet owner authentication is not configured" });
+    return;
+  }
+  if (!token || token !== expected) {
+    res.status(403).json({ error: "forbidden", message: "Wallet owner authentication required" });
+    return;
+  }
+  next();
+}
+
+router.use(walletOwnerAuth);
 
 router.get("/balance", async (_req, res) => {
   try {
