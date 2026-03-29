@@ -25,9 +25,6 @@
     },
     "production": {
       "autoIncrement": true,
-      "ios": {
-        "autoCredentials": true
-      },
       "env": {
         "EXPO_PUBLIC_BREEZ_API_KEY": "${BREEZ_API_KEY}"
       }
