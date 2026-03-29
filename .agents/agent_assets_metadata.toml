@@ -378,3 +378,9 @@ id = "jRCG3JAn_PnaEKZjpl6tF"
 uri = "file://attached_assets/buc_3_1774175184174.png"
 type = "image"
 title = "Buccaneer Ship Logo (2)"
+
+[[outputs]]
+id = "GM-JqAl2OJ7ak6Ecpen6g"
+uri = "file://screenshots/onboarding-6.5inch.png"
+type = "image"
+title = "Onboarding Screenshot (1242x2688 — iPhone 6.5\")"
