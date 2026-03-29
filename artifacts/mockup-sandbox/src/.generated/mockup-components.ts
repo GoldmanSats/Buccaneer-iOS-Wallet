@@ -5,11 +5,11 @@ export const modules: ModuleMap = {
   "./components/mockups/daylight-home/SandyShore.tsx": () => import("../components/mockups/daylight-home/SandyShore.tsx"),
   "./components/mockups/daylight-home/SeafoamLight.tsx": () => import("../components/mockups/daylight-home/SeafoamLight.tsx"),
   "./components/mockups/daylight-home/WarmParchment.tsx": () => import("../components/mockups/daylight-home/WarmParchment.tsx"),
-  "./components/mockups/tx-glow/BorderShimmer.tsx": () => import("../components/mockups/tx-glow/BorderShimmer.tsx"),
-  "./components/mockups/tx-glow/SoftPulse.tsx": () => import("../components/mockups/tx-glow/SoftPulse.tsx"),
   "./components/mockups/daylight-palettes/PaletteA.tsx": () => import("../components/mockups/daylight-palettes/PaletteA.tsx"),
   "./components/mockups/daylight-palettes/PaletteB.tsx": () => import("../components/mockups/daylight-palettes/PaletteB.tsx"),
   "./components/mockups/daylight-palettes/PaletteC.tsx": () => import("../components/mockups/daylight-palettes/PaletteC.tsx"),
   "./components/mockups/daylight-palettes/PaletteD.tsx": () => import("../components/mockups/daylight-palettes/PaletteD.tsx"),
-  "./components/mockups/daylight-palettes/SwatchCompare.tsx": () => import("../components/mockups/daylight-palettes/SwatchCompare.tsx")
+  "./components/mockups/daylight-palettes/SwatchCompare.tsx": () => import("../components/mockups/daylight-palettes/SwatchCompare.tsx"),
+  "./components/mockups/tx-glow/BorderShimmer.tsx": () => import("../components/mockups/tx-glow/BorderShimmer.tsx"),
+  "./components/mockups/tx-glow/SoftPulse.tsx": () => import("../components/mockups/tx-glow/SoftPulse.tsx")
 };
