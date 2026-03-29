@@ -45,6 +45,11 @@
       "expo-local-authentication",
       "@breeztech/breez-sdk-spark-react-native"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "d0acdd36-77e7-4ee1-b945-21f8c9e4867f"
+      }
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
