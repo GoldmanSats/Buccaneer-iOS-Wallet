@@ -25,8 +25,11 @@
     },
     "production": {
       "autoIncrement": true,
+      "distribution": "store",
+      "credentialsSource": "remote",
       "env": {
-        "EXPO_PUBLIC_BREEZ_API_KEY": "${BREEZ_API_KEY}"
+        "EXPO_PUBLIC_BREEZ_API_KEY": "${BREEZ_API_KEY}",
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
       }
     }
   },

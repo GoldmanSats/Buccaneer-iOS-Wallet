@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.buccaneer.wallet",
       "buildNumber": "1",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Buccaneer Wallet uses Face ID to secure your wallet"
+        "NSFaceIDUsageDescription": "Buccaneer Wallet uses Face ID to secure your wallet",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
