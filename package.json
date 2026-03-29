@@ -15,5 +15,12 @@
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.3.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "node-forge": ">=1.4.0",
+      "path-to-regexp": ">=8.4.0",
+      "picomatch": ">=4.0.4"
+    }
   }
 }
