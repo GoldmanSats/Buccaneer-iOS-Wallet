@@ -62,7 +62,6 @@
     "@expo-google-fonts/pirata-one": "^0.4.1",
     "bip39": "^3.1.0",
     "expo-audio": "^1.1.1",
-    "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "^55.0.9",
     "expo-clipboard": "^55.0.8",
     "expo-local-authentication": "^55.0.9",
