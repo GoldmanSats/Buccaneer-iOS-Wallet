@@ -32,3 +32,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
+EXPO_TOKEN = "EQuTvNqRfH_h6Mqr1yBMCXwLC1DesWdXhcOfuYQB"
