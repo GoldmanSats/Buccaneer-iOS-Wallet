@@ -61,6 +61,7 @@ catalog:
 autoInstallPeers: false
 
 onlyBuiltDependencies:
+  - '@breeztech/breez-sdk-spark-react-native'
   - '@swc/core'
   - esbuild
   - msw
