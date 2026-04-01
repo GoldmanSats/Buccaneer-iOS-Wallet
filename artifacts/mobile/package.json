@@ -56,7 +56,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "@breeztech/breez-sdk-spark-react-native": "0.12.2-dev1",
+    "@breeztech/breez-sdk-spark-react-native": "0.12.2-dev2",
     "@expo-google-fonts/chewy": "^0.4.0",
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo-google-fonts/pirata-one": "^0.4.1",

@@ -151,8 +151,8 @@ importers:
   artifacts/mobile:
     dependencies:
       '@breeztech/breez-sdk-spark-react-native':
-        specifier: 0.12.2-dev1
-        version: 0.12.2-dev1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        specifier: 0.12.2-dev2
+        version: 0.12.2-dev2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       '@expo-google-fonts/chewy':
         specifier: ^0.4.0
         version: 0.4.0
@@ -1071,8 +1071,8 @@ packages:
   '@breeztech/breez-sdk-liquid@0.12.1':
     resolution: {integrity: sha512-or9hsOQZiu8IGCkvLo/FaVlcsSb03PJcq61K7mp0D5OIun3E/fXbaV8AklWI/EBHa8A9eGDBoYt1VptPjuAhCA==}
 
-  '@breeztech/breez-sdk-spark-react-native@0.12.2-dev1':
-    resolution: {integrity: sha512-B3xls7j4/7GIwOJR3FPParNtjIQPBj3RTuelTDq2CCY+idStrJww37vdNyxp1yo6FnjkhIhdCPIjH7+PTAi1Yw==}
+  '@breeztech/breez-sdk-spark-react-native@0.12.2-dev2':
+    resolution: {integrity: sha512-KN3wMFu1Vk8OQkwkEGzwl41bQpSkk4QbcR2dmjeU+AJL3YPpzNOU/mDulUW9v8lYHWNeKrhNKFM/EpTM2PHwlw==}
     peerDependencies:
       react: '*'
       react-native: '*'
@@ -6240,8 +6240,8 @@ packages:
     resolution: {integrity: sha512-wH590V9VNgYH9g3lH9wWjTrUoKsjLF6sGLjhR4sH1LWpLmCOH0Zf7PukhDA8BiS7KHe4oPNkcTHqYkj7SOGUOw==}
     engines: {node: '>=20'}
 
-  uniffi-bindgen-react-native@0.28.3-5:
-    resolution: {integrity: sha512-IOgKr4D+iHYmigAoV03Yuti94l8egKLADXqw/sE0Oyk7FOVexczFr+Kztnx2aHiCBnNv39gSfRCmLGd3i9AFaw==}
+  uniffi-bindgen-react-native@0.29.3-1:
+    resolution: {integrity: sha512-o6gXZsAh55yuvhwF2WSFdIHV4phyfWcCmg4DuyfJWJ7CvUz1UcIz2S4u9SmXAz1jsuqvu6Xc9hexrRBB0a5osg==}
     hasBin: true
 
   universalify@2.0.1:
@@ -7156,11 +7156,11 @@ snapshots:
 
   '@breeztech/breez-sdk-liquid@0.12.1': {}
 
-  '@breeztech/breez-sdk-spark-react-native@0.12.2-dev1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+  '@breeztech/breez-sdk-spark-react-native@0.12.2-dev2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
-      uniffi-bindgen-react-native: 0.28.3-5
+      uniffi-bindgen-react-native: 0.29.3-1
 
   '@breeztech/breez-sdk-spark@0.12.1':
     optionalDependencies:
@@ -12989,7 +12989,7 @@ snapshots:
 
   unicorn-magic@0.4.0: {}
 
-  uniffi-bindgen-react-native@0.28.3-5: {}
+  uniffi-bindgen-react-native@0.29.3-1: {}
 
   universalify@2.0.1: {}
 
