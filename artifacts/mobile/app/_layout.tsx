@@ -1,3 +1,4 @@
+import "@/polyfills";
 import {
   Nunito_400Regular,
   Nunito_500Medium,
