@@ -35,11 +35,6 @@ import {
   saveSeedToSecureStore,
   initBreezSdk,
 } from "@/utils/breezService";
-import {
-  isPasskeyAvailable,
-  createWalletWithPasskey,
-  restoreWalletWithPasskey,
-} from "@/utils/passkeyService";
 
 const appIconSource = require("@/assets/images/app-icon.png");
 
@@ -77,7 +72,6 @@ export default function OnboardingScreen() {
   const [seedInput, setSeedInput] = useState("");
   const [restoreError, setRestoreError] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
-  const [passkeySupported, setPasskeySupported] = useState<boolean | null>(null);
   const [loadingMessage, setLoadingMessage] = useState("Initializing Wallet...");
 
   const scale = useSharedValue(1);
@@ -85,14 +79,6 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     bobbing.value = withRepeat(withTiming(8, { duration: 2000 }), -1, true);
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") {
-      isPasskeyAvailable().then(setPasskeySupported).catch(() => setPasskeySupported(false));
-    } else {
-      setPasskeySupported(false);
-    }
   }, []);
 
   const bobbingStyle = useAnimatedStyle(() => ({
@@ -126,31 +112,6 @@ export default function OnboardingScreen() {
     }, 2500);
   };
 
-  const handleCreateWithPasskey = async () => {
-    if (Platform.OS !== "web") {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    scale.value = withSpring(0.95, {}, () => {
-      scale.value = withSpring(1);
-    });
-
-    setScreen("loading");
-    setIsInitializing(true);
-    setInitError(null);
-    setLoadingMessage("Authenticate with Face ID...");
-
-    try {
-      const { mnemonic } = await createWalletWithPasskey();
-      setLoadingMessage("Setting up your wallet...");
-      await finishOnboarding(mnemonic, true);
-    } catch (err: any) {
-      console.error("[Onboarding] Passkey wallet error:", err.message);
-      setInitError(err.message || "Passkey authentication failed. Please try again.");
-      setIsInitializing(false);
-      setScreen("welcome");
-    }
-  };
-
   const handleCreateLegacy = async () => {
     if (Platform.OS !== "web") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -167,28 +128,6 @@ export default function OnboardingScreen() {
     } catch (err: any) {
       console.error("[Onboarding] Legacy wallet error:", err.message);
       setInitError(err.message || "Failed to create wallet. Please try again.");
-      setIsInitializing(false);
-      setScreen("welcome");
-    }
-  };
-
-  const handleRestoreWithPasskey = async () => {
-    if (Platform.OS !== "web") {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    setScreen("loading");
-    setIsInitializing(true);
-    setInitError(null);
-    setLoadingMessage("Restoring with Face ID...");
-
-    try {
-      const { mnemonic } = await restoreWalletWithPasskey();
-      setLoadingMessage("Setting up your wallet...");
-      await finishOnboarding(mnemonic, true);
-    } catch (err: any) {
-      console.error("[Onboarding] Passkey restore error:", err.message);
-      setInitError(err.message || "Could not restore wallet with passkey.");
       setIsInitializing(false);
       setScreen("welcome");
     }
@@ -350,57 +289,25 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {passkeySupported !== false ? (
-            <>
-              <Animated.View style={[styles.buttonWrap, buttonStyle]}>
-                <Pressable testID="create-wallet-button" style={styles.button} onPress={handleCreateWithPasskey}>
-                  <LinearGradient
-                    colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.buttonGradient}
-                  >
-                    <Ionicons name="finger-print" size={20} color={NAVY} />
-                    <Text style={styles.buttonText}>Create New Wallet</Text>
-                  </LinearGradient>
-                </Pressable>
-              </Animated.View>
-
-              <Pressable style={styles.secondaryButton} onPress={handleRestoreWithPasskey}>
-                <Ionicons name="finger-print" size={18} color="#8FA3C8" />
-                <Text style={styles.secondaryButtonText}>Restore with Passkey</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setScreen("restore-seed")}
-                style={styles.tertiaryButton}
+          <Animated.View style={[styles.buttonWrap, buttonStyle]}>
+            <Pressable testID="create-wallet-button" style={styles.button} onPress={handleCreateLegacy}>
+              <LinearGradient
+                colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
               >
-                <Text style={styles.tertiaryButtonText}>Restore with Seed Phrase</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Animated.View style={[styles.buttonWrap, buttonStyle]}>
-                <Pressable testID="create-wallet-button" style={styles.button} onPress={handleCreateLegacy}>
-                  <LinearGradient
-                    colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.buttonGradient}
-                  >
-                    <Text style={styles.buttonText}>Create New Wallet</Text>
-                  </LinearGradient>
-                </Pressable>
-              </Animated.View>
+                <Text style={styles.buttonText}>Create New Wallet</Text>
+              </LinearGradient>
+            </Pressable>
+          </Animated.View>
 
-              <Pressable
-                onPress={() => setScreen("restore-seed")}
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>Restore from Backup</Text>
-              </Pressable>
-            </>
-          )}
+          <Pressable
+            onPress={() => setScreen("restore-seed")}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>Restore from Backup</Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -511,17 +418,6 @@ const styles = StyleSheet.create({
     fontFamily: "Nunito_700Bold",
     fontSize: 17,
     color: "#CDDAED",
-    letterSpacing: 0.3,
-  },
-  tertiaryButton: {
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tertiaryButtonText: {
-    fontFamily: "Nunito_500Medium",
-    fontSize: 14,
-    color: "#4A6080",
     letterSpacing: 0.3,
   },
   loadingContent: {
