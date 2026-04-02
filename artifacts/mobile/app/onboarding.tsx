@@ -115,7 +115,9 @@ export default function OnboardingScreen() {
       await saveWalletBackup(words);
 
       if (Platform.OS !== "web") {
-        await initBreezSdk(mnemonic);
+        initBreezSdk(mnemonic).catch((err: any) => {
+          console.warn("[Onboarding] SDK will retry on main screen:", err.message);
+        });
       }
 
       setTimeout(async () => {

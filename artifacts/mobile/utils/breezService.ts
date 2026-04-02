@@ -211,9 +211,16 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
 
       return sdk;
     } catch (err: any) {
-      console.error(`[Breez] SDK init failed: ${err.message}`);
+      const detail = err?.inner?.message || err?.message || String(err);
+      console.error(`[Breez] SDK init failed: ${detail}`);
+      console.error(`[Breez] Error type: ${err?.constructor?.name}, tag: ${err?.tag}`);
       sdkInitializing = null;
-      throw err;
+      const friendlyError = new Error(
+        detail === "SdkError.Generic" || !detail
+          ? "Could not connect to the Lightning network. Please check your internet connection and try again."
+          : detail
+      );
+      throw friendlyError;
     }
   })();
 

@@ -89,15 +89,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!USE_ON_DEVICE) return;
     let cancelled = false;
-    (async () => {
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const tryInit = async () => {
       try {
         await BreezService.initBreezSdk();
-        if (!cancelled) setSdkReady(true);
+        if (!cancelled) {
+          setSdkReady(true);
+          setIsOffline(false);
+        }
       } catch (err) {
-        console.error("[WalletContext] SDK init failed:", err);
-        if (!cancelled) setIsOffline(true);
+        console.error("[WalletContext] SDK init failed (attempt " + (retryCount + 1) + "):", err);
+        retryCount++;
+        if (!cancelled && retryCount < maxRetries) {
+          setTimeout(tryInit, 3000 * retryCount);
+        } else if (!cancelled) {
+          setIsOffline(true);
+        }
       }
-    })();
+    };
+
+    tryInit();
     return () => { cancelled = true; };
   }, []);
 
