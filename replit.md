@@ -33,7 +33,8 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - **Audio**: `expo-audio` v1.1.1 (migrated from deprecated expo-av)
 - **Secure Storage**: `expo-secure-store` (iOS Keychain for seed phrase + wallet backup)
 - **Biometrics**: `expo-local-authentication` (Face ID / Touch ID lock)
-- **Seed Generation**: `bip39` (BIP39 mnemonic generation/validation on-device)
+- **Seed Generation**: `bip39` (BIP39 mnemonic generation/validation on-device), Breez SDK `Passkey` class with PRF-based deterministic derivation
+- **Passkey**: `react-native-passkey` v3.3+ (WebAuthn PRF extension, iOS 18+)
 - **Fonts**: Chewy (display/headings/balance), Nunito (body/UI text — 400, 500, 600, 700, 800)
 - **Database**: PostgreSQL + Drizzle ORM (server-side only)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
@@ -68,6 +69,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 │       │   └── SettingsContext.tsx # AsyncStorage + optional server sync
 │       ├── utils/
 │       │   ├── breezService.ts   # On-device Breez SDK wrapper (init, send, receive, parse, etc.)
+│       │   ├── passkeyService.ts # Passkey PRF provider + wallet create/restore via Breez Passkey class
 │       │   └── icloudBackup.ts   # iOS Keychain backup/restore for seed phrase
 │       ├── constants/colors.ts   # MIDNIGHT/DAYLIGHT themes
 │       └── eas.json              # EAS build config (development, preview, production)
@@ -89,6 +91,16 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - Seed phrase stored in `expo-secure-store` with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` accessibility
 - SDK storage directory: `DocumentDirectoryPath/breez-data`
 - API key embedded in build via `EXPO_PUBLIC_BREEZ_API_KEY` env var (set in eas.json)
+
+### Passkey Wallet (PRF-based)
+- Onboarding defaults to passkey-based wallet creation (Face ID prompt) on iOS 18+
+- Falls back to legacy seed phrase creation if passkey not supported
+- `passkeyService.ts` implements `PasskeyPrfProvider` interface using `react-native-passkey`
+- Uses Breez SDK `Passkey` class to derive deterministic BIP39 mnemonic from passkey PRF output
+- Labels stored/retrieved via Nostr relays (Breez spec v0.9.1)
+- RP ID: `keys.breez.technology` (Breez-managed associated domain)
+- Backup badge removed from main screen; seed phrase export remains in Settings (backup.tsx)
+- Restore options: "Restore with Passkey" (PRF re-derivation) or "Restore with Seed Phrase" (manual input)
 
 ### Theme
 - **Colors**: MIDNIGHT dark theme (Navy `#0B1426`, Gold `#c9a24d`, Teal `#2A9D8F`, Coral `#E76F51`)
@@ -137,7 +149,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses
 - `eas.json` configured with development, preview, and production profiles
 - `BREEZ_API_KEY` passed as build env var: `EXPO_PUBLIC_BREEZ_API_KEY`
 - Requires Apple Developer account for TestFlight submission
-- `app.json` has Face ID permission, expo-secure-store plugin, expo-local-authentication plugin, `@breeztech/breez-sdk-spark-react-native` plugin
+- `app.json` has Face ID permission, expo-secure-store plugin, expo-local-authentication plugin, `@breeztech/breez-sdk-spark-react-native` plugin (with `enablePasskey: true` for `webcredentials:keys.breez.technology` associated domain)
 
 ### Critical Dependencies
 - `@noble/secp256k1` MUST stay at `"2.1.0"` in api-server/package.json

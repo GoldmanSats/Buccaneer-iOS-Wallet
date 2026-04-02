@@ -331,7 +331,6 @@ export default function HomeScreen() {
   const sats = balance?.balanceSats ?? 0;
   const isFiatPrimary = settings.primaryDisplay === "fiat";
   const fiatCurrency = settings.fiatCurrency ?? "USD";
-  const isBackedUp = settings.backupCompleted;
   const fiatSymbol = FIAT_SYMBOLS[fiatCurrency] || "$";
   const fiatAmount = btcPrice ? (sats / 100_000_000) * btcPrice.price : 0;
   const hasFiatPrice = !!btcPrice;
@@ -529,22 +528,6 @@ export default function HomeScreen() {
             <ShipWheelIcon size={20} color={colors.textMuted} />
           </Pressable>
 
-          {!isBackedUp && (
-            <Pressable
-              testID="backup-button"
-              onPress={() => router.push("/backup")}
-              style={({ pressed }) => [
-                styles.backupBtn,
-                isDark
-                  ? { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }
-                  : { backgroundColor: "#FFF3E0", borderColor: "#FFCC80" },
-                pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
-              ]}
-            >
-              <Ionicons name="shield-outline" size={16} color={isDark ? "#FB923C70" : "#EA580C"} />
-              <Text style={[styles.backupText, !isDark && { color: "#EA580C" }]}>Backup!</Text>
-            </Pressable>
-          )}
         </View>
 
         <View style={styles.balanceSection}>
@@ -1018,15 +1001,6 @@ const styles = StyleSheet.create({
   settingsBtn: {
     width: 40, height: 40, borderRadius: 20,
     alignItems: "center", justifyContent: "center", borderWidth: 1,
-  },
-  backupBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    paddingLeft: 12, paddingRight: 16, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1,
-  },
-  backupText: {
-    fontFamily: "Nunito_700Bold", fontSize: 12,
-    color: "rgba(251,147,60,0.7)", letterSpacing: 1.5, textTransform: "uppercase",
   },
 
   balanceSection: {

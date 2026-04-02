@@ -44,7 +44,7 @@
         }
       ],
       "expo-local-authentication",
-      "@breeztech/breez-sdk-spark-react-native"
+      ["@breeztech/breez-sdk-spark-react-native", { "enablePasskey": true }]
     ],
     "extra": {
       "eas": {

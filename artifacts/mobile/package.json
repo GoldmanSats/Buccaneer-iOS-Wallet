@@ -69,6 +69,7 @@
     "expo-secure-store": "^55.0.9",
     "react-native-fs": "^2.20.0",
     "react-native-get-random-values": "^2.0.0",
+    "react-native-passkey": "^3.3.2",
     "react-native-qrcode-svg": "^6.3.21"
   }
 }
