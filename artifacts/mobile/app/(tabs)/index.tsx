@@ -295,6 +295,10 @@ export default function HomeScreen() {
       }
     });
 
+  const receiveSheetTranslateY = useSharedValue(0);
+  const txDetailTranslateY = useSharedValue(0);
+  const txLogScrollOffset = useRef(0);
+
   const txDismissGesture = Gesture.Pan()
     .activeOffsetY(8)
     .failOffsetX([-20, 20])
@@ -307,10 +311,6 @@ export default function HomeScreen() {
         runOnJS(setIsLogExpanded)(false);
       }
     });
-
-  const receiveSheetTranslateY = useSharedValue(0);
-  const txDetailTranslateY = useSharedValue(0);
-  const txLogScrollOffset = useRef(0);
 
   const receiveSheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: receiveSheetTranslateY.value }],
