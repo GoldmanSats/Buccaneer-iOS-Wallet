@@ -118,40 +118,63 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
       }
 
       const apiKey = process.env.EXPO_PUBLIC_BREEZ_API_KEY;
+      console.log(`[Breez] API key present: ${!!apiKey}, length: ${apiKey?.length ?? 0}`);
       if (!apiKey) {
-        throw new Error("BREEZ_API_KEY is not configured");
+        throw new Error("BREEZ_API_KEY is not configured. The app was built without a valid API key.");
       }
 
-      const defaults = breez.defaultConfig(breez.Network.Mainnet);
-      console.log("[Breez] Default config loaded, applying API key");
-      const updatedConfig = breez.Config.new({
+      console.log("[Breez] Step 1: Getting default config...");
+      let defaults: any;
+      try {
+        defaults = breez.defaultConfig(breez.Network.Mainnet);
+        console.log("[Breez] Step 1 OK. Network:", defaults.network, "syncInterval:", defaults.syncIntervalSecs);
+      } catch (configErr: any) {
+        throw new Error(`defaultConfig failed: ${configErr?.message || configErr}`);
+      }
+
+      console.log("[Breez] Step 2: Preparing config with API key (length=" + apiKey.length + ")...");
+      const updatedConfig = {
         ...defaults,
         apiKey,
         maxDepositClaimFee: breez.MaxFee.Rate.new({ satPerVbyte: 10n }),
-      });
+      };
 
-      const seedObj = breez.Seed.Mnemonic.new({
-        mnemonic: seed,
-        passphrase: undefined,
-      });
+      console.log("[Breez] Step 3: Creating seed object...");
+      let seedObj: any;
+      try {
+        seedObj = breez.Seed.Mnemonic.new({
+          mnemonic: seed,
+          passphrase: undefined,
+        });
+        console.log("[Breez] Step 3 OK. Seed created.");
+      } catch (seedErr: any) {
+        throw new Error(`Seed creation failed: ${seedErr?.message || seedErr}`);
+      }
 
       const storageDir = `${RNFS.DocumentDirectoryPath}/breez-data`;
       try {
         await RNFS.mkdir(storageDir);
       } catch {}
 
-      console.log("[Breez] Connecting to Spark network (storageDir=" + storageDir + ")...");
-      const connectRequest = breez.ConnectRequest.new({
-        config: updatedConfig,
-        seed: seedObj,
-        storageDir,
-      });
+      console.log("[Breez] Step 4: Calling connect (storageDir=" + storageDir + ")...");
+      let connectRequest: any;
+      try {
+        connectRequest = breez.ConnectRequest.new({
+          config: updatedConfig,
+          seed: seedObj,
+          storageDir,
+        });
+        console.log("[Breez] Step 4a: ConnectRequest created OK.");
+      } catch (reqErr: any) {
+        throw new Error(`ConnectRequest.new failed: ${reqErr?.message || reqErr}`);
+      }
+
       const connectPromise = breez.connect(connectRequest);
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("SDK connect timed out after 60 seconds")), 60000)
       );
       const sdk = await Promise.race([connectPromise, timeoutPromise]);
-      console.log("[Breez] Connected successfully");
+      console.log("[Breez] Step 5: Connected successfully!");
 
       const eventListener: any = {
         async onEvent(event: any) {
@@ -218,14 +241,18 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
       return sdk;
     } catch (err: any) {
       const detail = err?.inner?.message || err?.message || String(err);
+      const fullDetail = JSON.stringify({
+        message: err?.message,
+        inner: err?.inner?.message,
+        tag: err?.tag,
+        name: err?.constructor?.name,
+        raw: String(err),
+      });
       console.error(`[Breez] SDK init failed: ${detail}`);
-      console.error(`[Breez] Error type: ${err?.constructor?.name}, tag: ${err?.tag}`);
+      console.error(`[Breez] Full error: ${fullDetail}`);
       sdkInitializing = null;
-      const friendlyError = new Error(
-        detail === "SdkError.Generic" || !detail
-          ? "Could not connect to the Lightning network. Please check your internet connection and try again."
-          : detail
-      );
+      const friendlyError = new Error(detail || "Unknown SDK error");
+      (friendlyError as any).sdkDetail = fullDetail;
       throw friendlyError;
     }
   })();

@@ -226,7 +226,7 @@ export default function HomeScreen() {
     isBalanceLoading, isTransactionsLoading,
     refetchBalance, refetchTransactions,
     updateMemo, createInvoice, isOffline,
-    sdkReady, sdkRetryCount, retrySdkInit,
+    sdkReady, sdkRetryCount, sdkError, retrySdkInit,
   } = useWallet();
 
   const [isLogExpanded, setIsLogExpanded] = useState(false);
@@ -279,17 +279,30 @@ export default function HomeScreen() {
   }));
 
   const txPanGesture = Gesture.Pan()
-    .activeOffsetY([-10, 10])
-    .failOffsetX([-10, 10])
+    .activeOffsetY([-8, 8])
+    .failOffsetX([-20, 20])
     .onEnd((e) => {
-      const SWIPE_THRESHOLD = 50;
-      const VELOCITY_THRESHOLD = 0.5;
+      const SWIPE_THRESHOLD = 30;
+      const VELOCITY_THRESHOLD = 300;
       const swipedUp = e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
       const swipedDown = e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD;
       if (swipedUp && !isLogExpandedRef.current) {
         if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
         runOnJS(setIsLogExpanded)(true);
       } else if (swipedDown && isLogExpandedRef.current) {
+        if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        runOnJS(setIsLogExpanded)(false);
+      }
+    });
+
+  const txDismissGesture = Gesture.Pan()
+    .activeOffsetY(8)
+    .failOffsetX([-20, 20])
+    .onEnd((e) => {
+      const SWIPE_THRESHOLD = 30;
+      const VELOCITY_THRESHOLD = 300;
+      const swipedDown = e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD;
+      if (swipedDown && isLogExpandedRef.current && txLogScrollOffset.current <= 0) {
         if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
         runOnJS(setIsLogExpanded)(false);
       }
@@ -515,9 +528,14 @@ export default function HomeScreen() {
         </View>
       )}
       {isOffline && (
-        <Pressable onPress={retrySdkInit} style={[styles.offlineBanner, { paddingTop: insets.top + 4 }]}>
-          <Ionicons name="cloud-offline-outline" size={14} color="#FFFFFF" />
-          <Text style={styles.offlineText}>Connection failed — tap to retry</Text>
+        <Pressable onPress={retrySdkInit} style={[styles.offlineBanner, { paddingTop: insets.top + 4, flexDirection: "column", alignItems: "center" }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="cloud-offline-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.offlineText}>Connection failed — tap to retry</Text>
+          </View>
+          {sdkError && (
+            <Text style={[styles.offlineText, { fontSize: 10, opacity: 0.7, marginTop: 2 }]} numberOfLines={2}>{sdkError}</Text>
+          )}
         </Pressable>
       )}
       <ScrollView
@@ -654,7 +672,7 @@ export default function HomeScreen() {
         ]}
       >
         <GestureDetector gesture={txPanGesture}>
-        <Animated.View>
+        <Animated.View style={{ flex: isLogExpanded ? undefined : 1 }}>
         <Pressable
           onPress={() => {
             if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -666,26 +684,9 @@ export default function HomeScreen() {
           <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
           <Ionicons name={isLogExpanded ? "chevron-down" : "chevron-up"} size={18} color={colors.textMuted} />
         </Pressable>
-        </Animated.View>
-        </GestureDetector>
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={isLogExpanded}
-          scrollEventThrottle={16}
-          onScroll={(e) => { txLogScrollOffset.current = e.nativeEvent.contentOffset.y; }}
-          onScrollEndDrag={(e) => {
-            const offsetY = e.nativeEvent.contentOffset.y;
-            const velocityY = e.nativeEvent.velocity?.y ?? 0;
-            if (offsetY <= 0 && (velocityY > 0.3 || offsetY < -30)) {
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsLogExpanded(false);
-            }
-          }}
-        >
-          {transactions.length === 0 ? (
+        {!isLogExpanded && (
+          transactions.length === 0 ? (
             <View style={styles.emptyState}>
               {!isTransactionsLoading ? (
                 <>
@@ -698,12 +699,57 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.txList}>
-              {transactions.map((tx: any) => (
+              {transactions.slice(0, 3).map((tx: any) => (
                 <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} glowing={glowTxId === tx.id} />
               ))}
             </View>
-          )}
-        </ScrollView>
+          )
+        )}
+        </Animated.View>
+        </GestureDetector>
+
+        {isLogExpanded && (
+          <GestureDetector gesture={txDismissGesture}>
+          <Animated.View style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            scrollEventThrottle={16}
+            bounces={true}
+            onScroll={(e) => { txLogScrollOffset.current = e.nativeEvent.contentOffset.y; }}
+            onScrollEndDrag={(e) => {
+              const offsetY = e.nativeEvent.contentOffset.y;
+              const velocityY = e.nativeEvent.velocity?.y ?? 0;
+              if (offsetY <= 0 && (velocityY > 0.3 || offsetY < -20)) {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsLogExpanded(false);
+              }
+            }}
+          >
+            {transactions.length === 0 ? (
+              <View style={styles.emptyState}>
+                {!isTransactionsLoading ? (
+                  <>
+                    <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No transactions yet</Text>
+                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Your voyage log is empty</Text>
+                  </>
+                ) : (
+                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading plunder…</Text>
+                )}
+              </View>
+            ) : (
+              <View style={styles.txList}>
+                {transactions.map((tx: any) => (
+                  <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} glowing={glowTxId === tx.id} />
+                ))}
+              </View>
+            )}
+          </ScrollView>
+          </Animated.View>
+          </GestureDetector>
+        )}
       </Animated.View>
 
       {/* Transaction Detail Sheet */}

@@ -63,6 +63,7 @@ interface WalletContextValue {
   isOffline: boolean;
   sdkReady: boolean;
   sdkRetryCount: number;
+  sdkError: string | null;
   retrySdkInit: () => void;
 }
 
@@ -87,8 +88,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
   const [isOffline, setIsOffline] = useState(false);
   const [sdkReady, setSdkReady] = useState(!USE_ON_DEVICE);
-
   const [sdkRetryCount, setSdkRetryCount] = useState(0);
+  const [sdkError, setSdkError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!USE_ON_DEVICE) return;
@@ -103,11 +104,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setSdkReady(true);
           setIsOffline(false);
         }
-      } catch (err) {
-        console.error("[WalletContext] SDK init failed (attempt " + (retryCount + 1) + "):", err);
+      } catch (err: any) {
+        const errorMsg = err?.message || String(err);
+        console.error("[WalletContext] SDK init failed (attempt " + (retryCount + 1) + "):", errorMsg);
         retryCount++;
         if (!cancelled) {
           setSdkRetryCount(retryCount);
+          setSdkError(errorMsg);
         }
         if (!cancelled && retryCount < maxRetries) {
           const delay = Math.min(5000 * retryCount, 30000);
@@ -126,12 +129,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!USE_ON_DEVICE || sdkReady) return;
     setIsOffline(false);
     setSdkRetryCount(0);
+    setSdkError(null);
     try {
       await BreezService.initBreezSdk();
       setSdkReady(true);
       setIsOffline(false);
-    } catch (err) {
-      console.error("[WalletContext] Manual retry failed:", err);
+      setSdkError(null);
+    } catch (err: any) {
+      const errorMsg = err?.message || String(err);
+      console.error("[WalletContext] Manual retry failed:", errorMsg);
+      setSdkError(errorMsg);
       setIsOffline(true);
     }
   }, [sdkReady]);
@@ -338,8 +345,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     isOffline,
     sdkReady,
     sdkRetryCount,
+    sdkError,
     retrySdkInit,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady, sdkRetryCount, retrySdkInit]);
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

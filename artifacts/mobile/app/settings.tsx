@@ -68,7 +68,7 @@ function StatusPulse({ connected, checking }: { connected: boolean; checking: bo
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
-  const { getSdkStatus, getNodeInfo } = useWallet();
+  const { getSdkStatus, getNodeInfo, sdkError, retrySdkInit, sdkReady } = useWallet();
   const [addressCopied, setAddressCopied] = useState(false);
   const [showCurrencies, setShowCurrencies] = useState(false);
   const [editingAddress, setEditingAddress] = useState(false);
@@ -389,6 +389,17 @@ export default function SettingsScreen() {
                     <Text style={[s.kvVal, { color: colors.textSecondary }]}>Mainnet</Text>
                   </View>
                 </>
+              ) : sdkError ? (
+                <View style={{ padding: 8 }}>
+                  <Text style={{ color: "#EF4444", fontSize: 13, fontWeight: "600", marginBottom: 4 }}>Connection Error</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, lineHeight: 16 }} selectable>{sdkError}</Text>
+                  <Pressable
+                    onPress={retrySdkInit}
+                    style={{ marginTop: 10, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.gold + "20", borderRadius: 8, alignSelf: "flex-start" }}
+                  >
+                    <Text style={{ color: colors.gold, fontWeight: "600", fontSize: 13 }}>Retry Connection</Text>
+                  </Pressable>
+                </View>
               ) : (
                 <ActivityIndicator color={colors.gold} size="small" />
               )}
