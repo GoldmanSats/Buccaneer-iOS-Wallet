@@ -62,6 +62,8 @@ interface WalletContextValue {
   getSdkStatus: () => Promise<{ initialized: boolean; error: string | null }>;
   isOffline: boolean;
   sdkReady: boolean;
+  sdkRetryCount: number;
+  retrySdkInit: () => void;
 }
 
 const FIAT_SYMBOLS: Record<string, string> = {
@@ -86,11 +88,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
   const [sdkReady, setSdkReady] = useState(!USE_ON_DEVICE);
 
+  const [sdkRetryCount, setSdkRetryCount] = useState(0);
+
   useEffect(() => {
     if (!USE_ON_DEVICE) return;
     let cancelled = false;
     let retryCount = 0;
-    const maxRetries = 3;
+    const maxRetries = 10;
 
     const tryInit = async () => {
       try {
@@ -102,8 +106,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error("[WalletContext] SDK init failed (attempt " + (retryCount + 1) + "):", err);
         retryCount++;
+        if (!cancelled) {
+          setSdkRetryCount(retryCount);
+        }
         if (!cancelled && retryCount < maxRetries) {
-          setTimeout(tryInit, 3000 * retryCount);
+          const delay = Math.min(5000 * retryCount, 30000);
+          setTimeout(tryInit, delay);
         } else if (!cancelled) {
           setIsOffline(true);
         }
@@ -113,6 +121,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     tryInit();
     return () => { cancelled = true; };
   }, []);
+
+  const retrySdkInit = useCallback(async () => {
+    if (!USE_ON_DEVICE || sdkReady) return;
+    setIsOffline(false);
+    setSdkRetryCount(0);
+    try {
+      await BreezService.initBreezSdk();
+      setSdkReady(true);
+      setIsOffline(false);
+    } catch (err) {
+      console.error("[WalletContext] Manual retry failed:", err);
+      setIsOffline(true);
+    }
+  }, [sdkReady]);
 
   const { data: balance, isLoading: isBalanceLoading, refetch: refetchBalance } = useQuery<Balance>({
     queryKey: ["balance"],
@@ -315,7 +337,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     getSdkStatus: getSdkStatusFn,
     isOffline,
     sdkReady,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady]);
+    sdkRetryCount,
+    retrySdkInit,
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady, sdkRetryCount, retrySdkInit]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

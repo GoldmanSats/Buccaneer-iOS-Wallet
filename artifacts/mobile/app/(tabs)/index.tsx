@@ -226,6 +226,7 @@ export default function HomeScreen() {
     isBalanceLoading, isTransactionsLoading,
     refetchBalance, refetchTransactions,
     updateMemo, createInvoice, isOffline,
+    sdkReady, sdkRetryCount, retrySdkInit,
   } = useWallet();
 
   const [isLogExpanded, setIsLogExpanded] = useState(false);
@@ -326,7 +327,11 @@ export default function HomeScreen() {
   };
 
   const refreshing = isBalanceLoading || isTransactionsLoading;
-  const onRefresh = useCallback(() => { refetchBalance(); refetchTransactions(); }, [refetchBalance, refetchTransactions]);
+  const onRefresh = useCallback(() => {
+    if (!sdkReady || isOffline) retrySdkInit();
+    refetchBalance();
+    refetchTransactions();
+  }, [sdkReady, isOffline, retrySdkInit, refetchBalance, refetchTransactions]);
 
   const sats = balance?.balanceSats ?? 0;
   const isFiatPrimary = settings.primaryDisplay === "fiat";
@@ -503,11 +508,17 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      {isOffline && (
-        <View style={[styles.offlineBanner, { paddingTop: insets.top + 4 }]}>
-          <Ionicons name="cloud-offline-outline" size={14} color="#FFFFFF" />
-          <Text style={styles.offlineText}>No connection — pull down to retry</Text>
+      {!sdkReady && !isOffline && Platform.OS !== "web" && (
+        <View style={[styles.offlineBanner, { paddingTop: insets.top + 4, backgroundColor: "#D4A017" }]}>
+          <ActivityIndicator size="small" color="#FFFFFF" />
+          <Text style={styles.offlineText}>Connecting to Lightning network{sdkRetryCount > 0 ? ` (attempt ${sdkRetryCount + 1})` : ""}...</Text>
         </View>
+      )}
+      {isOffline && (
+        <Pressable onPress={retrySdkInit} style={[styles.offlineBanner, { paddingTop: insets.top + 4 }]}>
+          <Ionicons name="cloud-offline-outline" size={14} color="#FFFFFF" />
+          <Text style={styles.offlineText}>Connection failed — tap to retry</Text>
+        </Pressable>
       )}
       <ScrollView
         style={styles.scrollView}

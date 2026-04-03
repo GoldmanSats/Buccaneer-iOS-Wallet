@@ -122,12 +122,13 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         throw new Error("BREEZ_API_KEY is not configured");
       }
 
-      const config = breez.defaultConfig(breez.Network.Mainnet);
-      const updatedConfig = {
-        ...config,
+      const defaults = breez.defaultConfig(breez.Network.Mainnet);
+      console.log("[Breez] Default config loaded, applying API key");
+      const updatedConfig = breez.Config.new({
+        ...defaults,
         apiKey,
         maxDepositClaimFee: breez.MaxFee.Rate.new({ satPerVbyte: 10n }),
-      };
+      });
 
       const seedObj = breez.Seed.Mnemonic.new({
         mnemonic: seed,
@@ -139,13 +140,18 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         await RNFS.mkdir(storageDir);
       } catch {}
 
-      const sdk = await breez.connect(
-        breez.ConnectRequest.new({
-          config: updatedConfig,
-          seed: seedObj,
-          storageDir,
-        })
+      console.log("[Breez] Connecting to Spark network (storageDir=" + storageDir + ")...");
+      const connectRequest = breez.ConnectRequest.new({
+        config: updatedConfig,
+        seed: seedObj,
+        storageDir,
+      });
+      const connectPromise = breez.connect(connectRequest);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("SDK connect timed out after 60 seconds")), 60000)
       );
+      const sdk = await Promise.race([connectPromise, timeoutPromise]);
+      console.log("[Breez] Connected successfully");
 
       const eventListener: any = {
         async onEvent(event: any) {
