@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "buccaneerwallet",
-      "buildNumber": "12",
+      "buildNumber": "13",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Buccaneer Wallet uses Face ID to secure your wallet",
         "ITSAppUsesNonExemptEncryption": false

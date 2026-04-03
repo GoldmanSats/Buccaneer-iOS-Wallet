@@ -129,15 +129,27 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         defaults = breez.defaultConfig(breez.Network.Mainnet);
         console.log("[Breez] Step 1 OK. Network:", defaults.network, "syncInterval:", defaults.syncIntervalSecs);
       } catch (configErr: any) {
-        throw new Error(`defaultConfig failed: ${configErr?.message || configErr}`);
+        const msg = configErr?.inner?.[0] || configErr?.message || String(configErr);
+        throw new Error(`defaultConfig failed: ${msg}`);
       }
 
-      console.log("[Breez] Step 2: Preparing config with API key (length=" + apiKey.length + ")...");
-      const updatedConfig = {
-        ...defaults,
-        apiKey,
-        maxDepositClaimFee: breez.MaxFee.Rate.new({ satPerVbyte: 10n }),
-      };
+      console.log("[Breez] Step 2: Creating config via Config.new() with API key (length=" + apiKey.length + ")...");
+      let config: any;
+      try {
+        config = (breez as any).Config.new({
+          ...defaults,
+          apiKey,
+          maxDepositClaimFee: breez.MaxFee.Rate.new({ satPerVbyte: 10n }),
+        });
+        console.log("[Breez] Step 2 OK. Config created via factory.");
+      } catch (cfgErr: any) {
+        console.warn("[Breez] Config.new() failed, falling back to plain object:", cfgErr?.message || cfgErr);
+        config = {
+          ...defaults,
+          apiKey,
+          maxDepositClaimFee: breez.MaxFee.Rate.new({ satPerVbyte: 10n }),
+        };
+      }
 
       console.log("[Breez] Step 3: Creating seed object...");
       let seedObj: any;
@@ -148,7 +160,8 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         });
         console.log("[Breez] Step 3 OK. Seed created.");
       } catch (seedErr: any) {
-        throw new Error(`Seed creation failed: ${seedErr?.message || seedErr}`);
+        const msg = seedErr?.inner?.[0] || seedErr?.message || String(seedErr);
+        throw new Error(`Seed creation failed: ${msg}`);
       }
 
       const storageDir = `${RNFS.DocumentDirectoryPath}/breez-data`;
@@ -156,25 +169,24 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         await RNFS.mkdir(storageDir);
       } catch {}
 
-      console.log("[Breez] Step 4: Calling connect (storageDir=" + storageDir + ")...");
-      let connectRequest: any;
+      console.log("[Breez] Step 4: Building SDK via SdkBuilder (storageDir=" + storageDir + ")...");
+      let sdk: any;
       try {
-        connectRequest = breez.ConnectRequest.new({
-          config: updatedConfig,
-          seed: seedObj,
-          storageDir,
-        });
-        console.log("[Breez] Step 4a: ConnectRequest created OK.");
-      } catch (reqErr: any) {
-        throw new Error(`ConnectRequest.new failed: ${reqErr?.message || reqErr}`);
+        const builder = new (breez as any).SdkBuilder(config, seedObj);
+        console.log("[Breez] Step 4a: SdkBuilder created OK.");
+        await builder.withDefaultStorage(storageDir);
+        console.log("[Breez] Step 4b: Storage configured OK.");
+        const buildPromise = builder.build();
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("SDK build timed out after 60 seconds")), 60000)
+        );
+        sdk = await Promise.race([buildPromise, timeoutPromise]);
+        console.log("[Breez] Step 5: SDK built successfully!");
+      } catch (buildErr: any) {
+        const msg = buildErr?.inner?.[0] || buildErr?.message || String(buildErr);
+        const step = !sdk ? "build" : "unknown";
+        throw new Error(`SdkBuilder.${step} failed: ${msg}`);
       }
-
-      const connectPromise = breez.connect(connectRequest);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("SDK connect timed out after 60 seconds")), 60000)
-      );
-      const sdk = await Promise.race([connectPromise, timeoutPromise]);
-      console.log("[Breez] Step 5: Connected successfully!");
 
       const eventListener: any = {
         async onEvent(event: any) {
@@ -240,10 +252,12 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
 
       return sdk;
     } catch (err: any) {
-      const detail = err?.inner?.message || err?.message || String(err);
+      const innerMsg = Array.isArray(err?.inner) ? err.inner[0] : (err?.inner?.message || err?.inner);
+      const detail = innerMsg || err?.message || String(err);
       const fullDetail = JSON.stringify({
         message: err?.message,
-        inner: err?.inner?.message,
+        innerArray: Array.isArray(err?.inner) ? err.inner : undefined,
+        innerMsg: innerMsg,
         tag: err?.tag,
         name: err?.constructor?.name,
         raw: String(err),
