@@ -228,6 +228,8 @@ export default function HomeScreen() {
     updateMemo, createInvoice, isOffline,
     sdkReady, sdkRetryCount, sdkError, retrySdkInit,
     sparkAddress,
+    unifiedQr,
+    bitcoinAddress,
   } = useWallet();
 
   const [isLogExpanded, setIsLogExpanded] = useState(false);
@@ -517,7 +519,7 @@ export default function HomeScreen() {
     try { await Share.share({ message: text, title: "Bellamy Wallet" }); } catch {}
   };
 
-  const receiveQrData = receiveInvoice ? `lightning:${receiveInvoice}` : lightningAddress;
+  const receiveQrData = receiveInvoice ? `lightning:${receiveInvoice}` : (unifiedQr || lightningAddress);
   const receiveQrSize = receiveMode === "amount" ? 180 : 280;
 
   return (
@@ -914,6 +916,9 @@ export default function HomeScreen() {
                         <View style={[styles.receiveQrBadge, { backgroundColor: "#FBBF24" }]}>
                           <Text style={styles.receiveQrBadgeText}>⚡</Text>
                         </View>
+                        <View style={[styles.receiveQrBadge, { backgroundColor: "#F7931A" }]}>
+                          <Text style={styles.receiveQrBadgeText}>₿</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -946,11 +951,15 @@ export default function HomeScreen() {
                         <Text style={{ fontSize: 12 }}>⚡</Text>
                         <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 10, color: "#FBBF24" }}>Lightning</Text>
                       </View>
+                      <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(247,147,26,0.12)" }]}>
+                        <Text style={{ fontSize: 12 }}>₿</Text>
+                        <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 10, color: "#F7931A" }}>On-chain</Text>
+                      </View>
                     </View>
 
                     <View style={styles.receiveInfoRow}>
                       <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>Your unique Lightning address. Any Lightning wallet can pay you here.</Text>
+                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>Scan with any wallet — Lightning or on-chain. On-chain deposits are auto-swapped.</Text>
                     </View>
 
                     <View style={styles.receiveButtonRow}>

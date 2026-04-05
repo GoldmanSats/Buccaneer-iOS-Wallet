@@ -63,6 +63,8 @@ interface WalletContextValue {
   getNodeInfo: () => Promise<NodeInfo>;
   getSdkStatus: () => Promise<{ initialized: boolean; error: string | null }>;
   sparkAddress: string;
+  unifiedQr: string;
+  bitcoinAddress: string;
   isOffline: boolean;
   sdkReady: boolean;
   sdkRetryCount: number;
@@ -94,6 +96,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [sdkRetryCount, setSdkRetryCount] = useState(0);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sparkAddress, setSparkAddress] = useState("");
+  const [unifiedQr, setUnifiedQr] = useState("");
+  const [bitcoinAddress, setBitcoinAddress] = useState("");
 
   useEffect(() => {
     if (!USE_ON_DEVICE) return;
@@ -109,6 +113,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setIsOffline(false);
           BreezService.getLightningAddress().then((addr) => {
             if (!cancelled && addr) setSparkAddress(addr);
+          }).catch(() => {});
+          BreezService.getUnifiedQrData().then((data) => {
+            if (!cancelled) {
+              if (data.bip21) setUnifiedQr(data.bip21);
+              if (data.bitcoinAddress) setBitcoinAddress(data.bitcoinAddress);
+            }
           }).catch(() => {});
         }
       } catch (err: any) {
@@ -144,6 +154,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setSdkError(null);
       BreezService.getLightningAddress().then((addr) => {
         if (addr) setSparkAddress(addr);
+      }).catch(() => {});
+      BreezService.getUnifiedQrData().then((data) => {
+        if (data.bip21) setUnifiedQr(data.bip21);
+        if (data.bitcoinAddress) setBitcoinAddress(data.bitcoinAddress);
       }).catch(() => {});
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
@@ -364,12 +378,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     getNodeInfo: getNodeInfoFn,
     getSdkStatus: getSdkStatusFn,
     sparkAddress,
+    unifiedQr,
+    bitcoinAddress,
     isOffline,
     sdkReady,
     sdkRetryCount,
     sdkError,
     retrySdkInit,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, sendLnurlPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, sparkAddress, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, sendLnurlPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, sparkAddress, unifiedQr, bitcoinAddress, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

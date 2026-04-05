@@ -28,7 +28,7 @@ type Mode = "default" | "amount" | "generated";
 
 export default function ReceiveScreen() {
   const insets = useSafeAreaInsets();
-  const { createInvoice, sparkAddress } = useWallet();
+  const { createInvoice, sparkAddress, unifiedQr, bitcoinAddress } = useWallet();
   const { settings } = useSettings();
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
@@ -101,7 +101,7 @@ export default function ReceiveScreen() {
     setMode("default");
   };
 
-  const qrData = invoice || lightningAddress;
+  const qrData = invoice || (unifiedQr || lightningAddress);
   const qrSize = 300;
 
   return (
@@ -138,6 +138,9 @@ export default function ReceiveScreen() {
                   <View style={[styles.qrBadge, { backgroundColor: "#FBBF24" }]}>
                     <Text style={styles.qrBadgeText}>⚡</Text>
                   </View>
+                  <View style={[styles.qrBadge, { backgroundColor: "#F7931A" }]}>
+                    <Text style={styles.qrBadgeText}>₿</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -173,11 +176,15 @@ export default function ReceiveScreen() {
                   <Text style={{ fontSize: 12 }}>⚡</Text>
                   <Text style={[styles.protocolText, { color: "#FBBF24" }]}>Lightning</Text>
                 </View>
+                <View style={[styles.protocolBadge, { backgroundColor: "rgba(247,147,26,0.15)", borderColor: "rgba(247,147,26,0.3)" }]}>
+                  <Text style={{ fontSize: 12 }}>₿</Text>
+                  <Text style={[styles.protocolText, { color: "#F7931A" }]}>On-chain</Text>
+                </View>
               </View>
 
               <View style={styles.infoRow}>
                 <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.infoText, { color: colors.textMuted }]}>Your unique Lightning address. Any Lightning wallet can pay you here.</Text>
+                <Text style={[styles.infoText, { color: colors.textMuted }]}>Scan with any wallet — Lightning or on-chain. On-chain deposits are auto-swapped.</Text>
               </View>
 
               <View style={styles.bottomButtons}>

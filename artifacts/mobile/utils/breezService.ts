@@ -9,6 +9,8 @@ let sdkInitializing: Promise<any> | null = null;
 let pendingIncomingPayments: any[] = [];
 let pendingDeposits: any[] = [];
 let cachedLightningAddress: string | null = null;
+let cachedLnurlBech32: string | null = null;
+let cachedBitcoinAddress: string | null = null;
 
 export function sanitizeBigIntPublic(obj: any): any {
   return sanitizeBigInt(obj);
@@ -342,6 +344,7 @@ export async function getLightningAddress(): Promise<string> {
     const existing = await sdk.getLightningAddress();
     if (existing?.lightningAddress) {
       cachedLightningAddress = existing.lightningAddress;
+      if (existing.lnurl?.bech32) cachedLnurlBech32 = existing.lnurl.bech32;
       console.log("[Breez] Lightning address found:", existing.lightningAddress);
       return existing.lightningAddress;
     }
@@ -363,6 +366,7 @@ export async function getLightningAddress(): Promise<string> {
       const result = await sdk.registerLightningAddress(registerReq);
       if (result?.lightningAddress) {
         cachedLightningAddress = result.lightningAddress;
+        if (result.lnurl?.bech32) cachedLnurlBech32 = result.lnurl.bech32;
         console.log("[Breez] Lightning address registered:", result.lightningAddress);
         return result.lightningAddress;
       }
@@ -372,6 +376,50 @@ export async function getLightningAddress(): Promise<string> {
   }
   console.error("[Breez] Failed to register lightning address after 5 attempts");
   return "";
+}
+
+export function getCachedLnurlBech32(): string | null {
+  return cachedLnurlBech32;
+}
+
+export async function getBitcoinAddress(): Promise<string> {
+  if (cachedBitcoinAddress) return cachedBitcoinAddress;
+  const sdk = await initBreezSdk();
+  const breez = await import("@breeztech/breez-sdk-spark-react-native");
+  try {
+    const request = breez.ReceivePaymentRequest.new({
+      paymentMethod: breez.ReceivePaymentMethod.BitcoinAddress.new({ newAddress: undefined }),
+    });
+    const response = await sdk.receivePayment(request);
+    const addr = response.paymentRequest || "";
+    if (addr) {
+      cachedBitcoinAddress = addr;
+      console.log("[Breez] Bitcoin address obtained:", addr.slice(0, 20) + "...");
+    }
+    return addr;
+  } catch (err: any) {
+    console.error("[Breez] getBitcoinAddress error:", err?.message || err);
+    return "";
+  }
+}
+
+export async function getUnifiedQrData(): Promise<{ bip21: string; bitcoinAddress: string; lnurl: string }> {
+  const [lnAddr, btcAddr] = await Promise.all([
+    getLightningAddress(),
+    getBitcoinAddress(),
+  ]);
+  const lnurl = cachedLnurlBech32 || "";
+  
+  let bip21 = "";
+  if (btcAddr && lnurl) {
+    bip21 = `bitcoin:${btcAddr}?lightning=${lnurl}`;
+  } else if (btcAddr) {
+    bip21 = `bitcoin:${btcAddr}`;
+  } else if (lnAddr) {
+    bip21 = lnAddr;
+  }
+  
+  return { bip21, bitcoinAddress: btcAddr, lnurl };
 }
 
 function normalizeInput(raw: string): string {
