@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "buccaneerwallet",
-      "buildNumber": "20",
+      "buildNumber": "21",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Bellamy Wallet uses Face ID to secure your wallet",
         "ITSAppUsesNonExemptEncryption": false
