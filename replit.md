@@ -1,9 +1,10 @@
-# Buccaneer Wallet — Monorepo
+# Bellamy Wallet — Monorepo
 
 ## Overview
 
-Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme. Uses Breez SDK Spark on-device (`@breeztech/breez-sdk-spark-react-native`) for self-custody per-user wallets, Expo React Native, Express.js API server with PostgreSQL (for agent key access), and NWC (Nostr Wallet Connect / NIP-47) for AI agent access.
+Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme (formerly "Buccaneer Wallet"). Uses Breez SDK Spark on-device (`@breeztech/breez-sdk-spark-react-native`) for self-custody per-user wallets, Expo React Native, Express.js API server with PostgreSQL (for agent key access), and NWC (Nostr Wallet Connect / NIP-47) for AI agent access.
 
+**Tagline:** "A self-custodial lightning wallet built for principled pirates, not saylors"
 **Lightning address:** `buccaneeradiciw@breez.tips`
 
 ## Architecture

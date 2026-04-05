@@ -232,7 +232,7 @@ export default function BackupScreen() {
             <View style={styles.warningCard}>
               <Ionicons name="warning-outline" size={18} color={colors.gold} />
               <Text style={styles.warningText}>
-                Never share these words with anyone. Buccaneer will never ask for them.
+                Never share these words with anyone. Bellamy will never ask for them.
               </Text>
             </View>
 

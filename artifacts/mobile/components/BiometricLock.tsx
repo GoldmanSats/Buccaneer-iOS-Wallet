@@ -19,7 +19,7 @@ export default function BiometricLock({ children }: { children: React.ReactNode 
   const authenticate = useCallback(async () => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Unlock Buccaneer Wallet",
+        promptMessage: "Unlock Bellamy Wallet",
         fallbackLabel: "Use Passcode",
         disableDeviceFallback: false,
       });

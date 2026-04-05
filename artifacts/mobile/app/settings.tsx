@@ -229,7 +229,7 @@ export default function SettingsScreen() {
                     return;
                   }
                   const result = await LocalAuthentication.authenticateAsync({
-                    promptMessage: "Enable Face ID for Buccaneer Wallet",
+                    promptMessage: "Enable Face ID for Bellamy Wallet",
                     fallbackLabel: "Use Passcode",
                   });
                   if (!result.success) return;

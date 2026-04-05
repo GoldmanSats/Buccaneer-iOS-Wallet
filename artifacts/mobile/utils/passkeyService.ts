@@ -18,11 +18,11 @@ async function ensurePasskeyCredential(): Promise<string> {
     return result.id;
   } catch {
     const result = await RNPasskey.create({
-      rp: { id: RP_ID, name: "Buccaneer Wallet" },
+      rp: { id: RP_ID, name: "Bellamy Wallet" },
       user: {
         id: randomUserId(),
         name: "wallet-user",
-        displayName: "Buccaneer Wallet User",
+        displayName: "Bellamy Wallet User",
       },
       challenge: randomChallenge(),
       pubKeyCredParams: [

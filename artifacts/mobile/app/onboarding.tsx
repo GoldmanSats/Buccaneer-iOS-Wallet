@@ -364,9 +364,9 @@ export default function OnboardingScreen() {
             <Image source={appIconSource} style={styles.appIcon} />
           </Animated.View>
 
-          <Text style={styles.appName}>Buccaneer Wallet</Text>
+          <Text style={styles.appName}>Bellamy Wallet</Text>
           <Text style={styles.tagline}>
-            A self-custody lightning wallet built{"\n"}for everyday payments
+            A self-custodial lightning wallet built{"\n"}for principled pirates, not saylors
           </Text>
 
           <View style={styles.features}>

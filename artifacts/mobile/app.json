@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Buccaneer Wallet",
+    "name": "Bellamy Wallet",
     "slug": "buccaneer-wallet",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,7 @@
       "bundleIdentifier": "buccaneerwallet",
       "buildNumber": "17",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Buccaneer Wallet uses Face ID to secure your wallet",
+        "NSFaceIDUsageDescription": "Bellamy Wallet uses Face ID to secure your wallet",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -40,7 +40,7 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Buccaneer Wallet uses Face ID to protect your wallet"
+          "faceIDPermission": "Bellamy Wallet uses Face ID to protect your wallet"
         }
       ],
       "expo-local-authentication",

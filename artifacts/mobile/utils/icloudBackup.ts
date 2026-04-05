@@ -47,7 +47,7 @@ export async function saveWalletBackup(seedWords: string[]): Promise<boolean> {
     const backup: WalletBackup = {
       seedWords,
       backedUpAt: new Date().toISOString(),
-      walletName: "Buccaneer Wallet",
+      walletName: "Bellamy Wallet",
     };
 
     await SecureStore.setItemAsync(BACKUP_KEY, JSON.stringify(backup), {

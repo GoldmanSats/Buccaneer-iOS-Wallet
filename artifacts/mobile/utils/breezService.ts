@@ -520,7 +520,7 @@ export async function receivePayment(
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
 
   const paymentMethod = new breez.ReceivePaymentMethod.Bolt11Invoice({
-    description: description || "Payment to Buccaneer Wallet",
+    description: description || "Payment to Bellamy Wallet",
     amountSats: BigInt(amountSats),
     expirySecs: 3600,
     paymentHash: undefined,
@@ -583,17 +583,28 @@ export async function listPayments(): Promise<any[]> {
   const sdk = await initBreezSdk();
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   try {
-    const request = breez.ListPaymentsRequest.new({
-      limit: 50 as any,
-      offset: 0 as any,
-      typeFilter: undefined,
-      statusFilter: undefined,
-      assetFilter: undefined,
-      paymentDetailsFilter: undefined,
-      fromTimestamp: undefined,
-      toTimestamp: undefined,
-      sortAscending: undefined,
-    });
+    try { await sdk.syncWallet(); } catch (syncErr: any) {
+      console.warn("[Breez] syncWallet before listPayments failed:", syncErr?.message || syncErr);
+    }
+    let request: any;
+    try {
+      request = breez.ListPaymentsRequest.new({
+        limit: BigInt(50),
+        offset: BigInt(0),
+        typeFilter: undefined,
+        statusFilter: undefined,
+        assetFilter: undefined,
+        paymentDetailsFilter: undefined,
+        fromTimestamp: undefined,
+        toTimestamp: undefined,
+        sortAscending: undefined,
+      });
+    } catch {
+      request = breez.ListPaymentsRequest.new({
+        limit: 50 as any,
+        offset: 0 as any,
+      });
+    }
     const payments = await sdk.listPayments(request);
     console.log("[Breez] listPayments raw type:", typeof payments, "isArray:", Array.isArray(payments));
 

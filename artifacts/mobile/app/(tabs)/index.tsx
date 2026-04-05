@@ -483,7 +483,7 @@ export default function HomeScreen() {
     setReceiveGenerating(true);
     setReceiveError("");
     try {
-      const result = await createInvoice(satsVal, receiveDescInput || "Buccaneer Wallet");
+      const result = await createInvoice(satsVal, receiveDescInput || "Bellamy Wallet");
       setReceiveInvoice(result.bolt11);
       setReceiveMode("generated");
     } catch (e) {
@@ -513,7 +513,7 @@ export default function HomeScreen() {
 
   const handleReceiveShare = async (text: string) => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try { await Share.share({ message: text, title: "Buccaneer Wallet" }); } catch {}
+    try { await Share.share({ message: text, title: "Bellamy Wallet" }); } catch {}
   };
 
   const receiveQrData = receiveInvoice ? `lightning:${receiveInvoice}` : lightningAddress;
@@ -671,22 +671,22 @@ export default function HomeScreen() {
           txPanelAnimStyle,
         ]}
       >
-        <GestureDetector gesture={txPanGesture}>
-        <Animated.View style={{ flex: isLogExpanded ? undefined : 1 }}>
-        <Pressable
-          onPress={() => {
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setIsLogExpanded(!isLogExpanded);
-          }}
-          style={styles.txHeaderRow}
-        >
-          <MaterialCommunityIcons name="history" size={20} color={colors.textSecondary} />
-          <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
-          <Ionicons name={isLogExpanded ? "chevron-down" : "chevron-up"} size={18} color={colors.textMuted} />
-        </Pressable>
+        {!isLogExpanded ? (
+          <GestureDetector gesture={txPanGesture}>
+          <Animated.View style={{ flex: 1 }}>
+          <Pressable
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsLogExpanded(true);
+            }}
+            style={styles.txHeaderRow}
+          >
+            <MaterialCommunityIcons name="history" size={20} color={colors.textSecondary} />
+            <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
+            <Ionicons name="chevron-up" size={18} color={colors.textMuted} />
+          </Pressable>
 
-        {!isLogExpanded && (
-          transactions.length === 0 ? (
+          {transactions.length === 0 ? (
             <View style={styles.emptyState}>
               {!isTransactionsLoading ? (
                 <>
@@ -703,17 +703,28 @@ export default function HomeScreen() {
                 <TransactionItem key={tx.id} tx={tx as TxType} onPress={handleTxPress} colors={colors} glowing={glowTxId === tx.id} />
               ))}
             </View>
-          )
-        )}
-        </Animated.View>
-        </GestureDetector>
-
-        {isLogExpanded && (
+          )}
+          </Animated.View>
+          </GestureDetector>
+        ) : (
           <>
           <GestureDetector gesture={txDismissGesture}>
-          <Animated.View style={styles.expandedDragHandle}>
-            <View style={[styles.dragIndicator, { backgroundColor: colors.textMuted + "60" }]} />
-          </Animated.View>
+          <View>
+            <View style={styles.expandedDragHandle}>
+              <View style={[styles.dragIndicator, { backgroundColor: colors.textMuted + "60" }]} />
+            </View>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsLogExpanded(false);
+              }}
+              style={styles.txHeaderRow}
+            >
+              <MaterialCommunityIcons name="history" size={20} color={colors.textSecondary} />
+              <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
+              <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+            </Pressable>
+          </View>
           </GestureDetector>
           <ScrollView
             style={{ flex: 1 }}

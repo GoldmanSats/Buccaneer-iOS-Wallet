@@ -58,7 +58,7 @@ export default function ReceiveScreen() {
     setInvoiceError("");
     setInvoice(null);
     try {
-      const result = await createInvoice(sats, descInput || "Buccaneer Wallet");
+      const result = await createInvoice(sats, descInput || "Bellamy Wallet");
       setInvoice(result.bolt11);
       setMode("generated");
     } catch (e) {
@@ -89,7 +89,7 @@ export default function ReceiveScreen() {
   const handleShare = async (text: string) => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await Share.share({ message: text, title: "Buccaneer Wallet" });
+      await Share.share({ message: text, title: "Bellamy Wallet" });
     } catch (_e) {}
   };
 
