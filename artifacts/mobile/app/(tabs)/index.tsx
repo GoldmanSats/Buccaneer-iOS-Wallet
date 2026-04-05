@@ -306,7 +306,7 @@ export default function HomeScreen() {
       const SWIPE_THRESHOLD = 30;
       const VELOCITY_THRESHOLD = 300;
       const swipedDown = e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD;
-      if (swipedDown && isLogExpandedRef.current && txLogScrollOffset.current <= 0) {
+      if (swipedDown && isLogExpandedRef.current) {
         if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
         runOnJS(setIsLogExpanded)(false);
       }
@@ -709,8 +709,12 @@ export default function HomeScreen() {
         </GestureDetector>
 
         {isLogExpanded && (
+          <>
           <GestureDetector gesture={txDismissGesture}>
-          <Animated.View style={{ flex: 1 }}>
+          <Animated.View style={styles.expandedDragHandle}>
+            <View style={[styles.dragIndicator, { backgroundColor: colors.textMuted + "60" }]} />
+          </Animated.View>
+          </GestureDetector>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
@@ -747,8 +751,7 @@ export default function HomeScreen() {
               </View>
             )}
           </ScrollView>
-          </Animated.View>
-          </GestureDetector>
+          </>
         )}
       </Animated.View>
 
@@ -1090,6 +1093,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingTop: 24,
     overflow: "hidden",
     zIndex: 10,
+  },
+  expandedDragHandle: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
   },
   txHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   txHeaderText: { fontFamily: "Nunito_700Bold", fontSize: 18, flex: 1 },
