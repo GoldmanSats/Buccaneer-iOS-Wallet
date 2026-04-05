@@ -8,7 +8,7 @@ let sdkInstance: any = null;
 let sdkInitializing: Promise<any> | null = null;
 let pendingIncomingPayments: any[] = [];
 let pendingDeposits: any[] = [];
-let cachedSparkAddress: string | null = null;
+let cachedLightningAddress: string | null = null;
 
 export function sanitizeBigIntPublic(obj: any): any {
   return sanitizeBigInt(obj);
@@ -325,25 +325,53 @@ export async function getNodeInfo(): Promise<{
   }
 }
 
-export async function getSparkAddress(): Promise<string> {
-  if (cachedSparkAddress) return cachedSparkAddress;
+function generateUsername(): string {
+  const adjectives = ["swift", "bold", "iron", "gold", "dark", "red", "blue", "wild", "old", "sea"];
+  const nouns = ["captain", "sailor", "pirate", "anchor", "storm", "wave", "shark", "helm", "crow", "reef"];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 9000) + 1000;
+  return `${adj}${noun}${num}`;
+}
+
+export async function getLightningAddress(): Promise<string> {
+  if (cachedLightningAddress) return cachedLightningAddress;
   const sdk = await initBreezSdk();
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   try {
-    const request = breez.ReceivePaymentRequest.new({
-      paymentMethod: breez.ReceivePaymentMethod.SparkAddress.new(),
-    });
-    const response = await sdk.receivePayment(request);
-    const address = response.paymentRequest || "";
-    if (address) {
-      cachedSparkAddress = address;
-      console.log("[Breez] Spark address obtained:", address.slice(0, 20) + "...");
+    const existing = await sdk.getLightningAddress();
+    if (existing?.lightningAddress) {
+      cachedLightningAddress = existing.lightningAddress;
+      console.log("[Breez] Lightning address found:", existing.lightningAddress);
+      return existing.lightningAddress;
     }
-    return address;
   } catch (err: any) {
-    console.error("[Breez] getSparkAddress error:", err?.message || err);
-    return "";
+    console.log("[Breez] getLightningAddress check:", err?.message || err);
   }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const username = generateUsername();
+    try {
+      const checkReq = breez.CheckLightningAddressRequest.new({ username });
+      const available = await sdk.checkLightningAddressAvailable(checkReq);
+      if (!available) continue;
+
+      const registerReq = breez.RegisterLightningAddressRequest.new({
+        username,
+        description: "Bellamy Wallet",
+      });
+      const result = await sdk.registerLightningAddress(registerReq);
+      if (result?.lightningAddress) {
+        cachedLightningAddress = result.lightningAddress;
+        console.log("[Breez] Lightning address registered:", result.lightningAddress);
+        return result.lightningAddress;
+      }
+    } catch (err: any) {
+      console.warn("[Breez] registerLightningAddress attempt", attempt + 1, "failed:", err?.message || err);
+    }
+  }
+  console.error("[Breez] Failed to register lightning address after 5 attempts");
+  return "";
 }
 
 function normalizeInput(raw: string): string {

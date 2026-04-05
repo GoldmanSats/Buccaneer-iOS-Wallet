@@ -160,7 +160,7 @@ export default function ReceiveScreen() {
                       color={addressCopied ? "#2DC653" : colors.gold}
                     />
                   </Pressable>
-                  <Text style={styles.addressLabel}>Your Spark Address · tap to copy</Text>
+                  <Text style={styles.addressLabel}>Your Lightning Address · tap to copy</Text>
                 </>
               ) : (
                 <View style={{ alignItems: "center", paddingVertical: 8 }}>
@@ -177,7 +177,7 @@ export default function ReceiveScreen() {
 
               <View style={styles.infoRow}>
                 <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.infoText, { color: colors.textMuted }]}>This is your unique address. Share it to receive payments.</Text>
+                <Text style={[styles.infoText, { color: colors.textMuted }]}>Your unique Lightning address. Any Lightning wallet can pay you here.</Text>
               </View>
 
               <View style={styles.bottomButtons}>

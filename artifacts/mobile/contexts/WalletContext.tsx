@@ -107,7 +107,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setSdkReady(true);
           setIsOffline(false);
-          BreezService.getSparkAddress().then((addr) => {
+          BreezService.getLightningAddress().then((addr) => {
             if (!cancelled && addr) setSparkAddress(addr);
           }).catch(() => {});
         }
@@ -142,7 +142,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setSdkReady(true);
       setIsOffline(false);
       setSdkError(null);
-      BreezService.getSparkAddress().then((addr) => {
+      BreezService.getLightningAddress().then((addr) => {
         if (addr) setSparkAddress(addr);
       }).catch(() => {});
     } catch (err: any) {

@@ -932,7 +932,7 @@ export default function HomeScreen() {
                           <Text style={styles.receiveAddressText} numberOfLines={1} ellipsizeMode="middle">{lightningAddress}</Text>
                           <Ionicons name={addressCopied ? "checkmark-circle" : "copy-outline"} size={18} color={addressCopied ? "#2DC653" : "#EAB308"} />
                         </Pressable>
-                        <Text style={[styles.receiveAddressLabel, { color: colors.textMuted }]}>Your Spark Address · tap to copy</Text>
+                        <Text style={[styles.receiveAddressLabel, { color: colors.textMuted }]}>Your Lightning Address · tap to copy</Text>
                       </>
                     ) : (
                       <View style={{ alignItems: "center", paddingVertical: 8 }}>
@@ -950,7 +950,7 @@ export default function HomeScreen() {
 
                     <View style={styles.receiveInfoRow}>
                       <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>This is your unique address. Share it to receive payments.</Text>
+                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>Your unique Lightning address. Any Lightning wallet can pay you here.</Text>
                     </View>
 
                     <View style={styles.receiveButtonRow}>
