@@ -51,3 +51,4 @@ Thumbs.db
 # Breez SDK data (sensitive wallet data)
 .breez-data/
 */.breez-data/
+artifacts/api-server/.breez-data/
