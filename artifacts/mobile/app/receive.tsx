@@ -28,7 +28,7 @@ type Mode = "default" | "amount" | "generated";
 
 export default function ReceiveScreen() {
   const insets = useSafeAreaInsets();
-  const { createInvoice } = useWallet();
+  const { createInvoice, sparkAddress } = useWallet();
   const { settings } = useSettings();
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
@@ -42,7 +42,7 @@ export default function ReceiveScreen() {
   const [copied, setCopied] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
 
-  const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
+  const lightningAddress = sparkAddress || "";
 
   const topPad = insets.top;
   const bottomPad = insets.bottom + 16;
@@ -101,7 +101,7 @@ export default function ReceiveScreen() {
     setMode("default");
   };
 
-  const qrData = invoice || `lightning:${lightningAddress}`;
+  const qrData = invoice || lightningAddress;
   const qrSize = 300;
 
   return (
@@ -123,54 +123,61 @@ export default function ReceiveScreen() {
         >
           <Text style={[styles.pageTitle, { color: colors.text }]}>Receive</Text>
 
-          <View style={[styles.qrContainer, { width: qrSize + 10, height: qrSize + 10 }]}>
-            <QRCode
-              value={qrData}
-              size={qrSize}
-              backgroundColor="#FFFFFF"
-              color="#000000"
-              quietZone={8}
-            />
-            <View style={styles.qrCenterOverlay}>
-              <Text style={styles.qrCenterText}>₿uccaneer</Text>
-              <View style={styles.qrBadgeRow}>
-                <View style={[styles.qrBadge, { backgroundColor: "#FBBF24" }]}>
-                  <Text style={styles.qrBadgeText}>⚡</Text>
-                </View>
-                <View style={[styles.qrBadge, { backgroundColor: "#F7931A" }]}>
-                  <Text style={styles.qrBadgeText}>₿</Text>
+          {qrData ? (
+            <View style={[styles.qrContainer, { width: qrSize + 10, height: qrSize + 10 }]}>
+              <QRCode
+                value={qrData}
+                size={qrSize}
+                backgroundColor="#FFFFFF"
+                color="#000000"
+                quietZone={8}
+              />
+              <View style={styles.qrCenterOverlay}>
+                <Text style={styles.qrCenterText}>₿ellamy</Text>
+                <View style={styles.qrBadgeRow}>
+                  <View style={[styles.qrBadge, { backgroundColor: "#FBBF24" }]}>
+                    <Text style={styles.qrBadgeText}>⚡</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
+          ) : (
+            <View style={[styles.qrContainer, { width: qrSize + 10, height: qrSize + 10, justifyContent: "center", alignItems: "center", backgroundColor: colors.bgCard, borderRadius: 16 }]}>
+              <ActivityIndicator size="large" color={colors.gold} />
+              <Text style={{ color: colors.textMuted, fontFamily: "Nunito_600SemiBold", fontSize: 13, marginTop: 8 }}>Loading your address…</Text>
+            </View>
+          )}
 
           {mode === "default" && (
             <Animated.View entering={FadeIn} style={styles.defaultSection}>
-              <Pressable onPress={handleCopyAddress} style={styles.addressRow}>
-                <Text style={styles.addressText}>{lightningAddress}</Text>
-                <Ionicons
-                  name={addressCopied ? "checkmark-circle" : "copy-outline"}
-                  size={18}
-                  color={addressCopied ? "#2DC653" : colors.gold}
-                />
-              </Pressable>
-              <Text style={styles.addressLabel}>Lightning Address · tap to copy</Text>
+              {lightningAddress ? (
+                <>
+                  <Pressable onPress={handleCopyAddress} style={styles.addressRow}>
+                    <Text style={styles.addressText} numberOfLines={1} ellipsizeMode="middle">{lightningAddress}</Text>
+                    <Ionicons
+                      name={addressCopied ? "checkmark-circle" : "copy-outline"}
+                      size={18}
+                      color={addressCopied ? "#2DC653" : colors.gold}
+                    />
+                  </Pressable>
+                  <Text style={styles.addressLabel}>Your Spark Address · tap to copy</Text>
+                </>
+              ) : (
+                <View style={{ alignItems: "center", paddingVertical: 8 }}>
+                  <Text style={[styles.addressLabel, { color: colors.textMuted }]}>Loading your address…</Text>
+                </View>
+              )}
 
               <View style={styles.protocolBadges}>
                 <View style={[styles.protocolBadge, { backgroundColor: "rgba(251,191,36,0.15)", borderColor: "rgba(251,191,36,0.3)" }]}>
                   <Text style={{ fontSize: 12 }}>⚡</Text>
                   <Text style={[styles.protocolText, { color: "#FBBF24" }]}>Lightning</Text>
                 </View>
-                <Text style={styles.protocolPlus}>+</Text>
-                <View style={[styles.protocolBadge, { backgroundColor: "rgba(247,147,26,0.15)", borderColor: "rgba(247,147,26,0.3)" }]}>
-                  <Text style={[styles.protocolText, { color: "#F7931A", fontWeight: "700" }]}>₿</Text>
-                  <Text style={[styles.protocolText, { color: "#F7931A" }]}>On-chain</Text>
-                </View>
               </View>
 
               <View style={styles.infoRow}>
                 <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.infoText, { color: colors.textMuted }]}>Unified QR: works with any Bitcoin wallet.</Text>
+                <Text style={[styles.infoText, { color: colors.textMuted }]}>This is your unique address. Share it to receive payments.</Text>
               </View>
 
               <View style={styles.bottomButtons}>

@@ -5,7 +5,6 @@
 Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme (formerly "Buccaneer Wallet"). Uses Breez SDK Spark on-device (`@breeztech/breez-sdk-spark-react-native`) for self-custody per-user wallets, Expo React Native, Express.js API server with PostgreSQL (for agent key access), and NWC (Nostr Wallet Connect / NIP-47) for AI agent access.
 
 **Tagline:** "A self-custodial lightning wallet built for principled pirates, not saylors"
-**Lightning address:** `buccaneeradiciw@breez.tips`
 
 ## Architecture
 
@@ -13,6 +12,7 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme (form
 - Each user runs Breez SDK Spark directly on their iPhone
 - Seed phrase generated on-device via `bip39`, stored in iOS Keychain via `expo-secure-store`
 - All wallet operations (balance, send, receive, parse, decode) happen locally — no server calls
+- **Spark Address**: Each user gets a unique Spark address from their on-device SDK via `ReceivePaymentMethod.SparkAddress`. Fetched on SDK init, cached in memory, displayed in receive drawer and settings. No hardcoded/shared addresses.
 - BTC price fetched directly from Coinbase/CoinGecko APIs
 - Memos stored locally via SecureStore
 - Requires EAS custom build (native Breez SDK module — cannot run in Expo Go)

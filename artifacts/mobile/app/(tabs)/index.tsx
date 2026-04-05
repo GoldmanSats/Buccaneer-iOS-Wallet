@@ -227,6 +227,7 @@ export default function HomeScreen() {
     refetchBalance, refetchTransactions,
     updateMemo, createInvoice, isOffline,
     sdkReady, sdkRetryCount, sdkError, retrySdkInit,
+    sparkAddress,
   } = useWallet();
 
   const [isLogExpanded, setIsLogExpanded] = useState(false);
@@ -407,7 +408,7 @@ export default function HomeScreen() {
   const symbolFontSize = digitCount <= 5 ? 24 : digitCount <= 7 ? 20 : 18;
   const symbolBottomOffset = digitCount <= 5 ? 8 : digitCount <= 7 ? 6 : 4;
 
-  const lightningAddress = settings.lightningAddress || "buccaneeradiciw@breez.tips";
+  const lightningAddress = sparkAddress || "";
 
   const resetReceiveState = () => {
     setReceiveInvoice(null);
@@ -898,7 +899,7 @@ export default function HomeScreen() {
                 </Pressable>
 
                 <View style={styles.receiveScrollContent}>
-                {receiveMode !== "amount" && (
+                {receiveMode !== "amount" && receiveQrData ? (
                   <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24 }]}>
                     <QRCode
                       value={receiveQrData}
@@ -908,48 +909,55 @@ export default function HomeScreen() {
                       quietZone={8}
                     />
                     <View style={styles.receiveQrOverlay}>
-                      <Text style={styles.receiveQrText}>₿uccaneer</Text>
+                      <Text style={styles.receiveQrText}>₿ellamy</Text>
                       <View style={styles.receiveQrBadgeRow}>
                         <View style={[styles.receiveQrBadge, { backgroundColor: "#FBBF24" }]}>
                           <Text style={styles.receiveQrBadgeText}>⚡</Text>
                         </View>
-                        <View style={[styles.receiveQrBadge, { backgroundColor: "#F7931A" }]}>
-                          <Text style={styles.receiveQrBadgeText}>₿</Text>
-                        </View>
                       </View>
                     </View>
                   </View>
-                )}
+                ) : receiveMode !== "amount" ? (
+                  <View style={[styles.receiveQrContainer, { width: receiveQrSize + 24, height: receiveQrSize + 24, justifyContent: "center", alignItems: "center" }]}>
+                    <ActivityIndicator size="large" color={colors.gold} />
+                    <Text style={{ color: colors.textMuted, fontFamily: "Nunito_600SemiBold", fontSize: 12, marginTop: 8 }}>Loading address…</Text>
+                  </View>
+                ) : null}
 
                 {receiveMode === "default" && (
                   <View style={styles.receiveDefaultContent}>
-                    <Pressable onPress={handleCopyAddress} style={styles.receiveAddressRow}>
-                      <Text style={styles.receiveAddressText}>{lightningAddress}</Text>
-                      <Ionicons name={addressCopied ? "checkmark-circle" : "copy-outline"} size={18} color={addressCopied ? "#2DC653" : "#EAB308"} />
-                    </Pressable>
-                    <Text style={[styles.receiveAddressLabel, { color: colors.textMuted }]}>Lightning Address · tap to copy</Text>
+                    {lightningAddress ? (
+                      <>
+                        <Pressable onPress={handleCopyAddress} style={styles.receiveAddressRow}>
+                          <Text style={styles.receiveAddressText} numberOfLines={1} ellipsizeMode="middle">{lightningAddress}</Text>
+                          <Ionicons name={addressCopied ? "checkmark-circle" : "copy-outline"} size={18} color={addressCopied ? "#2DC653" : "#EAB308"} />
+                        </Pressable>
+                        <Text style={[styles.receiveAddressLabel, { color: colors.textMuted }]}>Your Spark Address · tap to copy</Text>
+                      </>
+                    ) : (
+                      <View style={{ alignItems: "center", paddingVertical: 8 }}>
+                        <ActivityIndicator size="small" color={colors.gold} />
+                        <Text style={[styles.receiveAddressLabel, { color: colors.textMuted, marginTop: 4 }]}>Loading your address…</Text>
+                      </View>
+                    )}
 
                     <View style={styles.receiveProtocolRow}>
                       <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(251,191,36,0.12)" }]}>
                         <Text style={{ fontSize: 12 }}>⚡</Text>
                         <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 10, color: "#FBBF24" }}>Lightning</Text>
                       </View>
-                      <Text style={{ color: colors.textMuted, fontSize: 12 }}>+</Text>
-                      <View style={[styles.receiveProtocolBadge, { backgroundColor: "rgba(247,147,26,0.12)" }]}>
-                        <Text style={{ fontFamily: "Nunito_700Bold", fontSize: 10, color: "#F7931A" }}>₿ On-chain</Text>
-                      </View>
                     </View>
 
                     <View style={styles.receiveInfoRow}>
                       <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>Unified QR: works with any Bitcoin wallet.</Text>
+                      <Text style={[styles.receiveInfoText, { color: colors.textMuted }]}>This is your unique address. Share it to receive payments.</Text>
                     </View>
 
                     <View style={styles.receiveButtonRow}>
                       <Pressable style={[styles.receiveDashedBtn, { borderColor: colors.border }]} onPress={() => setReceiveMode("amount")}>
                         <Text style={[styles.receiveDashedBtnText, { color: colors.textSecondary }]}>Request Amount</Text>
                       </Pressable>
-                      <Pressable style={[styles.receiveGoldBtn, { backgroundColor: colors.gold }]} onPress={() => handleReceiveShare(lightningAddress)}>
+                      <Pressable style={[styles.receiveGoldBtn, { backgroundColor: colors.gold }]} onPress={() => handleReceiveShare(lightningAddress)} disabled={!lightningAddress}>
                         <Ionicons name="share-outline" size={18} color={isDark ? colors.bg : "#172331"} />
                         <Text style={[styles.receiveGoldBtnText, { color: isDark ? colors.bg : "#172331" }]}>Share</Text>
                       </Pressable>

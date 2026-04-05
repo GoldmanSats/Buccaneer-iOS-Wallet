@@ -8,6 +8,7 @@ let sdkInstance: any = null;
 let sdkInitializing: Promise<any> | null = null;
 let pendingIncomingPayments: any[] = [];
 let pendingDeposits: any[] = [];
+let cachedSparkAddress: string | null = null;
 
 export function sanitizeBigIntPublic(obj: any): any {
   return sanitizeBigInt(obj);
@@ -324,6 +325,27 @@ export async function getNodeInfo(): Promise<{
   }
 }
 
+export async function getSparkAddress(): Promise<string> {
+  if (cachedSparkAddress) return cachedSparkAddress;
+  const sdk = await initBreezSdk();
+  const breez = await import("@breeztech/breez-sdk-spark-react-native");
+  try {
+    const request = breez.ReceivePaymentRequest.new({
+      paymentMethod: breez.ReceivePaymentMethod.SparkAddress.new(),
+    });
+    const response = await sdk.receivePayment(request);
+    const address = response.paymentRequest || "";
+    if (address) {
+      cachedSparkAddress = address;
+      console.log("[Breez] Spark address obtained:", address.slice(0, 20) + "...");
+    }
+    return address;
+  } catch (err: any) {
+    console.error("[Breez] getSparkAddress error:", err?.message || err);
+    return "";
+  }
+}
+
 function normalizeInput(raw: string): string {
   let s = raw.trim();
   if (/^lightning:/i.test(s)) s = s.replace(/^lightning:/i, "");
@@ -589,8 +611,8 @@ export async function listPayments(): Promise<any[]> {
     let request: any;
     try {
       request = breez.ListPaymentsRequest.new({
-        limit: BigInt(50),
-        offset: BigInt(0),
+        limit: BigInt(50) as any,
+        offset: BigInt(0) as any,
         typeFilter: undefined,
         statusFilter: undefined,
         assetFilter: undefined,
@@ -668,7 +690,7 @@ export async function createBitcoinAddress(): Promise<{
 }> {
   const sdk = await initBreezSdk();
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
-  const paymentMethod = new breez.ReceivePaymentMethod.BitcoinAddress();
+  const paymentMethod = breez.ReceivePaymentMethod.BitcoinAddress.new({ newAddress: undefined });
   const request = breez.ReceivePaymentRequest.new({ paymentMethod });
   const response = await sdk.receivePayment(request);
   return {

@@ -68,11 +68,9 @@ function StatusPulse({ connected, checking }: { connected: boolean; checking: bo
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
-  const { getSdkStatus, getNodeInfo, sdkError, retrySdkInit, sdkReady } = useWallet();
+  const { getSdkStatus, getNodeInfo, sdkError, retrySdkInit, sdkReady, sparkAddress } = useWallet();
   const [addressCopied, setAddressCopied] = useState(false);
   const [showCurrencies, setShowCurrencies] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(false);
-  const [addressInput, setAddressInput] = useState(settings.lightningAddress.replace(/@breez\.tips$/, ""));
   const [sdkConnected, setSdkConnected] = useState(false);
   const [sdkChecking, setSdkChecking] = useState(true);
   const [nodeInfo, setNodeInfo] = useState<{ pubkey: string; blockHeight: number; balanceSats: number } | null>(null);
@@ -100,20 +98,13 @@ export default function SettingsScreen() {
   }, []);
 
   const handleCopyAddress = async () => {
+    if (!sparkAddress) return;
     if (Platform.OS !== "web") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await Clipboard.setStringAsync(settings.lightningAddress);
+      await Clipboard.setStringAsync(sparkAddress);
     }
     setAddressCopied(true);
     setTimeout(() => setAddressCopied(false), 2000);
-  };
-
-  const handleSaveAddress = async () => {
-    const local = addressInput.trim().replace(/@breez\.tips$/, "");
-    if (local) {
-      await updateSettings({ lightningAddress: `${local}@breez.tips` });
-    }
-    setEditingAddress(false);
   };
 
   const handleDeleteWallet = async () => {
@@ -149,46 +140,17 @@ export default function SettingsScreen() {
         contentContainerStyle={[s.content, { paddingBottom: bottomPad + 80 }]}
         showsVerticalScrollIndicator={false}
       >
-        {editingAddress ? (
-          <Animated.View entering={FadeInDown.duration(200)} style={[s.card, { backgroundColor: colors.bgCard, borderColor: colors.gold, marginBottom: 6 }]}>
-            <View style={[s.addressEditInputWrap, { backgroundColor: colors.bgInput, borderColor: colors.border }]}>
-              <TextInput
-                style={[s.addressEditInput, { color: colors.text }]}
-                value={addressInput}
-                onChangeText={setAddressInput}
-                placeholder="your-address"
-                placeholderTextColor={colors.textMuted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoFocus
-              />
-              <Text style={[s.addressSuffix, { color: colors.textMuted }]}>@breez.tips</Text>
-            </View>
-            <View style={s.addressEditActions}>
-              <Pressable onPress={() => setEditingAddress(false)} style={[s.addrCancelBtn, { backgroundColor: colors.bgElevated }]}>
-                <Text style={[s.addrCancelText, { color: colors.textSecondary }]}>Cancel</Text>
-              </Pressable>
-              <Pressable onPress={handleSaveAddress} style={[s.addrSaveBtn, { backgroundColor: colors.gold }]}>
-                <Text style={[s.addrSaveText, { color: isDark ? colors.bg : "#172331" }]}>Save</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        ) : (
-          <Animated.View entering={FadeInDown.duration(300)} style={[s.card, s.addressCard, { backgroundColor: colors.bgCard, borderColor: cardBorder, marginBottom: 6 }]}>
-            <View style={[s.iconBox, { backgroundColor: isDark ? "rgba(201,162,77,0.2)" : "rgba(250,186,26,0.15)" }]}>
-              <MaterialCommunityIcons name="lightning-bolt" size={20} color={colors.gold} />
-            </View>
-            <Text style={[s.addressText, { color: colors.text }]} numberOfLines={1}>
-              {settings.lightningAddress}
-            </Text>
-            <Pressable testID="copy-lightning-address" onPress={handleCopyAddress} style={[s.smallCircleBtn, { backgroundColor: colors.bgElevated }]}>
-              <Ionicons name={addressCopied ? "checkmark" : "copy-outline"} size={16} color={addressCopied ? colors.green : colors.textSecondary} />
-            </Pressable>
-            <Pressable style={[s.smallCircleBtn, { backgroundColor: colors.bgElevated }]} onPress={() => { setAddressInput(settings.lightningAddress.replace(/@breez\.tips$/, "")); setEditingAddress(true); }}>
-              <Ionicons name="pencil-outline" size={16} color={colors.textSecondary} />
-            </Pressable>
-          </Animated.View>
-        )}
+        <Animated.View entering={FadeInDown.duration(300)} style={[s.card, s.addressCard, { backgroundColor: colors.bgCard, borderColor: cardBorder, marginBottom: 6 }]}>
+          <View style={[s.iconBox, { backgroundColor: isDark ? "rgba(201,162,77,0.2)" : "rgba(250,186,26,0.15)" }]}>
+            <MaterialCommunityIcons name="lightning-bolt" size={20} color={colors.gold} />
+          </View>
+          <Text style={[s.addressText, { color: colors.text }]} numberOfLines={1} ellipsizeMode="middle">
+            {sparkAddress || "Loading…"}
+          </Text>
+          <Pressable testID="copy-lightning-address" onPress={handleCopyAddress} style={[s.smallCircleBtn, { backgroundColor: colors.bgElevated }]} disabled={!sparkAddress}>
+            <Ionicons name={addressCopied ? "checkmark" : "copy-outline"} size={16} color={addressCopied ? colors.green : colors.textSecondary} />
+          </Pressable>
+        </Animated.View>
 
         <Text style={[s.sectionHeader, { color: colors.textMuted }]}>SECURITY & SHIP GUARD</Text>
         <View style={[s.card, { backgroundColor: colors.bgCard, borderColor: cardBorder }]}>

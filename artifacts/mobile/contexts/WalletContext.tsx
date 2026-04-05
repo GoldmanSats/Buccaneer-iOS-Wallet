@@ -62,6 +62,7 @@ interface WalletContextValue {
   updateMemo: (txId: string, memo: string) => Promise<void>;
   getNodeInfo: () => Promise<NodeInfo>;
   getSdkStatus: () => Promise<{ initialized: boolean; error: string | null }>;
+  sparkAddress: string;
   isOffline: boolean;
   sdkReady: boolean;
   sdkRetryCount: number;
@@ -92,6 +93,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [sdkReady, setSdkReady] = useState(!USE_ON_DEVICE);
   const [sdkRetryCount, setSdkRetryCount] = useState(0);
   const [sdkError, setSdkError] = useState<string | null>(null);
+  const [sparkAddress, setSparkAddress] = useState("");
 
   useEffect(() => {
     if (!USE_ON_DEVICE) return;
@@ -105,6 +107,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setSdkReady(true);
           setIsOffline(false);
+          BreezService.getSparkAddress().then((addr) => {
+            if (!cancelled && addr) setSparkAddress(addr);
+          }).catch(() => {});
         }
       } catch (err: any) {
         const errorMsg = err?.message || String(err);
@@ -137,6 +142,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setSdkReady(true);
       setIsOffline(false);
       setSdkError(null);
+      BreezService.getSparkAddress().then((addr) => {
+        if (addr) setSparkAddress(addr);
+      }).catch(() => {});
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
       console.error("[WalletContext] Manual retry failed:", errorMsg);
@@ -355,12 +363,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     updateMemo,
     getNodeInfo: getNodeInfoFn,
     getSdkStatus: getSdkStatusFn,
+    sparkAddress,
     isOffline,
     sdkReady,
     sdkRetryCount,
     sdkError,
     retrySdkInit,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, sendLnurlPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, sendLnurlPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, sparkAddress, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS: Settings = {
   primaryDisplay: "sats",
   soundEffectsEnabled: true,
   backupCompleted: false,
-  lightningAddress: "buccaneeradiciw@breez.tips",
+  lightningAddress: "",
   isDarkMode: true,
   onboardingDone: false,
   balanceHidden: false,
