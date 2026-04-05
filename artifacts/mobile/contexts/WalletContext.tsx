@@ -31,11 +31,12 @@ interface BtcPrice {
 }
 
 interface ParsedInput {
-  type: "bolt11" | "lnurl" | "lightning_address" | "bitcoin" | "unknown";
+  type: "bolt11" | "lnurl" | "lightning_address" | "bitcoin" | "spark_address" | "unknown";
   invoice?: string;
   address?: string;
   amountSats?: number;
   description?: string;
+  payRequest?: any;
 }
 
 interface NodeInfo {
@@ -54,6 +55,7 @@ interface WalletContextValue {
   refetchBalance: () => void;
   refetchTransactions: () => void;
   sendPayment: (bolt11: string, amountSats?: number) => Promise<{ success: boolean; feeSats: number; amountSats: number }>;
+  sendLnurlPayment: (payRequest: any, amountSats: number) => Promise<{ success: boolean; feeSats: number; amountSats: number }>;
   createInvoice: (amountSats: number, description?: string) => Promise<{ bolt11: string }>;
   decodeInvoice: (bolt11: string) => Promise<{ amountSats?: number; description?: string; isExpired: boolean }>;
   parseInput: (input: string) => Promise<ParsedInput>;
@@ -252,6 +254,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return data;
   }, [queryClient]);
 
+  const sendLnurlPaymentFn = useCallback(async (payRequest: any, amountSats: number) => {
+    if (USE_ON_DEVICE) {
+      const result = await BreezService.sendLnurlPayment(payRequest, amountSats);
+      await queryClient.invalidateQueries({ queryKey: ["balance"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      return result;
+    }
+    throw new Error("LNURL payments not supported in web mode");
+  }, [queryClient]);
+
   const createInvoice = useCallback(async (amountSats: number, description?: string) => {
     if (USE_ON_DEVICE) {
       return BreezService.receivePayment(amountSats, description);
@@ -336,6 +348,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     refetchBalance,
     refetchTransactions,
     sendPayment: sendPaymentFn,
+    sendLnurlPayment: sendLnurlPaymentFn,
     createInvoice,
     decodeInvoice: decodeInvoiceFn,
     parseInput: parseInputFn,
@@ -347,7 +360,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     sdkRetryCount,
     sdkError,
     retrySdkInit,
-  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
+  }), [balance, txData, btcPrice, isBalanceLoading, isTransactionsLoading, sendPaymentFn, sendLnurlPaymentFn, createInvoice, decodeInvoiceFn, parseInputFn, updateMemo, getNodeInfoFn, getSdkStatusFn, isOffline, sdkReady, sdkRetryCount, sdkError, retrySdkInit]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

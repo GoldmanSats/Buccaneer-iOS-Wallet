@@ -28,6 +28,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import Svg, { Path, Circle } from "react-native-svg";
 import {
   saveWalletBackup,
+  checkForICloudBackup,
+  type WalletBackup,
 } from "@/utils/icloudBackup";
 import {
   generateMnemonic,
@@ -63,7 +65,7 @@ function AnchorIcon({ size = 22, color = GOLD }: { size?: number; color?: string
   );
 }
 
-type Screen = "welcome" | "restore-seed" | "loading";
+type Screen = "welcome" | "restore-seed" | "loading" | "icloud-found";
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
@@ -73,12 +75,28 @@ export default function OnboardingScreen() {
   const [restoreError, setRestoreError] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Initializing Wallet...");
+  const [icloudBackup, setIcloudBackup] = useState<WalletBackup | null>(null);
+  const [checkingBackup, setCheckingBackup] = useState(true);
 
   const scale = useSharedValue(1);
   const bobbing = useSharedValue(0);
 
   useEffect(() => {
     bobbing.value = withRepeat(withTiming(8, { duration: 2000 }), -1, true);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      checkForICloudBackup().then((backup) => {
+        if (backup) {
+          setIcloudBackup(backup);
+          setScreen("icloud-found");
+        }
+        setCheckingBackup(false);
+      }).catch(() => setCheckingBackup(false));
+    } else {
+      setCheckingBackup(false);
+    }
   }, []);
 
   const bobbingStyle = useAnimatedStyle(() => ({
@@ -162,6 +180,93 @@ export default function OnboardingScreen() {
       setScreen("welcome");
     }
   };
+
+  const handleRestoreFromICloud = async () => {
+    if (!icloudBackup) return;
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setScreen("loading");
+    setIsInitializing(true);
+    setInitError(null);
+    setLoadingMessage("Restoring from backup...");
+
+    try {
+      const mnemonic = icloudBackup.seedWords.join(" ");
+      await finishOnboarding(mnemonic, true);
+    } catch (err: any) {
+      setInitError(err.message || "Failed to restore wallet.");
+      setIsInitializing(false);
+      setScreen("icloud-found");
+    }
+  };
+
+  if (checkingBackup) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.loadingContent}>
+          <ActivityIndicator color={GOLD} size="large" />
+          <Text style={[styles.loadingSubtitle, { marginTop: 16 }]}>Checking for existing wallet...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (screen === "icloud-found" && icloudBackup) {
+    const backupDate = new Date(icloudBackup.backedUpAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.content}>
+          <View style={styles.topSection}>
+            <Animated.View style={[styles.logoContainer, bobbingStyle]}>
+              <Image source={appIconSource} style={styles.appIcon} />
+            </Animated.View>
+            <Text style={styles.appName}>Welcome Back!</Text>
+            <View style={{ alignItems: "center", marginTop: 12, paddingHorizontal: 20 }}>
+              <MaterialCommunityIcons name="cloud-check" size={48} color={GOLD} />
+              <Text style={[styles.tagline, { marginTop: 12 }]}>
+                We found a backup of your wallet from {backupDate}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.bottomSection}>
+            {initError && (
+              <View style={{ marginBottom: 12, paddingHorizontal: 20 }}>
+                <Text style={{ color: "#E76F51", fontSize: 14, textAlign: "center", fontFamily: "Nunito_400Regular" }}>{initError}</Text>
+              </View>
+            )}
+
+            <Animated.View style={[styles.buttonWrap, buttonStyle]}>
+              <Pressable style={styles.button} onPress={handleRestoreFromICloud}>
+                <LinearGradient
+                  colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>Restore My Wallet</Text>
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
+
+            <Pressable
+              onPress={() => { setIcloudBackup(null); setScreen("welcome"); }}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>Start Fresh Instead</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   if (screen === "loading") {
     return (

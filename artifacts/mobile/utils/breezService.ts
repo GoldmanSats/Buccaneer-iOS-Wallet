@@ -371,13 +371,16 @@ export async function parseInput(input: string) {
     return {
       type: "lightning_address" as const,
       address: details?.address || trimmed,
+      payRequest: result?.inner?.[0]?.payRequest || details?.payRequest,
     };
   }
 
   if (sanitized?.tag === "LnurlPay") {
+    const details = result?.inner?.[0] || sanitized.inner?.[0] || sanitized.inner;
     return {
       type: "lnurl" as const,
       address: trimmed,
+      payRequest: details,
       raw: sanitized,
     };
   }
@@ -439,6 +442,45 @@ export async function sendPayment(
     paymentHash: payment.id || "",
     feeSats: Number(payment.fees ?? 0),
     amountSats: Number(payment.amount ?? amountSats ?? 0),
+  };
+}
+
+export async function sendLnurlPayment(
+  payRequest: any,
+  amountSats: number
+): Promise<{
+  success: boolean;
+  paymentHash: string;
+  feeSats: number;
+  amountSats: number;
+}> {
+  const sdk = await initBreezSdk();
+  const breez = await import("@breeztech/breez-sdk-spark-react-native");
+
+  console.log("[Breez] prepareLnurlPay amountSats:", amountSats);
+  const prepRequest = breez.PrepareLnurlPayRequest.new({
+    amountSats: BigInt(amountSats),
+    payRequest,
+    comment: undefined,
+    validateSuccessActionUrl: undefined,
+    conversionOptions: undefined,
+    feePolicy: undefined,
+  });
+  const prepared = await sdk.prepareLnurlPay(prepRequest);
+  console.log("[Breez] prepareLnurlPay OK, feeSats:", Number(prepared.feeSats ?? 0));
+
+  const lnurlPayReq = breez.LnurlPayRequest.new({
+    prepareResponse: prepared,
+    idempotencyKey: undefined,
+  });
+  const result = await sdk.lnurlPay(lnurlPayReq);
+  const payment = result?.payment;
+
+  return {
+    success: true,
+    paymentHash: payment?.id || "",
+    feeSats: Number(payment?.fees ?? prepared.feeSats ?? 0),
+    amountSats: Number(payment?.amount ?? amountSats),
   };
 }
 
@@ -542,8 +584,8 @@ export async function listPayments(): Promise<any[]> {
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   try {
     const request = breez.ListPaymentsRequest.new({
-      limit: 50,
-      offset: 0,
+      limit: 50 as any,
+      offset: 0 as any,
       typeFilter: undefined,
       statusFilter: undefined,
       assetFilter: undefined,
@@ -553,21 +595,48 @@ export async function listPayments(): Promise<any[]> {
       sortAscending: undefined,
     });
     const payments = await sdk.listPayments(request);
-    const paymentList = Array.isArray(payments) ? payments : [];
+    console.log("[Breez] listPayments raw type:", typeof payments, "isArray:", Array.isArray(payments));
+
+    let paymentList: any[];
+    if (Array.isArray(payments)) {
+      paymentList = payments;
+    } else if (payments && typeof payments === "object" && typeof payments.length === "number") {
+      paymentList = Array.from(payments);
+    } else if (payments && Symbol.iterator in Object(payments)) {
+      paymentList = [...payments];
+    } else {
+      console.warn("[Breez] listPayments returned unexpected type, keys:", payments ? Object.keys(payments) : "null");
+      paymentList = [];
+    }
+
+    console.log("[Breez] listPayments count:", paymentList.length);
+    if (paymentList.length > 0) {
+      const first = paymentList[0];
+      console.log("[Breez] first payment keys:", Object.keys(first || {}));
+      console.log("[Breez] first payment status:", first?.status, "paymentType:", first?.paymentType, "amount:", first?.amount);
+    }
+
     return paymentList.map((p: any) => {
+      const statusVal = p.status;
       let status = "failed";
-      if (p.status === breez.PaymentStatus.Completed || p.status === 0) {
+      const completedEnum = breez.PaymentStatus?.Completed;
+      const pendingEnum = breez.PaymentStatus?.Pending;
+      if (statusVal === completedEnum || statusVal === 0 || String(statusVal) === "Completed") {
         status = "completed";
-      } else if (p.status === breez.PaymentStatus.Pending || p.status === 1) {
+      } else if (statusVal === pendingEnum || statusVal === 1 || String(statusVal) === "Pending") {
         status = "pending";
       }
-      const isSend = p.paymentType === breez.PaymentType.Send || p.paymentType === 0;
+
+      const typeVal = p.paymentType;
+      const sendEnum = breez.PaymentType?.Send;
+      const isSend = typeVal === sendEnum || typeVal === 0 || String(typeVal) === "Send";
+
       return {
         id: p.id || String(Number(p.timestamp ?? 0)),
         type: isSend ? "send" : "receive",
         amountSats: Number(p.amount ?? 0),
         feeSats: Number(p.fees ?? 0),
-        description: p.details?.description || "",
+        description: p.details?.description || p.description || "",
         timestamp: p.timestamp
           ? new Date(Number(p.timestamp) * 1000).toISOString()
           : new Date().toISOString(),
@@ -576,7 +645,8 @@ export async function listPayments(): Promise<any[]> {
       };
     });
   } catch (err: any) {
-    console.error(`[Breez] listPayments error: ${err.message}`);
+    const errMsg = err?.inner?.[0] || err?.message || String(err);
+    console.error("[Breez] listPayments error:", errMsg);
     return [];
   }
 }

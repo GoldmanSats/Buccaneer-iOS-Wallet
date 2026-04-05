@@ -31,7 +31,7 @@ export default function SendScreen() {
   const { settings } = useSettings();
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
-  const { sendPayment, decodeInvoice, parseInput, btcPrice, balance } = useWallet();
+  const { sendPayment, sendLnurlPayment, decodeInvoice, parseInput, btcPrice, balance } = useWallet();
   const sats = balance?.balanceSats ?? 0;
   const [stage, setStage] = useState<Stage>("scan");
   const [invoiceInput, setInvoiceInput] = useState("");
@@ -41,6 +41,7 @@ export default function SendScreen() {
     isExpired: boolean;
     type?: string;
     address?: string;
+    payRequest?: any;
   } | null>(null);
   const [error, setError] = useState("");
   const [isDecoding, setIsDecoding] = useState(false);
@@ -175,8 +176,9 @@ export default function SendScreen() {
           address: parsed.address,
           description: `Pay to ${parsed.address}`,
           isExpired: false,
+          payRequest: parsed.payRequest,
         };
-        canonicalDest = parsed.address;
+        canonicalDest = parsed.address || input.trim();
       } else if (parsed.type === "bitcoin") {
         decoded = {
           type: "bitcoin",
@@ -185,15 +187,16 @@ export default function SendScreen() {
           description: "On-chain payment",
           isExpired: false,
         };
-        canonicalDest = parsed.address;
+        canonicalDest = parsed.address || input.trim();
       } else if (parsed.type === "lnurl") {
         decoded = {
           type: "lnurl",
           address: parsed.address,
           description: "LNURL payment",
           isExpired: false,
+          payRequest: parsed.payRequest,
         };
-        canonicalDest = parsed.address;
+        canonicalDest = parsed.address || input.trim();
       } else {
         try {
           const dec = await decodeInvoice(input.trim());
@@ -233,7 +236,13 @@ export default function SendScreen() {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setStage("sending");
     try {
-      const res = await sendPayment(invoiceInput.trim(), amountToSend);
+      let res;
+      const payType = decodedInvoice?.type;
+      if ((payType === "lightning_address" || payType === "lnurl") && decodedInvoice?.payRequest) {
+        res = await sendLnurlPayment(decodedInvoice.payRequest, amountToSend);
+      } else {
+        res = await sendPayment(invoiceInput.trim(), amountToSend);
+      }
       setResult(res);
       successScale.value = withSpring(1, { damping: 12 });
       setStage("success");
