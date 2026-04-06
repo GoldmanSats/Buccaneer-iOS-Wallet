@@ -519,7 +519,7 @@ export default function HomeScreen() {
     try { await Share.share({ message: text, title: "Bellamy Wallet" }); } catch {}
   };
 
-  const receiveQrData = receiveInvoice ? `lightning:${receiveInvoice}` : (unifiedQr || lightningAddress);
+  const receiveQrData = receiveInvoice ? `lightning:${receiveInvoice}` : lightningAddress;
   const receiveQrSize = receiveMode === "amount" ? 180 : 280;
 
   return (

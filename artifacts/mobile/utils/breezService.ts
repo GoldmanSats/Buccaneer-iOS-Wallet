@@ -342,14 +342,17 @@ export async function getLightningAddress(): Promise<string> {
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   try {
     const existing = await sdk.getLightningAddress();
+    console.log("[Breez] getLightningAddress raw result:", JSON.stringify(existing, (_, v) => typeof v === 'bigint' ? v.toString() : v));
     if (existing?.lightningAddress) {
       cachedLightningAddress = existing.lightningAddress;
       if (existing.lnurl?.bech32) cachedLnurlBech32 = existing.lnurl.bech32;
-      console.log("[Breez] Lightning address found:", existing.lightningAddress);
+      if (existing.lnurl?.url) console.log("[Breez] LNURL url:", existing.lnurl.url);
+      console.log("[Breez] Lightning address found:", existing.lightningAddress, "username:", existing.username);
       return existing.lightningAddress;
     }
+    console.log("[Breez] No existing lightning address, will register one");
   } catch (err: any) {
-    console.log("[Breez] getLightningAddress check:", err?.message || err);
+    console.log("[Breez] getLightningAddress check error:", err?.message || err);
   }
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -357,6 +360,7 @@ export async function getLightningAddress(): Promise<string> {
     try {
       const checkReq = breez.CheckLightningAddressRequest.new({ username });
       const available = await sdk.checkLightningAddressAvailable(checkReq);
+      console.log("[Breez] Username", username, "available:", available);
       if (!available) continue;
 
       const registerReq = breez.RegisterLightningAddressRequest.new({
@@ -364,6 +368,7 @@ export async function getLightningAddress(): Promise<string> {
         description: "Bellamy Wallet",
       });
       const result = await sdk.registerLightningAddress(registerReq);
+      console.log("[Breez] registerLightningAddress raw result:", JSON.stringify(result, (_, v) => typeof v === 'bigint' ? v.toString() : v));
       if (result?.lightningAddress) {
         cachedLightningAddress = result.lightningAddress;
         if (result.lnurl?.bech32) cachedLnurlBech32 = result.lnurl.bech32;
@@ -403,23 +408,25 @@ export async function getBitcoinAddress(): Promise<string> {
   }
 }
 
-export async function getUnifiedQrData(): Promise<{ bip21: string; bitcoinAddress: string; lnurl: string }> {
+export async function getUnifiedQrData(): Promise<{ bip21: string; bitcoinAddress: string; lnurl: string; lightningAddress: string }> {
   const [lnAddr, btcAddr] = await Promise.all([
     getLightningAddress(),
     getBitcoinAddress(),
   ]);
   const lnurl = cachedLnurlBech32 || "";
-  
+
+  console.log("[Breez] Unified QR debug — lnAddr:", lnAddr, "btcAddr:", btcAddr?.slice(0, 20), "lnurl:", lnurl?.slice(0, 30));
+
   let bip21 = "";
-  if (btcAddr && lnurl) {
-    bip21 = `bitcoin:${btcAddr}?lightning=${lnurl}`;
+  if (btcAddr && lnAddr) {
+    bip21 = `bitcoin:${btcAddr}?lightning=${lnAddr}`;
   } else if (btcAddr) {
     bip21 = `bitcoin:${btcAddr}`;
   } else if (lnAddr) {
     bip21 = lnAddr;
   }
   
-  return { bip21, bitcoinAddress: btcAddr, lnurl };
+  return { bip21, bitcoinAddress: btcAddr, lnurl, lightningAddress: lnAddr };
 }
 
 function normalizeInput(raw: string): string {

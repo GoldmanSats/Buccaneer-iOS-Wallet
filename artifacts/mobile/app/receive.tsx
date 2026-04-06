@@ -101,7 +101,7 @@ export default function ReceiveScreen() {
     setMode("default");
   };
 
-  const qrData = invoice || (unifiedQr || lightningAddress);
+  const qrData = invoice || lightningAddress;
   const qrSize = 300;
 
   return (
