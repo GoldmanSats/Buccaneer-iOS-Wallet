@@ -694,8 +694,8 @@ export async function listPayments(): Promise<any[]> {
     let request: any;
     try {
       request = breez.ListPaymentsRequest.new({
-        limit: BigInt(50) as any,
-        offset: BigInt(0) as any,
+        limit: 50,
+        offset: 0,
         typeFilter: undefined,
         statusFilter: undefined,
         assetFilter: undefined,
@@ -710,18 +710,27 @@ export async function listPayments(): Promise<any[]> {
         offset: 0 as any,
       });
     }
-    const payments = await sdk.listPayments(request);
-    console.log("[Breez] listPayments raw type:", typeof payments, "isArray:", Array.isArray(payments));
+    const paymentsResponse = await sdk.listPayments(request);
+    console.log("[Breez] listPayments raw type:", typeof paymentsResponse, "isArray:", Array.isArray(paymentsResponse));
 
     let paymentList: any[];
-    if (Array.isArray(payments)) {
-      paymentList = payments;
-    } else if (payments && typeof payments === "object" && typeof payments.length === "number") {
-      paymentList = Array.from(payments);
-    } else if (payments && Symbol.iterator in Object(payments)) {
-      paymentList = [...payments];
+    if (Array.isArray(paymentsResponse)) {
+      paymentList = paymentsResponse;
+    } else if (Array.isArray(paymentsResponse?.payments)) {
+      paymentList = paymentsResponse.payments;
+    } else if (
+      paymentsResponse &&
+      typeof paymentsResponse === "object" &&
+      typeof paymentsResponse.length === "number"
+    ) {
+      paymentList = Array.from(paymentsResponse);
+    } else if (paymentsResponse && Symbol.iterator in Object(paymentsResponse)) {
+      paymentList = [...paymentsResponse];
     } else {
-      console.warn("[Breez] listPayments returned unexpected type, keys:", payments ? Object.keys(payments) : "null");
+      console.warn(
+        "[Breez] listPayments returned unexpected type, keys:",
+        paymentsResponse ? Object.keys(paymentsResponse) : "null"
+      );
       paymentList = [];
     }
 
@@ -732,7 +741,15 @@ export async function listPayments(): Promise<any[]> {
       console.log("[Breez] first payment status:", first?.status, "paymentType:", first?.paymentType, "amount:", first?.amount);
     }
 
-    return paymentList.map((p: any) => {
+    return paymentList.map((rawPayment: any) => {
+      const p = sanitizeBigInt(rawPayment);
+      const timestampSeconds =
+        typeof rawPayment?.timestamp === "bigint"
+          ? Number(rawPayment.timestamp)
+          : typeof p.timestamp === "number"
+            ? p.timestamp
+            : 0;
+
       const statusVal = p.status;
       let status = "failed";
       const completedEnum = breez.PaymentStatus?.Completed;
@@ -748,13 +765,13 @@ export async function listPayments(): Promise<any[]> {
       const isSend = typeVal === sendEnum || typeVal === 0 || String(typeVal) === "Send";
 
       return {
-        id: p.id || String(Number(p.timestamp ?? 0)),
+        id: p.id || String(timestampSeconds),
         type: isSend ? "send" : "receive",
-        amountSats: Number(p.amount ?? 0),
-        feeSats: Number(p.fees ?? 0),
+        amountSats: typeof p.amount === "number" ? p.amount : 0,
+        feeSats: typeof p.fees === "number" ? p.fees : 0,
         description: p.details?.description || p.description || "",
-        timestamp: p.timestamp
-          ? new Date(Number(p.timestamp) * 1000).toISOString()
+        timestamp: timestampSeconds > 0
+          ? new Date(timestampSeconds * 1000).toISOString()
           : new Date().toISOString(),
         status,
         paymentHash: p.id || "",
