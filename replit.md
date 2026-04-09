@@ -162,8 +162,11 @@ Real mainnet Bitcoin Lightning wallet iOS app with a pirate/nautical theme (form
 # API server (agent access)
 pnpm --filter @workspace/api-server run dev
 
-# Mobile (Expo — web preview only, no native SDK on web)
+# Mobile (Expo — Cursor / local Mac)
 pnpm --filter @workspace/mobile run dev
+
+# Mobile on Replit only (uses REPLIT_* env vars)
+pnpm --filter @workspace/mobile run dev:replit
 
 # EAS Build (requires eas-cli + Apple Developer account)
 cd artifacts/mobile && eas build --platform ios --profile development
