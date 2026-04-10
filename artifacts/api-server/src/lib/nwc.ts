@@ -46,8 +46,25 @@ interface NwcResponse {
   error?: { code: string; message: string };
 }
 
-function getPublicKey(secretKeyHex: string): string {
+export function deriveNwcPubkey(secretKeyHex: string): string {
   return bytesToHex(schnorr.getPublicKey(hexToBytes(secretKeyHex)));
+}
+
+function getServicePubkey(agentKey: typeof agentKeysTable.$inferSelect): string {
+  if (!agentKey.secretKey) {
+    throw new Error("NWC key is missing wallet service secret");
+  }
+  return deriveNwcPubkey(agentKey.secretKey);
+}
+
+function getAuthorizedClientPubkey(agentKey: typeof agentKeysTable.$inferSelect): string | null {
+  if (agentKey.nwcClientPubkey) {
+    return agentKey.nwcClientPubkey;
+  }
+  if (agentKey.secretKey) {
+    return deriveNwcPubkey(agentKey.secretKey);
+  }
+  return null;
 }
 
 function serializeEvent(event: {
@@ -147,12 +164,13 @@ async function handleNwcRequest(
   try {
     switch (method) {
       case "get_info": {
+        const servicePubkey = getServicePubkey(agentKey);
         return {
           result_type: method,
           result: {
             alias: "Buccaneer Wallet",
             color: "#c9a24d",
-            pubkey: "",
+            pubkey: servicePubkey,
             network: "mainnet",
             block_height: 0,
             block_hash: "",
@@ -237,6 +255,9 @@ async function handleNwcRequest(
         const description = (params.description as string) ?? "";
         const amountSats = Math.ceil(amountMsat / 1000);
         const inv = await receivePayment(amountSats, description);
+        const decodedInvoice = await decodeInvoice(inv.bolt11);
+        const createdAt = Math.floor(Date.now() / 1000);
+        const expiresIn = decodedInvoice.expiry ?? 3600;
 
         await db.insert(agentLogsTable).values({
           keyId: agentKey.id,
@@ -252,25 +273,44 @@ async function handleNwcRequest(
             type: "incoming",
             invoice: inv.bolt11,
             description,
+            payment_hash: decodedInvoice.paymentHash ?? "",
             amount: amountMsat,
-            created_at: Math.floor(Date.now() / 1000),
-            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            fees_paid: 0,
+            created_at: createdAt,
+            expires_at: createdAt + expiresIn,
           },
         };
       }
 
       case "list_transactions": {
         const payments = await listPayments();
-        const transactions = payments.slice(0, 20).map((p) => ({
-          type: p.type === "send" ? "outgoing" : "incoming",
-          invoice: "",
-          description: p.description,
-          amount: p.amountSats * 1000,
-          fees_paid: p.feeSats * 1000,
-          created_at: Math.floor(new Date(p.timestamp).getTime() / 1000),
-          settled_at: Math.floor(new Date(p.timestamp).getTime() / 1000),
-          payment_hash: p.paymentHash,
-        }));
+        const from = typeof params.from === "number" ? params.from : 0;
+        const until = typeof params.until === "number" ? params.until : Math.floor(Date.now() / 1000);
+        const offset = typeof params.offset === "number" ? params.offset : 0;
+        const limit = typeof params.limit === "number" ? params.limit : 20;
+        const typeFilter = params.type === "incoming" || params.type === "outgoing" ? params.type : undefined;
+
+        const filteredPayments = payments.filter((payment) => {
+          const transactionType = payment.type === "send" ? "outgoing" : "incoming";
+          const createdAt = Math.floor(new Date(payment.timestamp).getTime() / 1000);
+          if (typeFilter && transactionType !== typeFilter) return false;
+          return createdAt >= from && createdAt <= until;
+        });
+
+        const transactions = filteredPayments.slice(offset, offset + limit).map((p) => {
+          const createdAt = Math.floor(new Date(p.timestamp).getTime() / 1000);
+          return {
+            type: p.type === "send" ? "outgoing" : "incoming",
+            invoice: p.invoice || "",
+            description: p.description,
+            preimage: p.preimage || undefined,
+            amount: p.amountSats * 1000,
+            fees_paid: p.feeSats * 1000,
+            created_at: createdAt,
+            settled_at: createdAt,
+            payment_hash: p.paymentHash,
+          };
+        });
         return {
           result_type: method,
           result: { transactions } as any,
@@ -278,9 +318,15 @@ async function handleNwcRequest(
       }
 
       case "lookup_invoice": {
-        const paymentHash = params.payment_hash as string;
+        const paymentHashParam = params.payment_hash as string | undefined;
+        const invoice = params.invoice as string | undefined;
+        const decodedInvoice = !paymentHashParam && invoice ? await decodeInvoice(invoice) : null;
+        const paymentHash = paymentHashParam || decodedInvoice?.paymentHash;
         if (!paymentHash) {
-          return { result_type: method, error: { code: "OTHER", message: "Missing payment_hash" } };
+          return {
+            result_type: method,
+            error: { code: "OTHER", message: "One of payment_hash or invoice is required" },
+          };
         }
         const payments = await listPayments();
         const found = payments.find((p) => p.paymentHash === paymentHash);
@@ -291,8 +337,9 @@ async function handleNwcRequest(
           result_type: method,
           result: {
             type: found.type === "send" ? "outgoing" : "incoming",
-            invoice: "",
+            invoice: invoice || found.invoice || "",
             description: found.description,
+            preimage: found.preimage || undefined,
             amount: found.amountSats * 1000,
             fees_paid: found.feeSats * 1000,
             created_at: Math.floor(new Date(found.timestamp).getTime() / 1000),
@@ -384,7 +431,13 @@ async function processEvent(event: {
   const keys = await db.select().from(agentKeysTable);
   const matchingKey = keys.find((k) => {
     try {
-      return k.connectionType === "nwc" && !!k.secretKey && getPublicKey(k.secretKey) === pTag;
+      if (k.connectionType !== "nwc" || !k.secretKey) {
+        return false;
+      }
+
+      const servicePubkey = getServicePubkey(k);
+      const clientPubkey = getAuthorizedClientPubkey(k);
+      return servicePubkey === pTag && clientPubkey === event.pubkey;
     } catch {
       return false;
     }
@@ -409,7 +462,7 @@ async function processEvent(event: {
 
     const response = await handleNwcRequest(matchingKey, request);
 
-    const responsePubkey = getPublicKey(secretKey);
+    const responsePubkey = getServicePubkey(matchingKey);
     const responseContent = await encryptNip04(
       JSON.stringify(response),
       secretKey,
@@ -478,7 +531,7 @@ async function publishInfoEvents(keys: (typeof agentKeysTable.$inferSelect)[]) {
       const secretKey = key.secretKey;
       if (!secretKey) continue;
 
-      const pubkey = getPublicKey(secretKey);
+      const pubkey = getServicePubkey(key);
       const infoEvent = {
         pubkey,
         created_at: Math.floor(Date.now() / 1000),
@@ -512,7 +565,7 @@ async function subscribeToKeys() {
       .map((k) => {
         try {
           if (!k.secretKey) return null;
-          return getPublicKey(k.secretKey);
+          return getServicePubkey(k);
         } catch {
           return null;
         }

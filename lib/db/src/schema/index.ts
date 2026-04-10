@@ -21,6 +21,7 @@ export const agentKeysTable = pgTable("agent_keys", {
   name: text("name").notNull(),
   nwcUri: text("nwc_uri").notNull(),
   secretKey: text("secret_key"),
+  nwcClientPubkey: text("nwc_client_pubkey"),
   secretHash: text("secret_hash").unique(),
   spendingLimitSats: integer("spending_limit_sats"),
   maxDailySats: integer("max_daily_sats"),

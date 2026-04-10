@@ -3,8 +3,7 @@ import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import crypto from "crypto";
-import * as secp256k1 from "@noble/secp256k1";
-import { refreshNwcSubscriptions } from "../lib/nwc.js";
+import { deriveNwcPubkey, refreshNwcSubscriptions } from "../lib/nwc.js";
 import { hashAgentSecret } from "../lib/agentSecrets.js";
 
 const router: IRouter = Router();
@@ -25,16 +24,9 @@ function walletOwnerAuth(req: Request, res: Response, next: NextFunction): void 
 
 router.use(walletOwnerAuth);
 
-function getSecp256k1Pubkey(secretKeyHex: string): string {
-  const privKeyBytes = Buffer.from(secretKeyHex, "hex");
-  const pubKeyBytes = secp256k1.getPublicKey(privKeyBytes, true);
-  return Buffer.from(pubKeyBytes.slice(1)).toString("hex");
-}
-
-function generateNwcUri(secretKey: string): string {
+function generateNwcUri(servicePubkey: string, clientSecret: string): string {
   const relay = "wss://relay.damus.io";
-  const pubkey = getSecp256k1Pubkey(secretKey);
-  return `nostr+walletconnect://${pubkey}?relay=${encodeURIComponent(relay)}&secret=${secretKey}`;
+  return `nostr+walletconnect://${servicePubkey}?relay=${encodeURIComponent(relay)}&secret=${clientSecret}`;
 }
 
 router.get("/", async (_req, res) => {
@@ -73,14 +65,17 @@ router.post("/", async (req, res): Promise<void> => {
     }
 
     const connType = body.connectionType ?? "nwc";
-    const rawSecret = crypto.randomBytes(32).toString("hex");
+    const walletSecret = crypto.randomBytes(32).toString("hex");
+    const clientSecret = crypto.randomBytes(32).toString("hex");
+    const nwcClientPubkey = connType === "nwc" ? deriveNwcPubkey(clientSecret) : null;
     const apiToken = connType === "api" ? `bwk_${crypto.randomBytes(24).toString("hex")}` : null;
-    const nwcUri = connType === "nwc" ? generateNwcUri(rawSecret) : "";
+    const nwcUri = connType === "nwc" ? generateNwcUri(deriveNwcPubkey(walletSecret), clientSecret) : "";
 
     const created = await db.insert(agentKeysTable).values({
       name: body.name,
       nwcUri,
-      secretKey: connType === "nwc" ? rawSecret : null,
+      secretKey: connType === "nwc" ? walletSecret : null,
+      nwcClientPubkey,
       secretHash: connType === "api" ? hashAgentSecret(apiToken!) : null,
       spendingLimitSats: body.spendingLimitSats ?? null,
       maxDailySats: body.maxDailySats ?? null,
