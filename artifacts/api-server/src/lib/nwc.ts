@@ -4,7 +4,7 @@ import { schnorr } from "@noble/curves/secp256k1";
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getBalance, sendPayment, listPayments, decodeInvoice, receivePayment } from "./breez.js";
 
 function bytesToHex(bytes: Uint8Array): string {
@@ -23,10 +23,16 @@ const RELAY_URL = "wss://relay.damus.io";
 const NWC_KIND = 23194;
 const NWC_RESPONSE_KIND = 23195;
 const NWC_INFO_KIND = 13194;
+const SUBSCRIPTION_LOOKBACK_SECS = 5 * 60;
+const RECONNECT_DELAY_MS = 5000;
+const RESUBSCRIBE_DELAY_MS = 1000;
 
 let relayWs: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let isRunning = false;
+let currentSubscriptionId: string | null = null;
+let subscriptionSequence = 0;
+let pendingSubscriptionRefresh = false;
 
 interface NwcRequest {
   method: string;
@@ -227,7 +233,10 @@ async function handleNwcRequest(
 
         return {
           result_type: method,
-          result: { preimage: result.paymentHash },
+          result: {
+            preimage: result.preimage ?? "",
+            fees_paid: result.feeSats * 1000,
+          },
         };
       }
 
@@ -437,6 +446,31 @@ async function processEvent(event: {
 const SUPPORTED_METHODS = "pay_invoice make_invoice get_balance get_info list_transactions lookup_invoice";
 let infoEventInterval: ReturnType<typeof setInterval> | null = null;
 
+function clearInfoEventInterval() {
+  if (infoEventInterval) {
+    clearInterval(infoEventInterval);
+    infoEventInterval = null;
+  }
+}
+
+function closeCurrentSubscription() {
+  clearInfoEventInterval();
+  if (relayWs && relayWs.readyState === WebSocket.OPEN && currentSubscriptionId) {
+    try {
+      relayWs.send(JSON.stringify(["CLOSE", currentSubscriptionId]));
+    } catch (_e) {}
+  }
+  currentSubscriptionId = null;
+}
+
+function scheduleReconnect(delayMs = RECONNECT_DELAY_MS) {
+  if (!isRunning || reconnectTimeout) return;
+  reconnectTimeout = setTimeout(() => {
+    reconnectTimeout = null;
+    if (isRunning) connectToRelay();
+  }, delayMs);
+}
+
 async function publishInfoEvents(keys: (typeof agentKeysTable.$inferSelect)[]) {
   if (!relayWs || relayWs.readyState !== WebSocket.OPEN) return;
 
@@ -463,7 +497,12 @@ async function publishInfoEvents(keys: (typeof agentKeysTable.$inferSelect)[]) {
 }
 
 async function subscribeToKeys() {
-  if (!relayWs || relayWs.readyState !== WebSocket.OPEN) return;
+  if (!relayWs || relayWs.readyState !== WebSocket.OPEN) {
+    pendingSubscriptionRefresh = true;
+    return;
+  }
+
+  pendingSubscriptionRefresh = false;
 
   try {
     const keys = await db.select().from(agentKeysTable);
@@ -479,22 +518,32 @@ async function subscribeToKeys() {
       .filter(Boolean) as string[];
 
     if (pubkeys.length === 0) {
+      closeCurrentSubscription();
       console.log("[NWC] No active NWC keys to subscribe to");
       return;
     }
 
+    if (currentSubscriptionId) {
+      try {
+        relayWs!.send(JSON.stringify(["CLOSE", currentSubscriptionId]));
+      } catch (_e) {}
+    }
+
+    const subscriptionId = `nwc-sub-${++subscriptionSequence}`;
+    currentSubscriptionId = subscriptionId;
+
     const filter = {
       kinds: [NWC_KIND],
       "#p": pubkeys,
-      since: Math.floor(Date.now() / 1000) - 60,
+      since: Math.floor(Date.now() / 1000) - SUBSCRIPTION_LOOKBACK_SECS,
     };
 
-    relayWs!.send(JSON.stringify(["REQ", "nwc-sub", filter]));
+    relayWs!.send(JSON.stringify(["REQ", subscriptionId, filter]));
     console.log(`[NWC] Subscribed to ${pubkeys.length} NWC key(s): ${pubkeys.map(p => p.slice(0,12) + '...').join(', ')}`);
 
     await publishInfoEvents(keys);
 
-    if (infoEventInterval) clearInterval(infoEventInterval);
+    clearInfoEventInterval();
     infoEventInterval = setInterval(async () => {
       try {
         const freshKeys = await db.select().from(agentKeysTable);
@@ -518,13 +567,18 @@ function connectToRelay() {
   relayWs = new WebSocket(RELAY_URL);
 
   relayWs.on("open", () => {
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
     console.log("[NWC] Connected to relay");
-    subscribeToKeys();
+    pendingSubscriptionRefresh = true;
+    void subscribeToKeys();
   });
 
-  relayWs.on("message", (data) => {
+  relayWs.on("message", (data: unknown) => {
     try {
-      const msg = JSON.parse(data.toString());
+      const msg = JSON.parse(String(data));
       if (Array.isArray(msg)) {
         if (msg[0] === "EVENT" && msg[2]) {
           const evt = msg[2];
@@ -542,7 +596,17 @@ function connectToRelay() {
         } else if (msg[0] === "NOTICE") {
           console.log("[NWC] Relay notice:", msg[1]);
         } else if (msg[0] === "CLOSED") {
-          console.warn("[NWC] Subscription closed by relay:", msg[1], msg[2]);
+          const [, subscriptionId, reason] = msg;
+          console.warn("[NWC] Subscription closed by relay:", subscriptionId, reason);
+          if (subscriptionId === currentSubscriptionId) {
+            currentSubscriptionId = null;
+            pendingSubscriptionRefresh = true;
+            setTimeout(() => {
+              if (isRunning && relayWs?.readyState === WebSocket.OPEN && pendingSubscriptionRefresh) {
+                void subscribeToKeys();
+              }
+            }, RESUBSCRIBE_DELAY_MS);
+          }
         }
       }
     } catch (e) {
@@ -552,13 +616,16 @@ function connectToRelay() {
 
   relayWs.on("close", () => {
     console.log("[NWC] Relay connection closed");
-    if (isRunning) {
-      reconnectTimeout = setTimeout(connectToRelay, 5000);
-    }
+    currentSubscriptionId = null;
+    clearInfoEventInterval();
+    pendingSubscriptionRefresh = true;
+    scheduleReconnect();
   });
 
-  relayWs.on("error", (err) => {
+  relayWs.on("error", (err: Error) => {
     console.error("[NWC] Relay error:", err.message);
+    pendingSubscriptionRefresh = true;
+    scheduleReconnect();
   });
 }
 
@@ -571,10 +638,9 @@ export function startNwcRelay() {
 
 export function stopNwcRelay() {
   isRunning = false;
-  if (infoEventInterval) {
-    clearInterval(infoEventInterval);
-    infoEventInterval = null;
-  }
+  pendingSubscriptionRefresh = false;
+  currentSubscriptionId = null;
+  clearInfoEventInterval();
   if (reconnectTimeout) {
     clearTimeout(reconnectTimeout);
     reconnectTimeout = null;
@@ -587,5 +653,6 @@ export function stopNwcRelay() {
 }
 
 export function refreshNwcSubscriptions() {
-  subscribeToKeys();
+  pendingSubscriptionRefresh = true;
+  void subscribeToKeys();
 }

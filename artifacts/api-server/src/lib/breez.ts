@@ -360,6 +360,7 @@ export async function sendPayment(
 ): Promise<{
   success: boolean;
   paymentHash: string;
+  preimage: string | null;
   feeSats: number;
   amountSats: number;
 }> {
@@ -379,6 +380,8 @@ export async function sendPayment(
   const payment = sanitized.payment || sanitized;
   const paidAmountSats = payment.amountSat || payment.amount || amountSats || 0;
   const feeSats = payment.fees || payment.feeSat || payment.feesSat || prepareFee || 0;
+  const paymentHash = payment.destination || payment.paymentHash || payment.details?.inner?.htlcDetails?.paymentHash || "";
+  const preimage = payment.preimage || payment.details?.inner?.htlcDetails?.preimage || null;
 
   try {
     await db.insert(transactionCacheTable).values({
@@ -387,7 +390,7 @@ export async function sendPayment(
       amountSats: paidAmountSats,
       feeSats,
       description: "",
-      paymentHash: payment.destination || payment.paymentHash || "",
+      paymentHash,
       status: "complete",
     }).onConflictDoNothing();
   } catch (e) {
@@ -396,7 +399,8 @@ export async function sendPayment(
 
   return {
     success: true,
-    paymentHash: payment.destination || payment.paymentHash || "",
+    paymentHash,
+    preimage,
     feeSats,
     amountSats: paidAmountSats,
   };

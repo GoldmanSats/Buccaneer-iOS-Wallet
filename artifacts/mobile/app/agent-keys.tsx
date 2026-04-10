@@ -62,6 +62,7 @@ export default function AgentKeysScreen() {
   const isDark = settings.isDarkMode;
   const [keys, setKeys] = useState<AgentKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<"nwc" | "api" | null>(null);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyLimit, setNewKeyLimit] = useState("");
@@ -85,14 +86,27 @@ export default function AgentKeysScreen() {
 
   const loadKeys = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(API, { headers: ownerHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setKeys(data.keys ?? []);
+      if (!res.ok) {
+        setKeys([]);
+        setLoadError("Agent keys are unavailable right now. You can still preview this screen without a live server.");
+        return;
       }
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        setKeys([]);
+        setLoadError("Agent keys are unavailable right now. You can still preview this screen without a live server.");
+        return;
+      }
+
+      const data = await res.json();
+      setKeys(data.keys ?? []);
     } catch (e) {
-      console.error("Failed to load keys", e);
+      setKeys([]);
+      setLoadError("Agent keys are unavailable right now. You can still preview this screen without a live server.");
     } finally {
       setIsLoading(false);
     }
@@ -452,6 +466,12 @@ export default function AgentKeysScreen() {
         {isLoading ? (
           <View style={st.centerState}>
             <ActivityIndicator color={colors.gold} />
+          </View>
+        ) : loadError && keys.length === 0 && !selectedType && !newKeyRevealed ? (
+          <View style={[st.emptyState, st.unavailableState, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
+            <MaterialCommunityIcons name="server-off" size={40} color={colors.textMuted} />
+            <Text style={[st.emptyTitle, { color: colors.text }]}>Agent keys unavailable</Text>
+            <Text style={[st.emptySubtitle, { color: colors.textMuted }]}>{loadError}</Text>
           </View>
         ) : keys.length === 0 && !selectedType && !newKeyRevealed ? (
           <View style={st.emptyState}>
@@ -903,6 +923,8 @@ const st = StyleSheet.create({
   centerState: { alignItems: "center", paddingVertical: 48 },
   emptyState: { alignItems: "center", paddingVertical: 48, gap: 10 },
   emptyTitle: { fontFamily: "Nunito_600SemiBold", fontSize: 16 },
+  emptySubtitle: { fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18, textAlign: "center", maxWidth: 280 },
+  unavailableState: { borderRadius: 24, borderWidth: 1, paddingHorizontal: 24 },
 
   keysList: { gap: 16 },
   keyCard: { borderRadius: 32, padding: 20, borderWidth: 1, gap: 12 },
