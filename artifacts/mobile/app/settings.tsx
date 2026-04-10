@@ -81,6 +81,15 @@ export default function SettingsScreen() {
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
   const isPasskeyWallet = settings.walletMode === "passkey";
+  const deleteRowLabel = isPasskeyWallet ? "Remove Wallet From This Device" : "Delete Wallet";
+  const deleteRowSubtitle = isPasskeyWallet
+    ? "Clear local wallet data and return to setup"
+    : "Wipe wallet and return to setup";
+  const deleteModalTitle = isPasskeyWallet ? "Remove Local Wallet Data?" : "Abandon Ship?";
+  const deleteModalDescription = isPasskeyWallet
+    ? "This will remove Bellamy's local wallet data from this device and return the app to setup."
+    : "This will erase all wallet data from this device. This action cannot be undone.";
+  const deleteModalButtonText = isPasskeyWallet ? "Remove From This Device" : "Delete My Wallet";
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -409,8 +418,8 @@ export default function SettingsScreen() {
               <Ionicons name="trash-outline" size={20} color={colors.red} />
             </View>
             <View style={s.rowText}>
-              <Text style={[s.rowLabel, { color: colors.red }]}>Delete Wallet</Text>
-              <Text style={[s.rowSub, { color: colors.red + "99" }]}>Wipe wallet and return to setup</Text>
+              <Text style={[s.rowLabel, { color: colors.red }]}>{deleteRowLabel}</Text>
+              <Text style={[s.rowSub, { color: colors.red + "99" }]}>{deleteRowSubtitle}</Text>
             </View>
           </Pressable>
         </View>
@@ -422,15 +431,12 @@ export default function SettingsScreen() {
             <View style={s.modalIconCircle}>
               <Ionicons name="warning-outline" size={32} color="#EF4444" />
             </View>
-            <Text style={[s.modalTitle, { color: colors.text }]}>Abandon Ship?</Text>
-            <Text style={[s.modalDesc, { color: colors.textMuted }]}>
-              This will erase all wallet data from this device. This action cannot be undone.
-            </Text>
-            <Text style={s.modalBoldWarning}>
-              If you haven't backed up your seed phrase, you will lose your funds forever.
+            <Text style={[s.modalTitle, { color: colors.text }]}>{deleteModalTitle}</Text>
+            <Text style={s.modalWarningText}>
+              {deleteModalDescription}
             </Text>
             <Pressable style={s.modalDeleteBtn} onPress={handleDeleteWallet}>
-              <Text style={s.modalDeleteText}>Delete My Wallet</Text>
+              <Text style={s.modalDeleteText}>{deleteModalButtonText}</Text>
             </Pressable>
             <Pressable style={[s.modalCancelBtn, { backgroundColor: colors.bgElevated }]} onPress={() => setShowDeleteModal(false)}>
               <Text style={[s.modalCancelText, { color: colors.text }]}>Actually, on second thought...</Text>
@@ -629,8 +635,7 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   modalTitle: { fontFamily: "Chewy_400Regular", fontSize: 24, marginBottom: 8 },
-  modalDesc: { fontFamily: "Nunito_400Regular", fontSize: 14, textAlign: "center", marginBottom: 12 },
-  modalBoldWarning: {
+  modalWarningText: {
     fontFamily: "Nunito_700Bold",
     fontSize: 14,
     color: "#EF4444",
