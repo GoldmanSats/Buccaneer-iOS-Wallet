@@ -22,12 +22,11 @@ import * as Clipboard from "expo-clipboard";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 const API = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/agent-keys`;
-const OWNER_TOKEN = process.env.EXPO_PUBLIC_WALLET_OWNER_TOKEN ?? "";
+const OWNER_AUTH_REQUIRED_MESSAGE = "Agent keys are unavailable in the public app build. Use a separately authenticated admin tool instead.";
 
 function ownerHeaders(contentType = false): Record<string, string> {
   const headers: Record<string, string> = {};
   if (contentType) headers["Content-Type"] = "application/json";
-  if (OWNER_TOKEN) headers["X-Wallet-Owner"] = OWNER_TOKEN;
   return headers;
 }
 
@@ -91,14 +90,14 @@ export default function AgentKeysScreen() {
       const res = await fetch(API, { headers: ownerHeaders() });
       if (!res.ok) {
         setKeys([]);
-        setLoadError("Agent keys are unavailable right now. You can still preview this screen without a live server.");
+        setLoadError(OWNER_AUTH_REQUIRED_MESSAGE);
         return;
       }
 
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
         setKeys([]);
-        setLoadError("Agent keys are unavailable right now. You can still preview this screen without a live server.");
+        setLoadError(OWNER_AUTH_REQUIRED_MESSAGE);
         return;
       }
 
@@ -106,7 +105,7 @@ export default function AgentKeysScreen() {
       setKeys(data.keys ?? []);
     } catch (e) {
       setKeys([]);
-      setLoadError("Agent keys are unavailable right now. You can still preview this screen without a live server.");
+      setLoadError(OWNER_AUTH_REQUIRED_MESSAGE);
     } finally {
       setIsLoading(false);
     }

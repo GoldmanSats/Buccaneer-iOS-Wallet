@@ -80,12 +80,9 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 
 const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
 const USE_ON_DEVICE = Platform.OS !== "web";
-const OWNER_TOKEN = process.env.EXPO_PUBLIC_WALLET_OWNER_TOKEN ?? "";
 
 function walletHeaders(): Record<string, string> {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (OWNER_TOKEN) h["X-Wallet-Owner"] = OWNER_TOKEN;
-  return h;
+  return { "Content-Type": "application/json" };
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
