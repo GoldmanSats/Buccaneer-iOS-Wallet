@@ -7,6 +7,7 @@ const ASC_KEY_ID = '459TANN95N';
 const ASC_ISSUER_ID = 'e94ce994-3806-429b-ad7e-a1d10cf2e842';
 const ASC_KEY_PATH = '/home/runner/workspace/artifacts/mobile/AuthKey_459TANN95N.p8';
 const BUNDLE_ID = 'com.buccaneer.wallet';
+const P12_PASSWORD = process.env.EXPO_P12_PASSWORD;
 
 function createAppleJWT() {
   const privateKey = fs.readFileSync(ASC_KEY_PATH, 'utf8');
@@ -44,6 +45,11 @@ async function expoGraphQL(query, variables = {}) {
 }
 
 async function main() {
+  if (!P12_PASSWORD) {
+    console.error('Missing EXPO_P12_PASSWORD. Set it before running this script.');
+    return;
+  }
+
   const p12Path = '/home/runner/workspace/artifacts/mobile/expo_dist.p12';
   const p12Data = fs.readFileSync(p12Path);
   const p12Base64 = p12Data.toString('base64');
@@ -80,7 +86,7 @@ async function main() {
   const uploadResp = await expoGraphQL(mutation, {
     input: {
       certP12: p12Base64,
-      certPassword: 'expo',
+      certPassword: P12_PASSWORD,
       developerPortalIdentifier: newCert ? newCert.id : undefined,
     },
     accountId: account.id

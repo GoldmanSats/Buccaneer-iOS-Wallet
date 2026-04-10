@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 const EXPO_TOKEN = process.env.EXPO_TOKEN;
 const ACCOUNT_ID = '3eaa605c-29aa-43e6-be97-2077dda0d962';
 const WORK_DIR = '/home/runner/workspace/artifacts/mobile/creds_work';
-const P12_PASSWORD = 'buccaneer2024';
+const P12_PASSWORD = process.env.EXPO_P12_PASSWORD;
 
 function apiRequest(hostname, path, method = 'GET', body = null, token = null) {
   return new Promise((resolve, reject) => {
@@ -33,6 +33,11 @@ async function expoGraphQL(query, variables = {}) {
 }
 
 async function main() {
+  if (!P12_PASSWORD) {
+    console.error('Missing EXPO_P12_PASSWORD. Set it before running this script.');
+    return;
+  }
+
   console.log('=== Step 1: Recreate P12 with legacy format ===');
 
   if (!fs.existsSync(`${WORK_DIR}/dist.key`) || !fs.existsSync(`${WORK_DIR}/dist.pem`)) {
