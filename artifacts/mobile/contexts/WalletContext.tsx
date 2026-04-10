@@ -31,7 +31,7 @@ interface BtcPrice {
 }
 
 interface ParsedInput {
-  type: "bolt11" | "lnurl" | "lightning_address" | "bitcoin" | "spark_address" | "unknown";
+  type: "bolt11" | "lnurl" | "lightning_address" | "bitcoin" | "spark_address" | "nwc_uri" | "unknown";
   invoice?: string;
   address?: string;
   amountSats?: number;

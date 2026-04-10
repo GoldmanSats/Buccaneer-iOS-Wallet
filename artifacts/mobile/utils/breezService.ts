@@ -455,13 +455,95 @@ function normalizeInput(raw: string): string {
   return s;
 }
 
+function isNwcConnectionString(raw: string): boolean {
+  const s = raw.trim();
+  return (
+    /^nostr\+walletconnect:\/\//i.test(s) ||
+    /^nostrwalletconnect:\/\//i.test(s) ||
+    /^nwc:\/\//i.test(s)
+  );
+}
+
+function getSdkErrorMessage(err: any): string {
+  const innerMessage =
+    typeof err?.inner?.[0] === "string" && err.inner[0].trim()
+      ? err.inner[0].trim()
+      : typeof err?.cause?.inner?.[0] === "string" && err.cause.inner[0].trim()
+        ? err.cause.inner[0].trim()
+        : undefined;
+
+  if (innerMessage) return innerMessage;
+
+  const message =
+    typeof err?.message === "string" && err.message.trim()
+      ? err.message.trim()
+      : typeof err?.cause?.message === "string" && err.cause.message.trim()
+        ? err.cause.message.trim()
+        : "";
+
+  if (message && (!err?.tag || message !== `SdkError.${err.tag}`)) {
+    return message;
+  }
+
+  if (typeof err?.tag === "string" && err.tag.trim()) {
+    return err.tag.trim();
+  }
+
+  return String(err ?? "Unknown error");
+}
+
+function getLnurlAmountRange(payRequest: any): { minSats?: number; maxSats?: number } {
+  const minSendableMsats =
+    typeof payRequest?.minSendable === "bigint"
+      ? payRequest.minSendable
+      : typeof payRequest?.minSendable === "number"
+        ? BigInt(payRequest.minSendable)
+        : undefined;
+  const maxSendableMsats =
+    typeof payRequest?.maxSendable === "bigint"
+      ? payRequest.maxSendable
+      : typeof payRequest?.maxSendable === "number"
+        ? BigInt(payRequest.maxSendable)
+        : undefined;
+
+  return {
+    minSats: minSendableMsats !== undefined ? Math.ceil(Number(minSendableMsats) / 1000) : undefined,
+    maxSats: maxSendableMsats !== undefined ? Math.floor(Number(maxSendableMsats) / 1000) : undefined,
+  };
+}
+
+function validateLnurlAmount(payRequest: any, amountSats: number): void {
+  const { minSats, maxSats } = getLnurlAmountRange(payRequest);
+  if (minSats !== undefined && amountSats < minSats) {
+    throw new Error(`Amount must be at least ${minSats.toLocaleString()} sats for this destination.`);
+  }
+  if (maxSats !== undefined && amountSats > maxSats) {
+    throw new Error(`Amount must be no more than ${maxSats.toLocaleString()} sats for this destination.`);
+  }
+}
+
 export async function parseInput(input: string) {
   if (!input || typeof input !== "string" || input.trim().length === 0) {
     throw new Error("input must be a non-empty string");
   }
-  const sdk = await initBreezSdk();
   const trimmed = normalizeInput(input);
-  const result = await sdk.parse(trimmed);
+  if (isNwcConnectionString(trimmed)) {
+    return {
+      type: "nwc_uri" as const,
+      address: trimmed,
+      description: "Nostr Wallet Connect connection string",
+    };
+  }
+
+  const sdk = await initBreezSdk();
+
+  let result: any;
+  try {
+    result = await sdk.parse(trimmed);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
+
   const sanitized = sanitizeBigInt(result);
 
   if (sanitized?.tag === "Bolt11Invoice") {
@@ -544,14 +626,24 @@ export async function sendPayment(
     conversionOptions: undefined,
     feePolicy: undefined,
   });
-  const prepared = await sdk.prepareSendPayment(prepRequest);
+  let prepared: any;
+  try {
+    prepared = await sdk.prepareSendPayment(prepRequest);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
 
   const sendRequest = breez.SendPaymentRequest.new({
     prepareResponse: prepared,
     options: undefined,
     idempotencyKey: undefined,
   });
-  const result = await sdk.sendPayment(sendRequest);
+  let result: any;
+  try {
+    result = await sdk.sendPayment(sendRequest);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
   const payment = result.payment;
 
   return {
@@ -575,6 +667,7 @@ export async function sendLnurlPayment(
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
 
   console.log("[Breez] prepareLnurlPay amountSats:", amountSats);
+  validateLnurlAmount(payRequest, amountSats);
   const prepRequest = breez.PrepareLnurlPayRequest.new({
     amountSats: BigInt(amountSats),
     payRequest,
@@ -583,14 +676,24 @@ export async function sendLnurlPayment(
     conversionOptions: undefined,
     feePolicy: undefined,
   });
-  const prepared = await sdk.prepareLnurlPay(prepRequest);
+  let prepared: any;
+  try {
+    prepared = await sdk.prepareLnurlPay(prepRequest);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
   console.log("[Breez] prepareLnurlPay OK, feeSats:", Number(prepared.feeSats ?? 0));
 
   const lnurlPayReq = breez.LnurlPayRequest.new({
     prepareResponse: prepared,
     idempotencyKey: undefined,
   });
-  const result = await sdk.lnurlPay(lnurlPayReq);
+  let result: any;
+  try {
+    result = await sdk.lnurlPay(lnurlPayReq);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
   const payment = result?.payment;
 
   return {
@@ -616,12 +719,49 @@ export async function prepareSendPayment(
     conversionOptions: undefined,
     feePolicy: undefined,
   });
-  const prepared = await sdk.prepareSendPayment(prepRequest);
+  let prepared: any;
+  try {
+    prepared = await sdk.prepareSendPayment(prepRequest);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
 
   const sanitized = sanitizeBigInt(prepared);
   return {
     feeSats: Number(sanitized.fees ?? sanitized.feeSat ?? sanitized.feesSat ?? sanitized.estimatedFees ?? 0),
     amountSats: Number(prepared.amount ?? amountSats ?? 0),
+  };
+}
+
+export async function prepareLnurlPayment(
+  payRequest: any,
+  amountSats: number
+): Promise<{ feeSats: number; amountSats: number }> {
+  const sdk = await initBreezSdk();
+  const breez = await import("@breeztech/breez-sdk-spark-react-native");
+
+  validateLnurlAmount(payRequest, amountSats);
+
+  const prepRequest = breez.PrepareLnurlPayRequest.new({
+    amountSats: BigInt(amountSats),
+    payRequest,
+    comment: undefined,
+    validateSuccessActionUrl: undefined,
+    conversionOptions: undefined,
+    feePolicy: undefined,
+  });
+
+  let prepared: any;
+  try {
+    prepared = await sdk.prepareLnurlPay(prepRequest);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
+
+  const sanitized = sanitizeBigInt(prepared);
+  return {
+    feeSats: Number(sanitized.feeSats ?? 0),
+    amountSats: Number(sanitized.amountSats ?? amountSats),
   };
 }
 
@@ -664,7 +804,12 @@ export async function decodeInvoice(bolt11: string): Promise<{
 }> {
   const sdk = await initBreezSdk();
   const normalized = normalizeInput(bolt11);
-  const parsed = await sdk.parse(normalized);
+  let parsed: any;
+  try {
+    parsed = await sdk.parse(normalized);
+  } catch (err: any) {
+    throw new Error(getSdkErrorMessage(err));
+  }
   const sanitized = sanitizeBigInt(parsed);
   const now = Math.floor(Date.now() / 1000);
 

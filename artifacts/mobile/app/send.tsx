@@ -123,15 +123,26 @@ export default function SendScreen() {
     feeRequestRef.current++;
   };
 
-  const fetchFeeEstimate = async (destination: string, amountSats?: number) => {
+  const fetchFeeEstimate = async (
+    destination: string,
+    amountSats?: number,
+    paymentType?: string,
+    payRequest?: any
+  ) => {
     const reqId = ++feeRequestRef.current;
     setIsFeeLoading(true);
     setEstimatedFee(null);
     try {
       if (Platform.OS !== "web") {
-        const result = await BreezService.prepareSendPayment(destination, amountSats);
+        const isLnurlPayment =
+          (paymentType === "lightning_address" || paymentType === "lnurl") &&
+          payRequest;
+        const result = isLnurlPayment
+          ? await BreezService.prepareLnurlPayment(payRequest, amountSats || 0)
+          : await BreezService.prepareSendPayment(destination, amountSats);
         if (reqId === feeRequestRef.current) {
           setEstimatedFee(result.feeSats || 0);
+          setError("");
         }
       } else {
         const API_BASE = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api`;
@@ -145,7 +156,12 @@ export default function SendScreen() {
           setEstimatedFee(data.feesSat ?? null);
         }
       }
-    } catch {}
+    } catch (e) {
+      if (reqId === feeRequestRef.current) {
+        setEstimatedFee(null);
+        setError(e instanceof Error ? e.message : "Could not estimate fee");
+      }
+    }
     if (reqId === feeRequestRef.current) setIsFeeLoading(false);
   };
 
@@ -197,6 +213,11 @@ export default function SendScreen() {
           payRequest: parsed.payRequest,
         };
         canonicalDest = parsed.address || input.trim();
+      } else if (parsed.type === "nwc_uri") {
+        setDecodedInvoice(null);
+        setError("This is an NWC connection string, not a payment destination. Paste a Lightning invoice, Lightning address, LNURL, or Bitcoin address instead.");
+        setIsDecoding(false);
+        return;
       } else {
         try {
           const dec = await decodeInvoice(input.trim());
@@ -216,11 +237,12 @@ export default function SendScreen() {
         setSendAmountInput("");
         setStage("paste");
         if (decoded.amountSats && decoded.amountSats > 0) {
-          fetchFeeEstimate(canonicalDest, decoded.amountSats);
+          fetchFeeEstimate(canonicalDest, decoded.amountSats, decoded.type, decoded.payRequest);
         }
       }
     } catch (e) {
-      setError("Invalid input. Please check and try again.");
+      setDecodedInvoice(null);
+      setError(e instanceof Error ? e.message : "Invalid input. Please check and try again.");
     } finally {
       setIsDecoding(false);
     }
@@ -405,12 +427,18 @@ export default function SendScreen() {
                       onChangeText={(t) => {
                         setSendAmountInput(t.replace(/[^0-9]/g, ""));
                         setEstimatedFee(null);
+                        setError("");
                       }}
                       keyboardType="number-pad"
                       onBlur={() => {
                         const amt = parseInt(sendAmountInput, 10);
                         if (amt > 0 && invoiceInput) {
-                          fetchFeeEstimate(invoiceInput.trim(), amt);
+                          fetchFeeEstimate(
+                            invoiceInput.trim(),
+                            amt,
+                            decodedInvoice?.type,
+                            decodedInvoice?.payRequest
+                          );
                         }
                       }}
                     />
@@ -424,7 +452,14 @@ export default function SendScreen() {
                       style={[styles.maxBtn, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(13,110,125,0.12)" }]}
                       onPress={() => {
                         setSendAmountInput(String(sats));
-                        if (sats > 0 && invoiceInput) fetchFeeEstimate(invoiceInput.trim(), sats);
+                        if (sats > 0 && invoiceInput) {
+                          fetchFeeEstimate(
+                            invoiceInput.trim(),
+                            sats,
+                            decodedInvoice?.type,
+                            decodedInvoice?.payRequest
+                          );
+                        }
                       }}
                     >
                       <Text style={[styles.maxBtnText, { color: isDark ? colors.teal : colors.tealDark }]}>Max</Text>
