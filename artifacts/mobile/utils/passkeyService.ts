@@ -27,7 +27,7 @@ function normalizePasskeyError(error: any): Error {
   }
 
   if (lower.includes("no credentials were returned")) {
-    return new Error("No Face ID wallet was found on this device yet. If you are using the simulator, passkeys may not be available there.");
+    return new Error("Face ID could not access or create your wallet on this device. Please try again.");
   }
 
   if (lower.includes("prf")) {
@@ -126,13 +126,12 @@ export function createPrfProvider() {
   return {
     async derivePrfSeed(salt: string): Promise<ArrayBuffer> {
       try {
-        const credId = await ensurePasskeyCredential();
+        await ensurePasskeyCredential();
         const saltBytes = prfSaltBytes(salt);
 
         const result = await passkeyApi.get({
           rpId: RP_ID,
           challenge: randomChallenge(),
-          allowCredentials: [{ id: credId, type: "public-key" }],
           extensions: {
             prf: {
               eval: { first: saltBytes },

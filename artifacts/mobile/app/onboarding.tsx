@@ -153,7 +153,7 @@ export default function OnboardingScreen() {
     setIsInitializing(true);
     setInitError(null);
     setShowMoreOptions(false);
-    setLoadingMessage("Checking your Face ID wallet...");
+    setLoadingMessage("Preparing your Face ID wallet...");
 
     try {
       const passkeySupported = await isPasskeyAvailable();
