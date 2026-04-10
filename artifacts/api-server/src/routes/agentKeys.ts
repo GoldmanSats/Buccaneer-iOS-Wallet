@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
@@ -7,6 +7,22 @@ import * as secp256k1 from "@noble/secp256k1";
 import { refreshNwcSubscriptions } from "../lib/nwc.js";
 
 const router: IRouter = Router();
+
+function walletOwnerAuth(req: Request, res: Response, next: NextFunction): void {
+  const token = req.headers["x-wallet-owner"];
+  const expected = process.env["WALLET_OWNER_TOKEN"];
+  if (!expected) {
+    res.status(503).json({ error: "not_configured", message: "Wallet owner authentication is not configured" });
+    return;
+  }
+  if (!token || token !== expected) {
+    res.status(403).json({ error: "forbidden", message: "Wallet owner authentication required" });
+    return;
+  }
+  next();
+}
+
+router.use(walletOwnerAuth);
 
 function getSecp256k1Pubkey(secretKeyHex: string): string {
   const privKeyBytes = Buffer.from(secretKeyHex, "hex");
