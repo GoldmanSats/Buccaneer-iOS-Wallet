@@ -12,8 +12,8 @@ const NAVY2 = "#151f35";
 const GOLD = "#c9a24d";
 
 export default function BiometricLock({ children }: { children: React.ReactNode }) {
-  const { settings } = useSettings();
-  const [isLocked, setIsLocked] = useState(false);
+  const { settings, isLoading } = useSettings();
+  const [isLocked, setIsLocked] = useState(true);
   const [authFailed, setAuthFailed] = useState(false);
 
   const authenticate = useCallback(async () => {
@@ -35,14 +35,19 @@ export default function BiometricLock({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    if (!settings.biometricsEnabled || Platform.OS === "web") return;
+    if (isLoading) return;
+    if (!settings.biometricsEnabled || Platform.OS === "web") {
+      setIsLocked(false);
+      setAuthFailed(false);
+      return;
+    }
 
     setIsLocked(true);
     authenticate();
-  }, [settings.biometricsEnabled]);
+  }, [settings.biometricsEnabled, isLoading, authenticate]);
 
   useEffect(() => {
-    if (!settings.biometricsEnabled || Platform.OS === "web") return;
+    if (isLoading || !settings.biometricsEnabled || Platform.OS === "web") return;
 
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active" && isLocked) {
@@ -54,7 +59,20 @@ export default function BiometricLock({ children }: { children: React.ReactNode 
     });
 
     return () => subscription.remove();
-  }, [settings.biometricsEnabled, isLocked, authenticate]);
+  }, [settings.biometricsEnabled, isLocked, isLoading, authenticate]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={[NAVY, NAVY2, "#0A1020"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.content}>
+          <Image source={appIconSource} style={styles.icon} />
+          <Text style={styles.title}>Opening Wallet</Text>
+          <Text style={styles.subtitle}>Checking security settings...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!isLocked || !settings.biometricsEnabled) {
     return <>{children}</>;

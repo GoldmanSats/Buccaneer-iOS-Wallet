@@ -48,26 +48,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (stored) {
           setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
         }
-
-        try {
-          const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/settings`);
-          if (res.ok) {
-            const serverSettings = await res.json();
-            setSettings((prev) => ({
-              ...prev,
-              fiatCurrency: serverSettings.fiatCurrency ?? prev.fiatCurrency,
-              primaryDisplay: serverSettings.primaryDisplay ?? prev.primaryDisplay,
-              soundEffectsEnabled: serverSettings.soundEffectsEnabled ?? prev.soundEffectsEnabled,
-              backupCompleted: serverSettings.backupCompleted ?? prev.backupCompleted,
-              lightningAddress: serverSettings.lightningAddress ?? prev.lightningAddress,
-            }));
-          }
-        } catch (_e) {}
       } catch (e) {
         console.error("Settings load error:", e);
       } finally {
         setIsLoading(false);
       }
+
+      try {
+        const res = await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/settings`);
+        if (res.ok) {
+          const serverSettings = await res.json();
+          setSettings((prev) => ({
+            ...prev,
+            fiatCurrency: serverSettings.fiatCurrency ?? prev.fiatCurrency,
+            primaryDisplay: serverSettings.primaryDisplay ?? prev.primaryDisplay,
+            soundEffectsEnabled: serverSettings.soundEffectsEnabled ?? prev.soundEffectsEnabled,
+            backupCompleted: serverSettings.backupCompleted ?? prev.backupCompleted,
+            lightningAddress: serverSettings.lightningAddress ?? prev.lightningAddress,
+          }));
+        }
+      } catch (_e) {}
     })();
   }, []);
 
