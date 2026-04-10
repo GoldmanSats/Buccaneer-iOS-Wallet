@@ -9,7 +9,9 @@
     "dev:tunnel": "pnpm exec expo start --tunnel",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -72,7 +74,10 @@
     "expo-secure-store": "^55.0.9",
     "react-native-fs": "^2.20.0",
     "react-native-get-random-values": "^2.0.0",
-    "react-native-passkey": "^3.3.2",
-    "react-native-qrcode-svg": "^6.3.21"
+    "react-native-passkey": "^3.3.3",
+    "react-native-qrcode-svg": "^6.3.21",
+    "expo": "~54.0.33",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   }
 }

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-export type WalletMode = "seed" | "passkey" | null;
+import { SETTINGS_STORAGE_KEY, type WalletMode } from "@/constants/walletMetadata";
 
 interface Settings {
   fiatCurrency: string;
@@ -41,8 +40,6 @@ const DEFAULT_SETTINGS: Settings = {
   walletLabel: null,
 };
 
-const STORAGE_KEY = "@buccaneer_settings";
-
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +47,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        const stored = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
         if (stored) {
           setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
         }
@@ -80,7 +77,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const updateSettings = async (updates: Partial<Settings>) => {
     const next = { ...settings, ...updates };
     setSettings(next);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
 
     try {
       await fetch(`${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/settings`, {

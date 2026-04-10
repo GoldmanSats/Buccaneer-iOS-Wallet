@@ -501,7 +501,9 @@ export default function AgentKeysScreen() {
                         )}
                       </View>
                       <Text style={[st.keyPreview, { color: colors.textMuted }]}>
-                        {key.connectionType === "nwc" ? "Nostr Wallet Connect" : key.nwcUri.slice(0, 24) + "…"}
+                        {key.connectionType === "nwc"
+                          ? "Nostr Wallet Connect"
+                          : ((key.nwcUri ?? "API key").slice(0, 24) + "…")}
                       </Text>
                     </View>
                     <Switch

@@ -1,5 +1,8 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { SETTINGS_STORAGE_KEY, type WalletMode } from "@/constants/walletMetadata";
+import { continueWithPasskey } from "@/utils/passkeyService";
 
 const SEED_KEY = "buccaneer_wallet_seed";
 const MEMO_STORE_KEY = "buccaneer_wallet_memos";
@@ -84,13 +87,55 @@ export async function deleteSeedFromSecureStore(): Promise<void> {
   } catch {}
 }
 
+async function getStoredWalletMetadata(): Promise<{
+  walletMode: WalletMode;
+  walletLabel: string | null;
+}> {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return { walletMode: null, walletLabel: null };
+    }
+
+    const parsed = JSON.parse(raw) as {
+      walletMode?: WalletMode;
+      walletLabel?: string | null;
+    };
+
+    return {
+      walletMode: parsed.walletMode ?? null,
+      walletLabel: parsed.walletLabel ?? null,
+    };
+  } catch {
+    return { walletMode: null, walletLabel: null };
+  }
+}
+
+async function resolveSeedForSdk(mnemonic?: string): Promise<string | null> {
+  if (mnemonic) {
+    return mnemonic;
+  }
+
+  const { walletMode, walletLabel } = await getStoredWalletMetadata();
+
+  if (walletMode === "passkey") {
+    const result = await continueWithPasskey(walletLabel ?? undefined);
+    await deleteSeedFromSecureStore();
+    return result.mnemonic;
+  }
+
+  return getSeedFromSecureStore();
+}
+
 export async function generateMnemonic(): Promise<string> {
-  const bip39 = await import("bip39");
+  const bip39Module = await import("bip39");
+  const bip39 = (bip39Module as any).default ?? bip39Module;
   return bip39.generateMnemonic();
 }
 
 export async function validateMnemonic(mnemonic: string): Promise<boolean> {
-  const bip39 = await import("bip39");
+  const bip39Module = await import("bip39");
+  const bip39 = (bip39Module as any).default ?? bip39Module;
   return bip39.validateMnemonic(mnemonic);
 }
 
@@ -115,7 +160,7 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
       const breez = await import("@breeztech/breez-sdk-spark-react-native");
       const RNFS = await import("react-native-fs");
 
-      const seed = mnemonic || (await getSeedFromSecureStore());
+      const seed = await resolveSeedForSdk(mnemonic);
       if (!seed) {
         throw new Error("No wallet seed found. Please create or restore a wallet first.");
       }

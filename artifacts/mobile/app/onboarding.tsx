@@ -29,6 +29,7 @@ import Svg, { Path, Circle } from "react-native-svg";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
 import { continueWithPasskey, isPasskeyAvailable } from "@/utils/passkeyService";
 import {
+  deleteSeedFromSecureStore,
   generateMnemonic,
   validateMnemonic,
   saveSeedToSecureStore,
@@ -100,7 +101,11 @@ export default function OnboardingScreen() {
     markBackupDone: boolean,
     walletDetails: { walletMode: "seed" | "passkey"; walletLabel: string | null }
   ) => {
-    await saveSeedToSecureStore(mnemonic);
+    if (walletDetails.walletMode === "seed") {
+      await saveSeedToSecureStore(mnemonic);
+    } else {
+      await deleteSeedFromSecureStore();
+    }
 
     if (Platform.OS !== "web") {
       initBreezSdk(mnemonic).catch((err: any) => {
@@ -157,7 +162,7 @@ export default function OnboardingScreen() {
       }
 
       const result = await continueWithPasskey(settings.walletLabel ?? undefined);
-      setLoadingMessage(result.restored ? "Opening your wallet..." : "Creating your Face ID wallet...");
+      setLoadingMessage("Opening your Face ID wallet...");
       await finishOnboarding(result.mnemonic, false, {
         walletMode: "passkey",
         walletLabel: result.label,

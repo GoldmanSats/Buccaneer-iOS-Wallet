@@ -87,7 +87,7 @@ function walletHeaders(): Record<string, string> {
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const { settings } = useSettings();
+  const { settings, isLoading: settingsLoading } = useSettings();
   const [isOffline, setIsOffline] = useState(false);
   const [sdkReady, setSdkReady] = useState(!USE_ON_DEVICE);
   const [sdkRetryCount, setSdkRetryCount] = useState(0);
@@ -98,6 +98,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!USE_ON_DEVICE) return;
+    if (settingsLoading) return;
+    if (!settings.onboardingDone) {
+      setSdkReady(false);
+      setIsOffline(false);
+      setSdkRetryCount(0);
+      setSdkError(null);
+      return;
+    }
+
     let cancelled = false;
     let retryCount = 0;
     const maxRetries = 10;
@@ -137,7 +146,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     tryInit();
     return () => { cancelled = true; };
-  }, []);
+  }, [settingsLoading, settings.onboardingDone]);
 
   const retrySdkInit = useCallback(async () => {
     if (!USE_ON_DEVICE || sdkReady) return;
