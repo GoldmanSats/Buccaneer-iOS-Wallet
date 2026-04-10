@@ -80,6 +80,7 @@ export default function SettingsScreen() {
 
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
+  const isPasskeyWallet = settings.walletMode === "passkey";
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -170,8 +171,12 @@ export default function SettingsScreen() {
               <MaterialCommunityIcons name="key-variant" size={20} color={colors.gold} />
             </View>
             <View style={s.rowText}>
-              <Text style={[s.rowLabel, { color: colors.text }]}>Seed Phrase</Text>
-              <Text style={[s.rowSub, { color: colors.textMuted }]}>Backup your booty</Text>
+              <Text style={[s.rowLabel, { color: colors.text }]}>
+                {isPasskeyWallet ? "Emergency Recovery Phrase" : "Seed Phrase"}
+              </Text>
+              <Text style={[s.rowSub, { color: colors.textMuted }]}>
+                {isPasskeyWallet ? "Advanced access behind a warning screen" : "Backup your booty"}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </Pressable>
@@ -194,7 +199,7 @@ export default function SettingsScreen() {
                   const compatible = await LocalAuthentication.hasHardwareAsync();
                   const enrolled = await LocalAuthentication.isEnrolledAsync();
                   if (!compatible || !enrolled) {
-                    if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                     return;
                   }
                   const result = await LocalAuthentication.authenticateAsync({
