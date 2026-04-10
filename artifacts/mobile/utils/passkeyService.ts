@@ -1,7 +1,10 @@
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { Passkey as RNPasskey } from "react-native-passkey";
 
-const RP_ID = "keys.breez.technology";
+const configuredRpId =
+  (Constants.expoConfig?.extra as { passkeyRpId?: string } | undefined)?.passkeyRpId;
+const RP_ID = configuredRpId || "bellamywallet.com";
 
 let passkeyCredentialId: string | null = null;
 let prfPreflightPassed = false;

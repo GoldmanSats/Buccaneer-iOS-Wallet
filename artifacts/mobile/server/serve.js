@@ -16,6 +16,8 @@ const path = require("path");
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+const APP_JSON_PATH = path.resolve(__dirname, "..", "app.json");
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID || "FR97GP6Z7W";
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -37,12 +39,34 @@ const MIME_TYPES = {
 
 function getAppName() {
   try {
-    const appJsonPath = path.resolve(__dirname, "..", "app.json");
-    const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf-8"));
+    const appJson = JSON.parse(fs.readFileSync(APP_JSON_PATH, "utf-8"));
     return appJson.expo?.name || "App Landing Page";
   } catch {
     return "App Landing Page";
   }
+}
+
+function getAppJson() {
+  try {
+    return JSON.parse(fs.readFileSync(APP_JSON_PATH, "utf-8"));
+  } catch {
+    return { expo: {} };
+  }
+}
+
+function serveAppleAppSiteAssociation(res) {
+  const appJson = getAppJson();
+  const bundleIdentifier = appJson.expo?.ios?.bundleIdentifier;
+  const appId = bundleIdentifier ? `${APPLE_TEAM_ID}.${bundleIdentifier}` : null;
+
+  if (!appId) {
+    res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ error: "Missing ios.bundleIdentifier in app.json" }));
+    return;
+  }
+
+  res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify({ webcredentials: { apps: [appId] } }));
 }
 
 function serveManifest(platform, res) {
@@ -124,6 +148,13 @@ const server = http.createServer((req, res) => {
     if (pathname === "/") {
       return serveLandingPage(req, res, landingPageTemplate, appName);
     }
+  }
+
+  if (
+    pathname === "/.well-known/apple-app-site-association" ||
+    pathname === "/apple-app-site-association"
+  ) {
+    return serveAppleAppSiteAssociation(res);
   }
 
   serveStaticFile(pathname, res);

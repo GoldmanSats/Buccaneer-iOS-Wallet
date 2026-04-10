@@ -16,7 +16,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "buccaneerwallet",
-      "buildNumber": "23",
+      "buildNumber": "24",
+      "associatedDomains": [
+        "webcredentials:bellamywallet.com"
+      ],
       "infoPlist": {
         "NSFaceIDUsageDescription": "Bellamy Wallet uses Face ID to secure your wallet",
         "ITSAppUsesNonExemptEncryption": false
@@ -52,6 +55,7 @@
       ]
     ],
     "extra": {
+      "passkeyRpId": "bellamywallet.com",
       "eas": {
         "projectId": "d0acdd36-77e7-4ee1-b945-21f8c9e4867f"
       }
