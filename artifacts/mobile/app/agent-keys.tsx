@@ -22,6 +22,14 @@ import * as Clipboard from "expo-clipboard";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 const API = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/agent-keys`;
+const OWNER_TOKEN = process.env.EXPO_PUBLIC_WALLET_OWNER_TOKEN ?? "";
+
+function ownerHeaders(contentType = false): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (contentType) headers["Content-Type"] = "application/json";
+  if (OWNER_TOKEN) headers["X-Wallet-Owner"] = OWNER_TOKEN;
+  return headers;
+}
 
 interface AgentKey {
   id: number;
@@ -78,7 +86,7 @@ export default function AgentKeysScreen() {
   const loadKeys = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(API);
+      const res = await fetch(API, { headers: ownerHeaders() });
       if (res.ok) {
         const data = await res.json();
         setKeys(data.keys ?? []);
@@ -92,7 +100,7 @@ export default function AgentKeysScreen() {
 
   const loadLogs = async (keyId: number) => {
     try {
-      const res = await fetch(`${API}/${keyId}/logs`);
+      const res = await fetch(`${API}/${keyId}/logs`, { headers: ownerHeaders() });
       if (res.ok) {
         const data = await res.json();
         setKeyLogs(prev => ({ ...prev, [keyId]: data.logs ?? [] }));
@@ -107,7 +115,7 @@ export default function AgentKeysScreen() {
     try {
       const res = await fetch(API, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: ownerHeaders(true),
         body: JSON.stringify({
           name: newKeyName.trim(),
           spendingLimitSats: newKeyLimit ? parseInt(newKeyLimit) : undefined,
@@ -137,7 +145,7 @@ export default function AgentKeysScreen() {
     try {
       const res = await fetch(`${API}/${key.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: ownerHeaders(true),
         body: JSON.stringify({ isActive: !key.isActive }),
       });
       if (res.ok) {
@@ -150,7 +158,10 @@ export default function AgentKeysScreen() {
   const deleteKey = async (id: number) => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     try {
-      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API}/${id}`, {
+        method: "DELETE",
+        headers: ownerHeaders(),
+      });
       if (res.ok) {
         setKeys((prev) => prev.filter((k) => k.id !== id));
       }
@@ -332,6 +343,23 @@ export default function AgentKeysScreen() {
             </View>
 
             <Pressable
+              testID="select-api-type"
+              style={[st.typeBtn, { backgroundColor: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.2)" }]}
+              onPress={() => setSelectedType("api")}
+            >
+              <View style={[st.typeBtnIcon, { backgroundColor: "rgba(34,197,94,0.2)" }]}>
+                <Ionicons name="flash" size={18} color="#22C55E" />
+              </View>
+              <View style={st.typeBtnText}>
+                <Text style={[st.typeBtnLabel, { color: colors.text }]}>REST API Key</Text>
+                <Text style={[st.typeBtnSub, { color: colors.textMuted }]}>Primary supported option with direct Bearer token auth</Text>
+              </View>
+              <View style={[st.recBadge, { backgroundColor: "rgba(34,197,94,0.18)" }]}>
+                <Text style={[st.recBadgeText, { color: "#22C55E" }]}>RECOMMENDED</Text>
+              </View>
+            </Pressable>
+
+            <Pressable
               testID="select-nwc-type"
               style={[st.typeBtn, { backgroundColor: "rgba(147,51,234,0.1)", borderColor: "rgba(147,51,234,0.2)" }]}
               onPress={() => setSelectedType("nwc")}
@@ -341,24 +369,10 @@ export default function AgentKeysScreen() {
               </View>
               <View style={st.typeBtnText}>
                 <Text style={[st.typeBtnLabel, { color: colors.text }]}>Nostr Wallet Connect</Text>
-                <Text style={[st.typeBtnSub, { color: colors.textMuted }]}>One connection string — works with any NWC-compatible agent</Text>
+                <Text style={[st.typeBtnSub, { color: colors.textMuted }]}>Experimental option using one NWC connection string</Text>
               </View>
-              <View style={st.recBadge}>
-                <Text style={st.recBadgeText}>RECOMMENDED</Text>
-              </View>
-            </Pressable>
-
-            <Pressable
-              testID="select-api-type"
-              style={[st.typeBtn, { backgroundColor: colors.bgElevated + "80", borderColor: colors.border + "50" }]}
-              onPress={() => setSelectedType("api")}
-            >
-              <View style={[st.typeBtnIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons name="flash" size={18} color={colors.textSecondary} />
-              </View>
-              <View style={st.typeBtnText}>
-                <Text style={[st.typeBtnLabel, { color: colors.text }]}>REST API Key</Text>
-                <Text style={[st.typeBtnSub, { color: colors.textMuted }]}>Direct API access with Bearer token auth</Text>
+              <View style={[st.recBadge, { backgroundColor: "rgba(147,51,234,0.16)" }]}>
+                <Text style={[st.recBadgeText, { color: "#9333EA" }]}>EXPERIMENTAL</Text>
               </View>
             </Pressable>
           </View>
@@ -567,7 +581,7 @@ export default function AgentKeysScreen() {
                           try {
                             const res = await fetch(`${API}/${key.id}`, {
                               method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
+                              headers: ownerHeaders(true),
                               body: JSON.stringify({
                                 spendingLimitSats: editLimitVal ? parseInt(editLimitVal) : null,
                                 maxDailySats: editDailyVal ? parseInt(editDailyVal) : null,
@@ -609,56 +623,16 @@ export default function AgentKeysScreen() {
           </View>
         ) : null}
 
-        {keys.some(k => k.connectionType === "nwc") && (
-          <>
-            <Text style={[st.sectionHeader, { color: colors.textMuted }]}>HOW TO USE NOSTR WALLET CONNECT</Text>
-            <View style={[st.apiCard, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
-
-              <View style={st.stepRow}>
-                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
-                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>1</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[st.stepTitle, { color: colors.text }]}>Copy the connection string</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Tap your NWC key above, then tap the copy button. The string starts with "nostr+walletconnect://".</Text>
-                </View>
-              </View>
-
-              <View style={st.stepRow}>
-                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
-                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>2</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[st.stepTitle, { color: colors.text }]}>Paste it into your agent chat</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Send the string directly to your AI agent — through Telegram, Discord, or however you talk to it.</Text>
-                </View>
-              </View>
-
-              <View style={st.stepRow}>
-                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.15)" }]}>
-                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>3</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[st.stepTitle, { color: colors.text }]}>Tell it "this is your wallet"</Text>
-                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>The agent will recognize the NWC string and use it to send payments, check balances, and create invoices on your behalf.</Text>
-                </View>
-              </View>
-
-              <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.06)", borderColor: "rgba(147,51,234,0.2)" }]}>
-                <Ionicons name="information-circle-outline" size={16} color="#9333EA" />
-                <Text style={[st.tipText, { color: colors.textSecondary }]}>
-                  No server URL or API setup needed — the connection string has everything. Your spending limits are enforced on every transaction automatically.
-                </Text>
-              </View>
-
-            </View>
-          </>
-        )}
-
         {keys.some(k => k.connectionType === "api") && (
           <>
-            <Text style={[st.sectionHeader, { color: colors.textMuted }]}>HOW TO USE YOUR API KEY</Text>
-            <View style={[st.apiCard, { backgroundColor: colors.bgCard, borderColor: colors.border + "80" }]}>
+            <Text style={[st.sectionHeader, { color: "#22C55E" }]}>PRIMARY SUPPORTED OPTION</Text>
+            <View style={[st.apiCard, { backgroundColor: colors.bgCard, borderColor: "rgba(34,197,94,0.24)" }]}>
+              <View style={[st.tipBox, { backgroundColor: "rgba(34,197,94,0.08)", borderColor: "rgba(34,197,94,0.2)" }]}>
+                <Ionicons name="shield-checkmark-outline" size={16} color="#22C55E" />
+                <Text style={[st.tipText, { color: colors.textSecondary }]}>
+                  REST API keys are the primary supported path. They are easier to control, revoke, audit, and troubleshoot than Nostr Wallet Connect.
+                </Text>
+              </View>
 
               <View style={st.stepRow}>
                 <View style={[st.stepNum, { backgroundColor: "rgba(34,197,94,0.15)" }]}>
@@ -767,7 +741,59 @@ export default function AgentKeysScreen() {
               <View style={[st.tipBox, { backgroundColor: "rgba(250,186,26,0.08)", borderColor: "rgba(250,186,26,0.2)" }]}>
                 <Ionicons name="shield-checkmark-outline" size={16} color="#FABA1A" />
                 <Text style={[st.tipText, { color: colors.textSecondary }]}>
-                  Spending limits you set on the key are enforced automatically. If your agent tries to spend more than allowed, the request will be rejected.
+                  Spending limits you set on the key are enforced automatically. If your agent tries to spend more than allowed, the request will be rejected. You can also revoke the key at any time.
+                </Text>
+              </View>
+
+            </View>
+          </>
+        )}
+
+        {keys.some(k => k.connectionType === "nwc") && (
+          <>
+            <Text style={[st.sectionHeader, { color: "#9333EA99" }]}>EXPERIMENTAL COMPATIBILITY OPTION</Text>
+            <View style={[st.apiCard, { backgroundColor: colors.bgCard + "E6", borderColor: "rgba(147,51,234,0.14)", opacity: 0.92 }]}>
+              <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.05)", borderColor: "rgba(147,51,234,0.16)" }]}>
+                <Ionicons name="flask-outline" size={16} color="#9333EA" />
+                <Text style={[st.tipText, { color: colors.textMuted }]}>
+                  Nostr Wallet Connect is available for compatibility, but it is more experimental and may work inconsistently depending on the agent and relay support.
+                </Text>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.12)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Copy the connection string</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Tap your NWC key above, then tap the copy button. The string starts with "nostr+walletconnect://".</Text>
+                </View>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.12)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Paste it into your agent chat</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Send the string directly to your AI agent only if it explicitly supports NWC.</Text>
+                </View>
+              </View>
+
+              <View style={st.stepRow}>
+                <View style={[st.stepNum, { backgroundColor: "rgba(147,51,234,0.12)" }]}>
+                  <Text style={[st.stepNumText, { color: "#9333EA" }]}>3</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.stepTitle, { color: colors.text }]}>Use smaller limits</Text>
+                  <Text style={[st.stepDesc, { color: colors.textMuted }]}>Because this path is more experimental, it is safest to keep per-transaction and daily limits low.</Text>
+                </View>
+              </View>
+
+              <View style={[st.tipBox, { backgroundColor: "rgba(147,51,234,0.05)", borderColor: "rgba(147,51,234,0.14)" }]}>
+                <Ionicons name="information-circle-outline" size={16} color="#9333EA" />
+                <Text style={[st.tipText, { color: colors.textMuted }]}>
+                  Choose NWC only when you specifically need NWC compatibility. For the most predictable and secure setup, use REST API keys instead.
                 </Text>
               </View>
 
