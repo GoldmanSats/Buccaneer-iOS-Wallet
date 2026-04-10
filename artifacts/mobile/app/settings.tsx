@@ -29,7 +29,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
-import { deleteSeedFromSecureStore, disconnectSdk } from "@/utils/breezService";
+import { clearLocalWalletData } from "@/utils/breezService";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "NZD", "AUD", "CAD", "JPY", "CHF"];
@@ -124,13 +124,13 @@ export default function SettingsScreen() {
     }
     setShowDeleteModal(false);
     try {
-      await disconnectSdk();
-      await deleteSeedFromSecureStore();
+      await clearLocalWalletData();
       await deleteWalletBackup();
     } catch {}
     await updateSettings({
       onboardingDone: false,
       backupCompleted: false,
+      lightningAddress: "",
       walletMode: null,
       walletLabel: null,
     });

@@ -104,6 +104,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsOffline(false);
       setSdkRetryCount(0);
       setSdkError(null);
+      setSparkAddress("");
+      setUnifiedQr("");
+      setBitcoinAddress("");
+      queryClient.removeQueries({ queryKey: ["balance"] });
+      queryClient.removeQueries({ queryKey: ["transactions"] });
       return;
     }
 
@@ -146,7 +151,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     tryInit();
     return () => { cancelled = true; };
-  }, [settingsLoading, settings.onboardingDone]);
+  }, [settingsLoading, settings.onboardingDone, queryClient]);
 
   const retrySdkInit = useCallback(async () => {
     if (!USE_ON_DEVICE || sdkReady) return;

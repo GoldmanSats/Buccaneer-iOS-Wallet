@@ -6,6 +6,7 @@ import { continueWithPasskey } from "@/utils/passkeyService";
 
 const SEED_KEY = "buccaneer_wallet_seed";
 const MEMO_STORE_KEY = "buccaneer_wallet_memos";
+const SDK_STORAGE_DIR = "breez-data";
 
 let sdkInstance: any = null;
 let sdkInitializing: Promise<any> | null = null;
@@ -14,6 +15,16 @@ let pendingDeposits: any[] = [];
 let cachedLightningAddress: string | null = null;
 let cachedLnurlBech32: string | null = null;
 let cachedBitcoinAddress: string | null = null;
+
+function resetInMemoryWalletState(): void {
+  sdkInstance = null;
+  sdkInitializing = null;
+  pendingIncomingPayments = [];
+  pendingDeposits = [];
+  cachedLightningAddress = null;
+  cachedLnurlBech32 = null;
+  cachedBitcoinAddress = null;
+}
 
 export function sanitizeBigIntPublic(obj: any): any {
   return sanitizeBigInt(obj);
@@ -85,6 +96,32 @@ export async function deleteSeedFromSecureStore(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(SEED_KEY);
   } catch {}
+}
+
+export async function deleteWalletMemosFromSecureStore(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await SecureStore.deleteItemAsync(MEMO_STORE_KEY);
+  } catch {}
+}
+
+export async function deleteLocalSdkStorage(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const RNFS = await import("react-native-fs");
+    const storageDir = `${RNFS.DocumentDirectoryPath}/${SDK_STORAGE_DIR}`;
+    const exists = await RNFS.exists(storageDir);
+    if (exists) {
+      await RNFS.unlink(storageDir);
+    }
+  } catch {}
+}
+
+export async function clearLocalWalletData(): Promise<void> {
+  await disconnectSdk();
+  await deleteSeedFromSecureStore();
+  await deleteWalletMemosFromSecureStore();
+  await deleteLocalSdkStorage();
 }
 
 async function getStoredWalletMetadata(): Promise<{
@@ -212,7 +249,7 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         throw new Error(`Seed creation failed: ${msg}`);
       }
 
-      const storageDir = `${RNFS.DocumentDirectoryPath}/breez-data`;
+      const storageDir = `${RNFS.DocumentDirectoryPath}/${SDK_STORAGE_DIR}`;
       try {
         await RNFS.mkdir(storageDir);
       } catch {}
@@ -339,9 +376,8 @@ export async function disconnectSdk(): Promise<void> {
     try {
       await sdkInstance.disconnect();
     } catch {}
-    sdkInstance = null;
-    sdkInitializing = null;
   }
+  resetInMemoryWalletState();
 }
 
 export async function getBalance(): Promise<{
