@@ -161,7 +161,11 @@ export default function OnboardingScreen() {
         throw new Error("Face ID wallet setup is not available on this device yet. Use your recovery phrase or create a seed wallet from More options.");
       }
 
-      const result = await continueWithPasskey(settings.walletLabel ?? undefined);
+      const shouldRestoreExistingPasskey =
+        settings.walletMode === "passkey" || !!settings.walletLabel;
+      const result = await continueWithPasskey(settings.walletLabel ?? undefined, {
+        allowCredentialCreation: !shouldRestoreExistingPasskey,
+      });
       setLoadingMessage("Opening your Face ID wallet...");
       await finishOnboarding(result.mnemonic, false, {
         walletMode: "passkey",

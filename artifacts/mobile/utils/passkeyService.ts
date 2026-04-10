@@ -9,6 +9,10 @@ const RP_ID = configuredRpId || "bellamywallet.com";
 let passkeyCredentialId: string | null = null;
 let prfPreflightPassed = false;
 
+type PasskeyFlowOptions = {
+  allowCredentialCreation?: boolean;
+};
+
 function getPasskeyApi() {
   const api = RNPasskey as any;
   return {
@@ -40,9 +44,10 @@ function normalizePasskeyError(error: any): Error {
   return new Error(rawMessage || "Face ID wallet setup failed.");
 }
 
-async function ensurePasskeyCredential(): Promise<string> {
+async function ensurePasskeyCredential(options?: PasskeyFlowOptions): Promise<string> {
   if (passkeyCredentialId) return passkeyCredentialId;
   const passkeyApi = getPasskeyApi();
+  const allowCredentialCreation = options?.allowCredentialCreation ?? false;
 
   try {
     const result = await passkeyApi.get({
@@ -52,7 +57,11 @@ async function ensurePasskeyCredential(): Promise<string> {
     });
     passkeyCredentialId = result.id;
     return result.id;
-  } catch {
+  } catch (error) {
+    if (!allowCredentialCreation) {
+      throw error;
+    }
+
     const result = await passkeyApi.create({
       rp: { id: RP_ID, name: "Bellamy Wallet" },
       user: {
@@ -123,13 +132,14 @@ function extractMnemonic(seed: any): string {
   throw new Error("Passkey returned non-mnemonic seed type");
 }
 
-export function createPrfProvider() {
+export function createPrfProvider(options?: PasskeyFlowOptions) {
   const passkeyApi = getPasskeyApi();
+  const allowCredentialCreation = options?.allowCredentialCreation ?? false;
 
   return {
     async derivePrfSeed(salt: string): Promise<ArrayBuffer> {
       try {
-        await ensurePasskeyCredential();
+        await ensurePasskeyCredential({ allowCredentialCreation });
         const saltBytes = prfSaltBytes(salt);
 
         const result = await passkeyApi.get({
@@ -160,7 +170,7 @@ export function createPrfProvider() {
     async isPrfAvailable(): Promise<boolean> {
       if (Platform.OS === "web") return false;
       try {
-        await ensurePasskeyCredential();
+        await ensurePasskeyCredential({ allowCredentialCreation });
         return true;
       } catch {
         return false;
@@ -190,13 +200,17 @@ export async function isPasskeyAvailable(): Promise<boolean> {
   }
 }
 
-export async function continueWithPasskey(preferredLabel?: string): Promise<{
+export async function continueWithPasskey(
+  preferredLabel?: string,
+  options?: PasskeyFlowOptions
+): Promise<{
   mnemonic: string;
   label: string;
   labels: string[];
   restored: boolean;
 }> {
-  const provider = createPrfProvider();
+  const allowCredentialCreation = options?.allowCredentialCreation ?? false;
+  const provider = createPrfProvider({ allowCredentialCreation });
   await preflightPasskeyPrf(provider);
 
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
@@ -209,7 +223,7 @@ export async function continueWithPasskey(preferredLabel?: string): Promise<{
     await passkey.storeLabel(wallet.label);
   } catch {}
 
-  const restored = targetLabel !== undefined;
+  const restored = targetLabel !== undefined || !allowCredentialCreation;
   return { mnemonic, label: wallet.label, labels: targetLabel ? [targetLabel] : [], restored };
 }
 
@@ -217,20 +231,20 @@ export async function createWalletWithPasskey(label?: string): Promise<{
   mnemonic: string;
   label: string;
 }> {
-  const result = await continueWithPasskey(label);
+  const result = await continueWithPasskey(label, { allowCredentialCreation: true });
   return { mnemonic: result.mnemonic, label: result.label };
 }
 
-export async function restoreWalletWithPasskey(): Promise<{
+export async function restoreWalletWithPasskey(label?: string): Promise<{
   mnemonic: string;
   label: string;
   labels: string[];
 }> {
-  const result = await continueWithPasskey();
+  const result = await continueWithPasskey(label, { allowCredentialCreation: false });
   return { mnemonic: result.mnemonic, label: result.label, labels: result.labels };
 }
 
 export async function exportMnemonicFromPasskey(label?: string): Promise<string> {
-  const result = await createWalletWithPasskey(label);
+  const result = await continueWithPasskey(label, { allowCredentialCreation: false });
   return result.mnemonic;
 }

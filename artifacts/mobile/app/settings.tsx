@@ -131,8 +131,8 @@ export default function SettingsScreen() {
       onboardingDone: false,
       backupCompleted: false,
       lightningAddress: "",
-      walletMode: null,
-      walletLabel: null,
+      walletMode: isPasskeyWallet ? settings.walletMode : null,
+      walletLabel: isPasskeyWallet ? settings.walletLabel : null,
     });
     router.replace("/onboarding");
   };

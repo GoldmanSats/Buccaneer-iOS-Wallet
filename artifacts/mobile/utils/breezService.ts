@@ -156,7 +156,9 @@ async function resolveSeedForSdk(mnemonic?: string): Promise<string | null> {
   const { walletMode, walletLabel } = await getStoredWalletMetadata();
 
   if (walletMode === "passkey") {
-    const result = await continueWithPasskey(walletLabel ?? undefined);
+    const result = await continueWithPasskey(walletLabel ?? undefined, {
+      allowCredentialCreation: false,
+    });
     await deleteSeedFromSecureStore();
     return result.mnemonic;
   }
