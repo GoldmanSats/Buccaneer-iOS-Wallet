@@ -138,20 +138,41 @@ export async function isPasskeyAvailable(): Promise<boolean> {
   }
 }
 
-export async function createWalletWithPasskey(label?: string): Promise<{
+export async function continueWithPasskey(preferredLabel?: string): Promise<{
   mnemonic: string;
   label: string;
+  labels: string[];
+  restored: boolean;
 }> {
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   const provider = createPrfProvider();
   const passkey = new breez.Passkey(provider, undefined);
 
-  const wallet = await passkey.getWallet(label ?? undefined);
+  let labels: string[] = [];
+  try {
+    labels = await passkey.listLabels();
+  } catch {
+    labels = [];
+  }
 
+  const targetLabel = preferredLabel ?? labels[0] ?? undefined;
+  const wallet = await passkey.getWallet(targetLabel);
   const mnemonic = extractMnemonic(wallet.seed);
-  await passkey.storeLabel(wallet.label);
 
-  return { mnemonic, label: wallet.label };
+  try {
+    await passkey.storeLabel(wallet.label);
+  } catch {}
+
+  const restored = targetLabel !== undefined || labels.includes(wallet.label);
+  return { mnemonic, label: wallet.label, labels, restored };
+}
+
+export async function createWalletWithPasskey(label?: string): Promise<{
+  mnemonic: string;
+  label: string;
+}> {
+  const result = await continueWithPasskey(label);
+  return { mnemonic: result.mnemonic, label: result.label };
 }
 
 export async function restoreWalletWithPasskey(): Promise<{
@@ -159,18 +180,8 @@ export async function restoreWalletWithPasskey(): Promise<{
   label: string;
   labels: string[];
 }> {
-  const breez = await import("@breeztech/breez-sdk-spark-react-native");
-  const provider = createPrfProvider();
-  const passkey = new breez.Passkey(provider, undefined);
-
-  const labels = await passkey.listLabels();
-
-  const targetLabel = labels.length > 0 ? labels[0] : undefined;
-  const wallet = await passkey.getWallet(targetLabel);
-
-  const mnemonic = extractMnemonic(wallet.seed);
-
-  return { mnemonic, label: wallet.label, labels };
+  const result = await continueWithPasskey();
+  return { mnemonic: result.mnemonic, label: result.label, labels: result.labels };
 }
 
 export async function exportMnemonicFromPasskey(label?: string): Promise<string> {

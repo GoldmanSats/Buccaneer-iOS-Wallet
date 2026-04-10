@@ -27,6 +27,7 @@ import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import Svg, { Path, Circle } from "react-native-svg";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
+import { continueWithPasskey, isPasskeyAvailable } from "@/utils/passkeyService";
 import {
   generateMnemonic,
   validateMnemonic,
@@ -65,12 +66,13 @@ type Screen = "welcome" | "restore-seed" | "loading";
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
-  const { updateSettings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [screen, setScreen] = useState<Screen>("welcome");
   const [seedInput, setSeedInput] = useState("");
   const [restoreError, setRestoreError] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Initializing Wallet...");
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const scale = useSharedValue(1);
   const bobbing = useSharedValue(0);
@@ -93,7 +95,11 @@ export default function OnboardingScreen() {
 
   const [initError, setInitError] = useState<string | null>(null);
 
-  const finishOnboarding = async (mnemonic: string, markBackupDone: boolean) => {
+  const finishOnboarding = async (
+    mnemonic: string,
+    markBackupDone: boolean,
+    walletDetails: { walletMode: "seed" | "passkey"; walletLabel: string | null }
+  ) => {
     await saveSeedToSecureStore(mnemonic);
 
     if (Platform.OS !== "web") {
@@ -105,8 +111,8 @@ export default function OnboardingScreen() {
     setTimeout(async () => {
       await updateSettings({
         onboardingDone: true,
-        walletMode: "seed",
-        walletLabel: null,
+        walletMode: walletDetails.walletMode,
+        walletLabel: walletDetails.walletLabel,
         ...(markBackupDone ? { backupCompleted: true } : {}),
       });
       router.replace("/(tabs)");
@@ -125,10 +131,39 @@ export default function OnboardingScreen() {
 
     try {
       const mnemonic = await generateMnemonic();
-      await finishOnboarding(mnemonic, false);
+      await finishOnboarding(mnemonic, false, { walletMode: "seed", walletLabel: null });
     } catch (err: any) {
       console.error("[Onboarding] Legacy wallet error:", err.message);
       setInitError(err.message || "Failed to create wallet. Please try again.");
+      setIsInitializing(false);
+      setScreen("welcome");
+    }
+  };
+
+  const handlePasskeyPrimary = async () => {
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setScreen("loading");
+    setIsInitializing(true);
+    setInitError(null);
+    setShowMoreOptions(false);
+    setLoadingMessage("Checking your Face ID wallet...");
+
+    try {
+      const passkeySupported = await isPasskeyAvailable();
+      if (!passkeySupported) {
+        throw new Error("Face ID wallet setup is not available on this device yet. Use your recovery phrase or create a seed wallet from More options.");
+      }
+
+      const result = await continueWithPasskey(settings.walletLabel ?? undefined);
+      setLoadingMessage(result.restored ? "Opening your wallet..." : "Creating your Face ID wallet...");
+      await finishOnboarding(result.mnemonic, false, {
+        walletMode: "passkey",
+        walletLabel: result.label,
+      });
+    } catch (err: any) {
+      setInitError(err?.message || "Face ID wallet setup failed. Please try again or use your recovery phrase.");
       setIsInitializing(false);
       setScreen("welcome");
     }
@@ -156,7 +191,7 @@ export default function OnboardingScreen() {
     setLoadingMessage("Restoring your wallet...");
 
     try {
-      await finishOnboarding(mnemonic, true);
+      await finishOnboarding(mnemonic, true, { walletMode: "seed", walletLabel: null });
     } catch (err: any) {
       setInitError(err.message || "Failed to restore wallet.");
       setIsInitializing(false);
@@ -262,7 +297,7 @@ export default function OnboardingScreen() {
 
           <Text style={styles.appName}>Bellamy Wallet</Text>
           <Text style={styles.tagline}>
-            A self-custodial lightning wallet built{"\n"}for principled pirates, not saylors
+            A self-custodial lightning wallet with{"\n"}Face ID-first recovery and control
           </Text>
 
           <View style={styles.features}>
@@ -291,14 +326,15 @@ export default function OnboardingScreen() {
           )}
 
           <Animated.View style={[styles.buttonWrap, buttonStyle]}>
-            <Pressable testID="create-wallet-button" style={styles.button} onPress={handleCreateLegacy}>
+            <Pressable testID="create-wallet-button" style={styles.button} onPress={handlePasskeyPrimary}>
               <LinearGradient
                 colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.buttonGradient}
               >
-                <Text style={styles.buttonText}>Create New Wallet</Text>
+                <Ionicons name="scan-outline" size={20} color={NAVY} />
+                <Text style={styles.buttonText}>Continue with Face ID</Text>
               </LinearGradient>
             </Pressable>
           </Animated.View>
@@ -307,8 +343,31 @@ export default function OnboardingScreen() {
             onPress={() => setScreen("restore-seed")}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>Restore from Backup</Text>
+            <Text style={styles.secondaryButtonText}>Use Recovery Phrase</Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => setShowMoreOptions((prev) => !prev)}
+            style={styles.tertiaryLink}
+          >
+            <Text style={styles.tertiaryLinkText}>{showMoreOptions ? "Hide more options" : "More options"}</Text>
+          </Pressable>
+
+          {showMoreOptions && (
+            <View style={styles.moreOptionsCard}>
+              <Text style={styles.moreOptionsTitle}>Legacy option</Text>
+              <Text style={styles.moreOptionsText}>
+                If you prefer not to use Face ID, you can still create a traditional seed-based wallet.
+              </Text>
+              <Pressable
+                testID="legacy-create-wallet-button"
+                onPress={handleCreateLegacy}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Create Seed Wallet Instead</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -420,6 +479,38 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: "#CDDAED",
     letterSpacing: 0.3,
+  },
+  tertiaryLink: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+  },
+  tertiaryLinkText: {
+    fontFamily: "Nunito_700Bold",
+    fontSize: 14,
+    color: "#8FA3C8",
+    letterSpacing: 0.2,
+  },
+  moreOptionsCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(143,163,200,0.18)",
+    backgroundColor: NAVY_BUTTON,
+    padding: 16,
+    gap: 12,
+  },
+  moreOptionsTitle: {
+    fontFamily: "Nunito_700Bold",
+    fontSize: 15,
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  moreOptionsText: {
+    fontFamily: "Nunito_400Regular",
+    fontSize: 13,
+    color: "#8FA3C8",
+    textAlign: "center",
+    lineHeight: 20,
   },
   loadingContent: {
     flex: 1,
