@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, isNull, or, sql } from "drizzle-orm";
 import { hashAgentSecret } from "./agentSecrets.js";
 
 export interface AuthenticatedRequest extends Request {
@@ -14,6 +14,8 @@ export interface AuthenticatedRequest extends Request {
     spentDate: string | null;
   };
 }
+
+type AgentKeyRow = typeof agentKeysTable.$inferSelect;
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
@@ -146,25 +148,89 @@ export async function recordAgentSpend(keyId: number, amountSats: number) {
     .where(eq(agentKeysTable.id, keyId));
 }
 
-export async function checkSpendingLimits(
-  key: AuthenticatedRequest["agentKey"],
+function getSpendingLimitError(
+  key: Pick<AgentKeyRow, "spendingLimitSats" | "maxDailySats" | "spentToday" | "spentDate">,
   amountSats: number,
-): Promise<string | null> {
-  if (!key) return "No key context";
-
+): string | null {
   if (key.spendingLimitSats !== null && amountSats > key.spendingLimitSats) {
     return `Amount ${amountSats} sats exceeds per-transaction limit of ${key.spendingLimitSats} sats.`;
   }
 
   if (key.maxDailySats !== null) {
     const today = todayStr();
-    const spentToday = key.spentDate === today ? key.spentToday : 0;
+    const spentToday = key.spentDate === today ? (key.spentToday ?? 0) : 0;
     if (spentToday + amountSats > key.maxDailySats) {
       return `This payment would exceed the daily spending limit of ${key.maxDailySats} sats. Spent today: ${spentToday} sats.`;
     }
   }
 
   return null;
+}
+
+export async function reserveAgentSpend(
+  keyId: number,
+  amountSats: number,
+): Promise<{ ok: true; reservedDate: string } | { ok: false; error: string }> {
+  const today = todayStr();
+  const nextSpentExpr = sql<number>`CASE
+    WHEN ${agentKeysTable.spentDate} = ${today}
+      THEN COALESCE(${agentKeysTable.spentToday}, 0) + ${amountSats}
+    ELSE ${amountSats}
+  END`;
+
+  const updated = await db
+    .update(agentKeysTable)
+    .set({
+      spentToday: nextSpentExpr,
+      spentDate: today,
+    })
+    .where(
+      and(
+        eq(agentKeysTable.id, keyId),
+        or(isNull(agentKeysTable.spendingLimitSats), gte(agentKeysTable.spendingLimitSats, amountSats)),
+        or(
+          isNull(agentKeysTable.maxDailySats),
+          sql`${nextSpentExpr} <= ${agentKeysTable.maxDailySats}`,
+        ),
+      ),
+    )
+    .returning({ id: agentKeysTable.id });
+
+  if (updated.length > 0) {
+    return { ok: true, reservedDate: today };
+  }
+
+  const keys = await db.select().from(agentKeysTable).where(eq(agentKeysTable.id, keyId));
+  const key = keys[0];
+  if (!key) {
+    return { ok: false, error: "API key not found or has been revoked." };
+  }
+
+  return {
+    ok: false,
+    error: getSpendingLimitError(key, amountSats) ?? "Unable to reserve spending allowance for this payment.",
+  };
+}
+
+export async function releaseAgentSpend(keyId: number, amountSats: number, reservedDate: string) {
+  await db
+    .update(agentKeysTable)
+    .set({
+      spentToday: sql<number>`CASE
+        WHEN ${agentKeysTable.spentDate} = ${reservedDate}
+          THEN GREATEST(COALESCE(${agentKeysTable.spentToday}, 0) - ${amountSats}, 0)
+        ELSE COALESCE(${agentKeysTable.spentToday}, 0)
+      END`,
+    })
+    .where(eq(agentKeysTable.id, keyId));
+}
+
+export async function checkSpendingLimits(
+  key: AuthenticatedRequest["agentKey"],
+  amountSats: number,
+): Promise<string | null> {
+  if (!key) return "No key context";
+  return getSpendingLimitError(key, amountSats);
 }
 
 export async function logAgentAction(

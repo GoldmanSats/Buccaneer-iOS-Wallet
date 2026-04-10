@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import {
   agentAuthMiddleware,
-  recordAgentSpend,
-  checkSpendingLimits,
+  reserveAgentSpend,
+  releaseAgentSpend,
   logAgentAction,
   type AuthenticatedRequest,
 } from "../lib/agentAuth.js";
@@ -43,7 +43,7 @@ router.get("/transactions", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post("/send", async (req: AuthenticatedRequest, res) => {
+router.post("/send", async (req: AuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { bolt11: string; amountSats?: number };
   if (!body.bolt11) {
     return res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
@@ -53,23 +53,34 @@ router.post("/send", async (req: AuthenticatedRequest, res) => {
     const decoded = await decodeInvoice(body.bolt11);
     const amountSats = body.amountSats ?? (decoded as any).amountSats ?? (decoded as any).amountMsat ? Math.ceil(((decoded as any).amountMsat ?? 0) / 1000) : 0;
 
-    const limitError = await checkSpendingLimits(req.agentKey, amountSats);
-    if (limitError) {
-      await logAgentAction(req.agentKey!.id, "send", "rejected", limitError, amountSats);
-      return res.status(403).json({ error: "spending_limit", message: limitError });
+    const reservation = await reserveAgentSpend(req.agentKey!.id, amountSats);
+    if (!reservation.ok) {
+      await logAgentAction(req.agentKey!.id, "send", "rejected", reservation.error, amountSats);
+      return res.status(403).json({ error: "spending_limit", message: reservation.error });
     }
 
-    const result = await sendPayment(body.bolt11, body.amountSats);
-    await recordAgentSpend(req.agentKey!.id, amountSats);
-    await logAgentAction(req.agentKey!.id, "send", "success", `txhash:${result.paymentHash}|Sent ${amountSats} sats`, amountSats);
-    res.json(result);
+    let paymentSent = false;
+
+    try {
+      const result = await sendPayment(body.bolt11, body.amountSats);
+      paymentSent = true;
+      await logAgentAction(req.agentKey!.id, "send", "success", `txhash:${result.paymentHash}|Sent ${amountSats} sats`, amountSats);
+      res.json(result);
+      return;
+    } catch (err) {
+      if (!paymentSent) {
+        await releaseAgentSpend(req.agentKey!.id, amountSats, reservation.reservedDate);
+      }
+      throw err;
+    }
   } catch (err) {
     await logAgentAction(req.agentKey!.id, "send", "error", String(err));
     res.status(500).json({ error: "payment_failed", message: String(err) });
+    return;
   }
 });
 
-router.post("/receive", async (req: AuthenticatedRequest, res) => {
+router.post("/receive", async (req: AuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { amountSats: number; description?: string };
   if (!body.amountSats || body.amountSats <= 0) {
     return res.status(400).json({ error: "invalid_amount", message: "amountSats must be a positive number" });
@@ -79,13 +90,15 @@ router.post("/receive", async (req: AuthenticatedRequest, res) => {
     const result = await receivePayment(body.amountSats, body.description ?? "Agent payment request");
     await logAgentAction(req.agentKey!.id, "receive", "success", `Created invoice for ${body.amountSats} sats`, body.amountSats);
     res.json(result);
+    return;
   } catch (err) {
     await logAgentAction(req.agentKey!.id, "receive", "error", String(err));
     res.status(500).json({ error: "receive_failed", message: String(err) });
+    return;
   }
 });
 
-router.post("/decode-invoice", async (req: AuthenticatedRequest, res) => {
+router.post("/decode-invoice", async (req: AuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { bolt11: string };
   if (!body.bolt11) {
     return res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
@@ -94,9 +107,11 @@ router.post("/decode-invoice", async (req: AuthenticatedRequest, res) => {
     const decoded = await decodeInvoice(body.bolt11);
     await logAgentAction(req.agentKey!.id, "decode_invoice", "success", "Decoded invoice");
     res.json(decoded);
+    return;
   } catch (err) {
     await logAgentAction(req.agentKey!.id, "decode_invoice", "error", String(err));
     res.status(400).json({ error: "decode_failed", message: String(err) });
+    return;
   }
 });
 

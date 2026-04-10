@@ -6,6 +6,7 @@ import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getBalance, sendPayment, listPayments, decodeInvoice, receivePayment } from "./breez.js";
+import { reserveAgentSpend, releaseAgentSpend } from "./agentAuth.js";
 
 function bytesToHex(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("hex");
@@ -184,41 +185,32 @@ async function handleNwcRequest(
         const decoded = await decodeInvoice(invoice);
         const amountSats = decoded.amountSats ?? 0;
 
-        if (agentKey.spendingLimitSats && amountSats > agentKey.spendingLimitSats) {
+        const reservation = await reserveAgentSpend(agentKey.id, amountSats);
+        if (!reservation.ok) {
           return {
             result_type: method,
             error: {
               code: "QUOTA_EXCEEDED",
-              message: `Amount ${amountSats} exceeds per-transaction limit of ${agentKey.spendingLimitSats} sats`,
+              message: reservation.error,
             },
           };
         }
 
-        if (agentKey.maxDailySats) {
-          const today = new Date().toISOString().split("T")[0]!;
-          let spentToday = agentKey.spentToday ?? 0;
-          if (agentKey.spentDate !== today) {
-            spentToday = 0;
+        let paymentSent = false;
+        let result: Awaited<ReturnType<typeof sendPayment>>;
+
+        try {
+          result = await sendPayment(invoice);
+          paymentSent = true;
+        } catch (err) {
+          if (!paymentSent) {
+            await releaseAgentSpend(agentKey.id, amountSats, reservation.reservedDate);
           }
-          if (spentToday + amountSats > agentKey.maxDailySats) {
-            return {
-              result_type: method,
-              error: {
-                code: "QUOTA_EXCEEDED",
-                message: `Daily limit exceeded. Spent: ${spentToday}, limit: ${agentKey.maxDailySats}`,
-              },
-            };
-          }
+          throw err;
         }
 
-        const result = await sendPayment(invoice);
-
-        const today = new Date().toISOString().split("T")[0]!;
-        let newSpent = (agentKey.spentDate === today ? agentKey.spentToday : 0) + result.amountSats;
         await db.update(agentKeysTable)
           .set({
-            spentToday: newSpent,
-            spentDate: today,
             lastUsedAt: new Date(),
           })
           .where(eq(agentKeysTable.id, agentKey.id));
