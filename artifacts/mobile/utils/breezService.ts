@@ -191,48 +191,60 @@ export async function initBreezSdk(mnemonic?: string): Promise<any> {
         throw new Error(`SdkBuilder.${step} failed: ${msg}`);
       }
 
-      const eventListener: any = {
-        async onEvent(event: any) {
+      async function processBreezEvent(event: any): Promise<void> {
+        console.log(`[Breez event] ${JSON.stringify(event)}`);
+
+        if (event.tag === "UnclaimedDeposits" && event.inner?.deposits) {
+          const deposits = Array.isArray(event.inner.deposits) ? event.inner.deposits : [];
+          pendingDeposits = deposits;
           try {
-            const sanitized = sanitizeBigInt(event);
-            console.log(`[Breez event] ${JSON.stringify(sanitized)}`);
+            await autoClaimDeposits(deposits);
+          } catch (err: any) {
+            console.warn("[Breez event] autoClaimDeposits failed:", err?.message || String(err));
+          }
+        }
 
-            if (event.tag === "UnclaimedDeposits" && event.inner?.deposits) {
-              const deposits = sanitizeBigInt(event.inner.deposits);
-              pendingDeposits = deposits;
-              autoClaimDeposits(deposits);
-            }
+        if (event.tag === "ClaimedDeposits" && event.inner?.deposits) {
+          const claimed = Array.isArray(event.inner.deposits) ? event.inner.deposits : [];
+          const claimedKeys = new Set(claimed.map((d: any) => `${d.txid}:${d.vout}`));
+          pendingDeposits = pendingDeposits.filter(
+            (d: any) => !claimedKeys.has(`${d.txid}:${d.vout}`)
+          );
+          const totalClaimed = claimed.reduce(
+            (s: number, d: any) => s + (d.amountSats || 0),
+            0
+          );
+          pendingIncomingPayments.push({
+            id: `deposit-${Date.now()}`,
+            amount: totalClaimed,
+            timestamp: Math.floor(Date.now() / 1000),
+            description: "On-chain deposit confirmed",
+          });
+        }
 
-            if (event.tag === "ClaimedDeposits" && event.inner?.deposits) {
-              const claimed = sanitizeBigInt(event.inner.deposits);
-              const claimedKeys = new Set(claimed.map((d: any) => `${d.txid}:${d.vout}`));
-              pendingDeposits = pendingDeposits.filter(
-                (d: any) => !claimedKeys.has(`${d.txid}:${d.vout}`)
-              );
-              const totalClaimed = claimed.reduce(
-                (s: number, d: any) => s + (d.amountSats || 0),
-                0
-              );
-              pendingIncomingPayments.push({
-                id: `deposit-${Date.now()}`,
-                amount: totalClaimed,
-                timestamp: Math.floor(Date.now() / 1000),
-                description: "On-chain deposit confirmed",
+        if (event.tag === "PaymentSucceeded" && event.inner) {
+          const payment = event.inner;
+          const p = payment[0] || payment;
+          if (p.paymentType === 1 || p.paymentType === "Receive") {
+            pendingIncomingPayments.push({
+              id: p.id,
+              amount: p.amount || 0,
+              timestamp: p.timestamp || Math.floor(Date.now() / 1000),
+              description: p.details?.description || "Incoming payment",
+            });
+          }
+        }
+      }
+
+      const eventListener: any = {
+        onEvent(event: any) {
+          try {
+            const eventSnapshot = sanitizeBigInt(event);
+            setTimeout(() => {
+              void processBreezEvent(eventSnapshot).catch((err: any) => {
+                console.warn("[Breez event] handler failed:", err?.message || String(err));
               });
-            }
-
-            if (event.tag === "PaymentSucceeded" && event.inner) {
-              const payment = sanitizeBigInt(event.inner);
-              const p = payment[0] || payment;
-              if (p.paymentType === 1 || p.paymentType === "Receive") {
-                pendingIncomingPayments.push({
-                  id: p.id,
-                  amount: p.amount || 0,
-                  timestamp: p.timestamp || Math.floor(Date.now() / 1000),
-                  description: p.details?.description || "Incoming payment",
-                });
-              }
-            }
+            }, 0);
           } catch {
             console.log(`[Breez event] ${event?.tag || "unknown"}`);
           }
