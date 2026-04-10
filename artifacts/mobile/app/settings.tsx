@@ -30,6 +30,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import { deleteSeedFromSecureStore, disconnectSdk } from "@/utils/breezService";
+import { deleteWalletBackup } from "@/utils/icloudBackup";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "NZD", "AUD", "CAD", "JPY", "CHF"];
 const FIAT_LABELS: Record<string, string> = {
@@ -115,8 +116,14 @@ export default function SettingsScreen() {
     try {
       await disconnectSdk();
       await deleteSeedFromSecureStore();
+      await deleteWalletBackup();
     } catch {}
-    await updateSettings({ onboardingDone: false, backupCompleted: false });
+    await updateSettings({
+      onboardingDone: false,
+      backupCompleted: false,
+      walletMode: null,
+      walletLabel: null,
+    });
     router.replace("/onboarding");
   };
 

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+export type WalletMode = "seed" | "passkey" | null;
+
 interface Settings {
   fiatCurrency: string;
   primaryDisplay: "sats" | "fiat";
@@ -11,6 +13,8 @@ interface Settings {
   onboardingDone: boolean;
   balanceHidden: boolean;
   biometricsEnabled: boolean;
+  walletMode: WalletMode;
+  walletLabel: string | null;
 }
 
 interface SettingsContextValue {
@@ -33,6 +37,8 @@ const DEFAULT_SETTINGS: Settings = {
   onboardingDone: false,
   balanceHidden: false,
   biometricsEnabled: false,
+  walletMode: null,
+  walletLabel: null,
 };
 
 const STORAGE_KEY = "@buccaneer_settings";

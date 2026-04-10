@@ -16,7 +16,6 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
-import { saveWalletBackup } from "@/utils/icloudBackup";
 import { getSeedFromSecureStore } from "@/utils/breezService";
 
 type Stage = "choose" | "seed" | "verify" | "done";
@@ -88,22 +87,6 @@ export default function BackupScreen() {
     setStage("seed");
   };
 
-  const handleCloudBackup = async () => {
-    if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (seedWords.length >= 12) {
-      await saveWalletBackup(seedWords);
-    } else {
-      try {
-        const seed = await getSeedFromSecureStore();
-        if (seed) {
-          await saveWalletBackup(seed.split(" "));
-        }
-      } catch (_e) {}
-    }
-    await updateSettings({ backupCompleted: true });
-    setStage("done");
-  };
-
   const handleContinueToVerify = () => {
     if (seedWords.length < 12) return;
     const idx = Math.floor(Math.random() * 12);
@@ -157,27 +140,10 @@ export default function BackupScreen() {
             <TreasureMapIcon colors={colors} />
             <Text style={[styles.stageTitle, { color: colors.text }]}>Protect Your Treasure</Text>
             <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
-              Choose how to back up your wallet. You can always do both later.
+              For now, the only safe backup in Bellamy is writing down your seed phrase by hand.
             </Text>
 
             <View style={styles.optionList}>
-              <Pressable
-                testID="cloud-backup-option"
-                style={[styles.optionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
-                onPress={handleCloudBackup}
-              >
-                <View style={[styles.optionIcon, { backgroundColor: "rgba(74,144,217,0.15)" }]}>
-                  <Ionicons name="cloud-outline" size={26} color="#4A90D9" />
-                </View>
-                <View style={styles.optionText}>
-                  <Text style={[styles.optionTitle, { color: colors.text }]}>Cloud Backup</Text>
-                  <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>Automatic, encrypted, easy restore</Text>
-                </View>
-                <View style={styles.recommendedBadge}>
-                  <Text style={styles.recommendedText}>Recommended</Text>
-                </View>
-              </Pressable>
-
               <Pressable
                 testID="write-down-option"
                 style={[styles.optionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
@@ -197,6 +163,18 @@ export default function BackupScreen() {
                   </>
                 )}
               </Pressable>
+            </View>
+
+            <View style={[styles.infoCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+              <View style={[styles.optionIcon, { backgroundColor: "rgba(74,144,217,0.15)" }]}>
+                <Ionicons name="cloud-offline-outline" size={26} color="#4A90D9" />
+              </View>
+              <View style={styles.optionText}>
+                <Text style={[styles.optionTitle, { color: colors.text }]}>Cloud backup is off</Text>
+                <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+                  We disabled the old cloud backup because it was not strong enough to safely protect your seed phrase.
+                </Text>
+              </View>
             </View>
 
             {seedError && (
@@ -371,6 +349,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   optionList: { width: "100%", gap: 12 },
+  infoCard: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+  },
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -396,17 +383,6 @@ const styles = StyleSheet.create({
     fontFamily: "Nunito_400Regular",
     fontSize: 12,
     color: "#4A6080",
-  },
-  recommendedBadge: {
-    backgroundColor: "rgba(201,162,77,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  recommendedText: {
-    fontFamily: "Nunito_600SemiBold",
-    fontSize: 11,
-    color: "#c9a24d",
   },
   seedGrid: {
     width: "100%",
