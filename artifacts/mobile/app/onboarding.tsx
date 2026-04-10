@@ -255,7 +255,7 @@ export default function OnboardingScreen() {
           {restoreError ? <Text style={styles.restoreError}>{restoreError}</Text> : null}
 
           <Text style={styles.wordCount}>
-            {seedInput.trim().split(/\s+/).filter(Boolean).length} / 12 words
+            {seedInput.trim().split(/\s+/).filter(Boolean).length} words entered
           </Text>
 
           <Pressable style={styles.restoreBtn} onPress={handleRestoreFromSeed}>

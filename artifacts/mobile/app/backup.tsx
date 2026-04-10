@@ -134,7 +134,7 @@ export default function BackupScreen() {
 
   const handleContinueToVerify = () => {
     if (seedWords.length < 12) return;
-    const idx = Math.floor(Math.random() * 12);
+    const idx = Math.floor(Math.random() * seedWords.length);
     const correctWord = seedWords[idx]!;
     const wrongWords = ["wallet", "bitcoin", "pirate", "treasure"].filter(w => w !== correctWord).slice(0, 3);
     const opts = [correctWord, ...wrongWords].sort(() => Math.random() - 0.5);
@@ -356,7 +356,7 @@ export default function BackupScreen() {
             </View>
             <Text style={[styles.stageTitle, { color: colors.text }]}>Verify Your Backup</Text>
             <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
-              What is word #{(verifyWord.index + 1)} of your seed phrase?
+              What is word #{(verifyWord.index + 1)} of your {isPasskeyWallet ? "emergency recovery phrase" : "seed phrase"}?
             </Text>
 
             <View style={styles.verifyOptions}>

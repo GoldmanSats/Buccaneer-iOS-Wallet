@@ -26,6 +26,10 @@ function normalizePasskeyError(error: any): Error {
     return new Error("Face ID wallet setup was cancelled.");
   }
 
+  if (lower.includes("no credentials were returned")) {
+    return new Error("No Face ID wallet was found on this device yet. If you are using the simulator, passkeys may not be available there.");
+  }
+
   if (lower.includes("prf")) {
     return new Error("This device could not complete secure Face ID key derivation. Please try again or use your recovery phrase.");
   }
