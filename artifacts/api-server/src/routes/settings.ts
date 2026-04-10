@@ -1,9 +1,25 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+function walletOwnerAuth(req: Request, res: Response, next: NextFunction): void {
+  const token = req.headers["x-wallet-owner"];
+  const expected = process.env["WALLET_OWNER_TOKEN"];
+  if (!expected) {
+    res.status(503).json({ error: "not_configured", message: "Wallet owner authentication is not configured" });
+    return;
+  }
+  if (!token || token !== expected) {
+    res.status(403).json({ error: "forbidden", message: "Wallet owner authentication required" });
+    return;
+  }
+  next();
+}
+
+router.use(walletOwnerAuth);
 
 async function getOrCreateSettings() {
   const existing = await db.select().from(settingsTable).limit(1);
