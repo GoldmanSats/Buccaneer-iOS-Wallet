@@ -392,7 +392,7 @@ async function processEvent(event: {
   const keys = await db.select().from(agentKeysTable);
   const matchingKey = keys.find((k) => {
     try {
-      return getPublicKey(k.secretKey) === pTag;
+      return k.connectionType === "nwc" && !!k.secretKey && getPublicKey(k.secretKey) === pTag;
     } catch {
       return false;
     }
@@ -404,17 +404,23 @@ async function processEvent(event: {
   }
 
   try {
-    const decrypted = decryptNip04(event.content, matchingKey.secretKey, event.pubkey);
+    if (!matchingKey.secretKey) {
+      console.warn("[NWC] Matching NWC key is missing its private key:", matchingKey.id);
+      return;
+    }
+
+    const secretKey = matchingKey.secretKey;
+    const decrypted = decryptNip04(event.content, secretKey, event.pubkey);
     const request: NwcRequest = JSON.parse(decrypted);
 
     console.log(`[NWC] Processing ${request.method} for key "${matchingKey.name}"`);
 
     const response = await handleNwcRequest(matchingKey, request);
 
-    const responsePubkey = getPublicKey(matchingKey.secretKey);
+    const responsePubkey = getPublicKey(secretKey);
     const responseContent = await encryptNip04(
       JSON.stringify(response),
-      matchingKey.secretKey,
+      secretKey,
       event.pubkey
     );
 
@@ -430,7 +436,7 @@ async function processEvent(event: {
     };
 
     const id = getEventId(responseEvent);
-    const sig = await signEvent({ ...responseEvent, id }, matchingKey.secretKey);
+    const sig = await signEvent({ ...responseEvent, id }, secretKey);
 
     const signedEvent = { ...responseEvent, id, sig };
 
@@ -474,10 +480,13 @@ function scheduleReconnect(delayMs = RECONNECT_DELAY_MS) {
 async function publishInfoEvents(keys: (typeof agentKeysTable.$inferSelect)[]) {
   if (!relayWs || relayWs.readyState !== WebSocket.OPEN) return;
 
-  const nwcKeys = keys.filter((k) => k.isActive && k.connectionType === "nwc");
+  const nwcKeys = keys.filter((k) => k.isActive && k.connectionType === "nwc" && !!k.secretKey);
   for (const key of nwcKeys) {
     try {
-      const pubkey = getPublicKey(key.secretKey);
+      const secretKey = key.secretKey;
+      if (!secretKey) continue;
+
+      const pubkey = getPublicKey(secretKey);
       const infoEvent = {
         pubkey,
         created_at: Math.floor(Date.now() / 1000),
@@ -486,7 +495,7 @@ async function publishInfoEvents(keys: (typeof agentKeysTable.$inferSelect)[]) {
         content: SUPPORTED_METHODS,
       };
       const id = getEventId(infoEvent);
-      const sig = await signEvent({ ...infoEvent, id }, key.secretKey);
+      const sig = await signEvent({ ...infoEvent, id }, secretKey);
       const signed = { ...infoEvent, id, sig };
       relayWs!.send(JSON.stringify(["EVENT", signed]));
       console.log(`[NWC] Published info event (kind 13194) for key "${key.name}" pubkey=${pubkey.slice(0, 12)}...`);
@@ -507,9 +516,10 @@ async function subscribeToKeys() {
   try {
     const keys = await db.select().from(agentKeysTable);
     const pubkeys = keys
-      .filter((k) => k.isActive && k.connectionType === "nwc")
+      .filter((k) => k.isActive && k.connectionType === "nwc" && !!k.secretKey)
       .map((k) => {
         try {
+          if (!k.secretKey) return null;
           return getPublicKey(k.secretKey);
         } catch {
           return null;

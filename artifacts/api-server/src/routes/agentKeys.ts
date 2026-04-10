@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import crypto from "crypto";
 import * as secp256k1 from "@noble/secp256k1";
 import { refreshNwcSubscriptions } from "../lib/nwc.js";
+import { hashAgentSecret } from "../lib/agentSecrets.js";
 
 const router: IRouter = Router();
 
@@ -58,7 +59,7 @@ router.get("/", async (_req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", async (req, res): Promise<void> => {
   try {
     const body = req.body as {
       name: string;
@@ -67,19 +68,20 @@ router.post("/", async (req, res) => {
       connectionType?: string;
     };
     if (!body.name) {
-      return res.status(400).json({ error: "missing_name", message: "Name is required" });
+      res.status(400).json({ error: "missing_name", message: "Name is required" });
+      return;
     }
 
     const connType = body.connectionType ?? "nwc";
     const rawSecret = crypto.randomBytes(32).toString("hex");
     const apiToken = connType === "api" ? `bwk_${crypto.randomBytes(24).toString("hex")}` : null;
     const nwcUri = connType === "nwc" ? generateNwcUri(rawSecret) : "";
-    const secretKey = connType === "api" ? apiToken! : rawSecret;
 
     const created = await db.insert(agentKeysTable).values({
       name: body.name,
       nwcUri,
-      secretKey,
+      secretKey: connType === "nwc" ? rawSecret : null,
+      secretHash: connType === "api" ? hashAgentSecret(apiToken!) : null,
       spendingLimitSats: body.spendingLimitSats ?? null,
       maxDailySats: body.maxDailySats ?? null,
       connectionType: connType,
@@ -111,12 +113,14 @@ router.post("/", async (req, res) => {
       createdAt: k.createdAt.toISOString(),
       lastUsedAt: null,
     });
+    return;
   } catch (err) {
     res.status(500).json({ error: "agent_keys_error", message: String(err) });
+    return;
   }
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", async (req, res): Promise<void> => {
   try {
     const id = parseInt(req.params["id"] ?? "0");
     const body = req.body as Partial<{
@@ -138,7 +142,8 @@ router.patch("/:id", async (req, res) => {
       .returning();
 
     if (updated.length === 0) {
-      return res.status(404).json({ error: "not_found" });
+      res.status(404).json({ error: "not_found" });
+      return;
     }
 
     const k = updated[0]!;
@@ -163,8 +168,10 @@ router.patch("/:id", async (req, res) => {
       createdAt: k.createdAt.toISOString(),
       lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
     });
+    return;
   } catch (err) {
     res.status(500).json({ error: "agent_keys_error", message: String(err) });
+    return;
   }
 });
 

@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { hashAgentSecret } from "./agentSecrets.js";
 
 export interface AuthenticatedRequest extends Request {
   agentKey?: {
@@ -22,44 +23,80 @@ export async function agentAuthMiddleware(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
-) {
+): Promise<void> {
   const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer bwk_")) {
-    return res.status(401).json({
+    res.status(401).json({
       error: "unauthorized",
       message: "Missing or invalid API key. Use: Authorization: Bearer bwk_...",
     });
+    return;
   }
 
   const token = authHeader.slice(7);
 
   try {
-    const keys = await db
+    const tokenHash = hashAgentSecret(token);
+
+    const hashedKeys = await db
       .select()
       .from(agentKeysTable)
-      .where(eq(agentKeysTable.secretKey, token));
+      .where(
+        and(
+          eq(agentKeysTable.connectionType, "api"),
+          eq(agentKeysTable.secretHash, tokenHash),
+        ),
+      );
 
-    if (keys.length === 0) {
-      return res.status(401).json({
+    let key = hashedKeys[0];
+
+    // Support old plaintext API keys one last time, then upgrade them in place.
+    if (!key) {
+      const legacyKeys = await db
+        .select()
+        .from(agentKeysTable)
+        .where(
+          and(
+            eq(agentKeysTable.connectionType, "api"),
+            eq(agentKeysTable.secretKey, token),
+          ),
+        );
+
+      key = legacyKeys[0];
+
+      if (key) {
+        await db
+          .update(agentKeysTable)
+          .set({
+            secretHash: tokenHash,
+            secretKey: null,
+          })
+          .where(eq(agentKeysTable.id, key.id));
+      }
+    }
+
+    if (!key) {
+      res.status(401).json({
         error: "invalid_key",
         message: "API key not found or has been revoked.",
       });
+      return;
     }
 
-    const key = keys[0]!;
-
     if (!key.isActive) {
-      return res.status(403).json({
+      res.status(403).json({
         error: "key_disabled",
         message: "This API key has been disabled.",
       });
+      return;
     }
 
     if (key.connectionType !== "api") {
-      return res.status(403).json({
+      res.status(403).json({
         error: "wrong_key_type",
         message: "This key is not an API key.",
       });
+      return;
     }
 
     const today = todayStr();
@@ -80,11 +117,13 @@ export async function agentAuthMiddleware(
       .where(eq(agentKeysTable.id, key.id));
 
     next();
+    return;
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       error: "auth_error",
       message: String(err),
     });
+    return;
   }
 }
 
