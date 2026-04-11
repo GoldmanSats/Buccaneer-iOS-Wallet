@@ -183,7 +183,12 @@ export default function SendScreen() {
           setIsDecoding(false);
           return;
         }
-        decoded = { ...dec, type: "bolt11" };
+        decoded = {
+          ...dec,
+          amountSats: dec.amountSats ?? parsed.amountSats,
+          description: dec.description ?? parsed.description,
+          type: "bolt11",
+        };
         canonicalDest = parsed.invoice;
         setInvoiceInput(parsed.invoice);
       } else if (parsed.type === "lightning_address") {
