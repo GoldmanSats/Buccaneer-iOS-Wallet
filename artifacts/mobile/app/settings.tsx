@@ -81,15 +81,15 @@ export default function SettingsScreen() {
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
   const isPasskeyWallet = settings.walletMode === "passkey";
-  const deleteRowLabel = isPasskeyWallet ? "Remove Wallet From This Device" : "Delete Wallet";
+  const deleteRowLabel = "Abandon Ship";
   const deleteRowSubtitle = isPasskeyWallet
-    ? "Clear local wallet data and return to setup"
-    : "Wipe wallet and return to setup";
-  const deleteModalTitle = isPasskeyWallet ? "Remove Local Wallet Data?" : "Abandon Ship?";
+    ? "Cast off this device and return to setup"
+    : "Scuttle this wallet and return to setup";
+  const deleteModalTitle = "Abandon Ship?";
   const deleteModalDescription = isPasskeyWallet
-    ? "This will remove Bellamy's local wallet data from this device and return the app to setup."
-    : "This will erase all wallet data from this device. This action cannot be undone.";
-  const deleteModalButtonText = isPasskeyWallet ? "Remove From This Device" : "Delete My Wallet";
+    ? "This will cast Bellamy's wallet off this device and send you back to setup."
+    : "This will scuttle this wallet on this device. This action cannot be undone.";
+  const deleteModalButtonText = isPasskeyWallet ? "Cast Off This Device" : "Scuttle My Wallet";
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
