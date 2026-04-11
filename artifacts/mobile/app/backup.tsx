@@ -222,22 +222,6 @@ export default function BackupScreen() {
               </Pressable>
             </View>
 
-            <View style={[styles.infoCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-              <View style={[styles.optionIcon, { backgroundColor: "rgba(74,144,217,0.15)" }]}>
-                <Ionicons name="cloud-offline-outline" size={26} color="#4A90D9" />
-              </View>
-              <View style={styles.optionText}>
-                <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  {isPasskeyWallet ? "Keep this hidden unless you truly need it" : "Cloud backup is off"}
-                </Text>
-                <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
-                  {isPasskeyWallet
-                    ? "Once these words are revealed, your wallet is no longer relying only on Face ID. Only use this for emergency recovery planning."
-                    : "We disabled the old cloud backup because it was not strong enough to safely protect your seed phrase."}
-                </Text>
-              </View>
-            </View>
-
             {seedError && (
               <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
                 <Text style={{ color: "#E76F51", fontSize: 14, textAlign: "center", fontFamily: "Nunito_400Regular" }}>{seedError}</Text>
@@ -464,15 +448,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   optionList: { width: "100%", gap: 12 },
-  infoCard: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-  },
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
