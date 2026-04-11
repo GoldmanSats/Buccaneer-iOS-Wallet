@@ -27,7 +27,7 @@ import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import Svg, { Path, Circle } from "react-native-svg";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
-import { continueWithPasskey, isPasskeyAvailable } from "@/utils/passkeyService";
+import { continueWithPasskey, getBellamyPasskeyReadiness } from "@/utils/passkeyService";
 import {
   deleteSeedFromSecureStore,
   generateMnemonic,
@@ -156,9 +156,12 @@ export default function OnboardingScreen() {
     setLoadingMessage("Preparing your Face ID wallet...");
 
     try {
-      const passkeySupported = await isPasskeyAvailable();
-      if (!passkeySupported) {
-        throw new Error("Face ID wallet setup is not available on this device yet. Use your recovery phrase or create a seed wallet from More options.");
+      const passkeyReadiness = await getBellamyPasskeyReadiness();
+      if (!passkeyReadiness.ready) {
+        throw new Error(
+          passkeyReadiness.message ||
+            "Face ID wallet setup is not available on this device yet. Use your recovery phrase or create a seed wallet from More options."
+        );
       }
 
       const shouldRestoreExistingPasskey =
@@ -349,6 +352,10 @@ export default function OnboardingScreen() {
             </Pressable>
           </Animated.View>
 
+          <Text style={styles.passkeyNote}>
+            Face ID wallets need a PRF-capable platform passkey. On iPhone, this usually means iOS 18+.
+          </Text>
+
           <Pressable
             onPress={() => setScreen("restore-seed")}
             style={styles.secondaryButton}
@@ -450,6 +457,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   buttonWrap: { width: "100%" },
+  passkeyNote: {
+    fontFamily: "Nunito_400Regular",
+    fontSize: 12,
+    color: "#8FA3C8",
+    lineHeight: 18,
+    textAlign: "center",
+    paddingHorizontal: 20,
+  },
   button: {
     borderRadius: 50,
     overflow: "hidden",

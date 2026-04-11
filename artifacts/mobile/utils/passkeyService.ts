@@ -25,6 +25,38 @@ function getPasskeyApi() {
   };
 }
 
+function getIosMajorVersion(): number | null {
+  if (Platform.OS !== "ios") return null;
+
+  if (typeof Platform.Version === "number") {
+    return Platform.Version;
+  }
+
+  if (typeof Platform.Version === "string") {
+    const majorVersion = Number.parseInt(Platform.Version.split(".")[0] ?? "", 10);
+    return Number.isNaN(majorVersion) ? null : majorVersion;
+  }
+
+  return null;
+}
+
+function createPrfNotSupportedError(message: string): Error {
+  const error = new Error(message) as Error & { code?: string; tag?: string };
+  error.code = "NotSupported";
+  error.tag = "PrfNotSupported";
+  return error;
+}
+
+function ensureCreatedCredentialSupportsPrf(result: any): void {
+  if (result?.clientExtensionResults?.prf?.enabled === true) {
+    return;
+  }
+
+  throw createPrfNotSupportedError(
+    "This device can create passkeys, but it did not confirm the PRF key derivation Bellamy needs for Face ID wallets."
+  );
+}
+
 type ClassifiedPasskeyError =
   | "cancelled"
   | "credentialNotFound"
@@ -230,6 +262,7 @@ async function getOrCreateCredentialWithPrf(
 
     const result = await passkeyApi.create(buildCreateRequest(saltBytes));
     rememberCredentialId(result);
+    ensureCreatedCredentialSupportsPrf(result);
     return { result, created: true };
   }
 }
@@ -331,12 +364,57 @@ export function createPrfProvider(options?: PasskeyFlowOptions) {
 }
 
 export async function isPasskeyAvailable(): Promise<boolean> {
-  if (Platform.OS === "web") return false;
+  const { ready } = await getBellamyPasskeyReadiness();
+  return ready;
+}
+
+export async function getBellamyPasskeyReadiness(): Promise<{
+  ready: boolean;
+  message?: string;
+}> {
+  if (Platform.OS === "web") {
+    return { ready: false, message: "Face ID wallets are not available on web." };
+  }
+
   try {
-    const supported = RNPasskey.isSupported();
-    return supported;
+    if (!RNPasskey.isSupported()) {
+      return {
+        ready: false,
+        message:
+          "Face ID wallet setup is not available on this device yet. Use your recovery phrase or create a seed wallet from More options.",
+      };
+    }
+
+    if (Platform.OS === "ios") {
+      const iosMajorVersion = getIosMajorVersion();
+      if (iosMajorVersion !== null && iosMajorVersion < 18) {
+        return {
+          ready: false,
+          message:
+            "Face ID wallets require iOS 18 or newer because Bellamy uses passkey PRF key derivation.",
+        };
+      }
+
+      const api = RNPasskey as any;
+      if (
+        typeof api.createPlatformKey !== "function" ||
+        typeof api.getPlatformKey !== "function"
+      ) {
+        return {
+          ready: false,
+          message:
+            "Face ID wallet setup requires platform passkeys on this device. Use your recovery phrase or create a seed wallet from More options.",
+        };
+      }
+    }
+
+    return { ready: true };
   } catch {
-    return false;
+    return {
+      ready: false,
+      message:
+        "Face ID wallet setup is not available on this device yet. Use your recovery phrase or create a seed wallet from More options.",
+    };
   }
 }
 
