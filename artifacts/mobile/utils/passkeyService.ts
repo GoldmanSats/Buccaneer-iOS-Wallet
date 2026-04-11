@@ -182,8 +182,8 @@ function buildCreateRequest(saltBytes?: Uint8Array) {
     rp: { id: RP_ID, name: "Bellamy Wallet" },
     user: {
       id: randomUserId(),
-      name: "wallet-user",
-      displayName: "Bellamy Wallet User",
+      name: "Bellamy-Wallet",
+      displayName: "Bellamy Wallet",
     },
     challenge: randomChallenge(),
     pubKeyCredParams: [
