@@ -29,6 +29,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { APP_SHELL_TITLE } from "@/constants/typography";
 import { clearLocalWalletData } from "@/utils/breezService";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
 
@@ -475,7 +476,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  title: { fontFamily: "Chewy_400Regular", fontSize: 28 },
+  title: APP_SHELL_TITLE,
   content: { paddingHorizontal: 24 },
   sectionHeader: {
     fontFamily: "Nunito_700Bold",

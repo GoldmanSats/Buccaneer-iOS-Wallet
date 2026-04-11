@@ -23,6 +23,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { TASK_SHEET_TITLE } from "@/constants/typography";
 
 type Mode = "default" | "amount" | "generated";
 
@@ -347,8 +348,7 @@ const styles = StyleSheet.create({
   handleBar: { width: 40, height: 4, borderRadius: 2 },
   content: { paddingHorizontal: 24, alignItems: "center" },
   pageTitle: {
-    fontFamily: "Chewy_400Regular",
-    fontSize: 32,
+    ...TASK_SHEET_TITLE,
     color: "#FFFFFF",
     alignSelf: "flex-start",
     marginBottom: 20,

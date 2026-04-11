@@ -33,6 +33,7 @@ import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { TASK_SHEET_TITLE } from "@/constants/typography";
 import Svg, { Circle, Line, G } from "react-native-svg";
 import QRCode from "react-native-qrcode-svg";
 
@@ -1257,7 +1258,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
-  receiveTitle: { fontFamily: "Chewy_400Regular", fontSize: 30, textAlign: "center", marginTop: 8, marginBottom: 16 },
+  receiveTitle: { ...TASK_SHEET_TITLE, textAlign: "center", marginTop: 8, marginBottom: 16 },
   receiveScrollContent: { alignItems: "center", paddingBottom: 20 },
   receiveQrContainer: {
     backgroundColor: "#FFFFFF", borderRadius: 16,

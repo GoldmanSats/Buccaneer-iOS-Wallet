@@ -21,6 +21,7 @@ import * as Clipboard from "expo-clipboard";
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { APP_SHELL_TITLE } from "@/constants/typography";
 const API = `${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/api/agent-keys`;
 const OWNER_AUTH_REQUIRED_MESSAGE = "Agent keys are unavailable in the public app build. Use a separately authenticated admin tool instead.";
 
@@ -864,7 +865,7 @@ const st = StyleSheet.create({
     borderWidth: 1,
   },
   headerText: { flex: 1, gap: 2 },
-  title: { fontFamily: "Chewy_400Regular", fontSize: 24 },
+  title: APP_SHELL_TITLE,
   subtitle: { fontFamily: "Nunito_400Regular", fontSize: 12 },
   content: { paddingHorizontal: 24, gap: 16 },
 

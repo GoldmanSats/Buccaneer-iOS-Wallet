@@ -22,6 +22,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
+import { TASK_SHEET_TITLE } from "@/constants/typography";
 import * as BreezService from "@/utils/breezService";
 
 type Stage = "scan" | "paste" | "sending" | "success" | "error";
@@ -631,7 +632,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  title: { fontFamily: "Nunito_700Bold", fontSize: 20 },
+  title: TASK_SHEET_TITLE,
   content: { padding: 20, gap: 16, flexGrow: 1 },
   scannerBox: {
     height: 300,
