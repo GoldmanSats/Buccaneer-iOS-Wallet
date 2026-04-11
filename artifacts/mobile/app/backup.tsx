@@ -71,6 +71,12 @@ export default function BackupScreen() {
     "Your Face ID wallet is convenient for daily use, but your recovery phrase is the backup we most recommend. It gives you a more sovereign way to restore your wallet if you lose your phone or Bellamy is ever unavailable.";
   const passkeyRevealSubtitle =
     "These 12 words are the most independent way to restore this wallet. Write them down on paper or save them in a secure note or small file inside your password manager.";
+  const daylightWarningCardStyle = !isDark
+    ? {
+        backgroundColor: "rgba(250,186,26,0.08)",
+        borderColor: "rgba(201,150,14,0.2)",
+      }
+    : null;
 
   const loadSeedPhrase = async () => {
     if (isPasskeyWallet) {
@@ -207,15 +213,25 @@ export default function BackupScreen() {
 
             {isPasskeyWallet && (
               <>
-                <View style={styles.warningCard}>
+                <View
+                  style={[
+                    styles.warningCard,
+                    daylightWarningCardStyle,
+                  ]}
+                >
                   <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
-                  <Text style={styles.warningText}>
+                  <Text style={[styles.warningText, !isDark ? { color: colors.textSecondary } : null]}>
                     If you lose this phone, your Face ID wallet may only be restorable in another Bellamy Wallet instance. Keeping this phrase gives you a backup path that does not depend on that.
                   </Text>
                 </View>
-                <View style={styles.warningCard}>
+                <View
+                  style={[
+                    styles.warningCard,
+                    daylightWarningCardStyle,
+                  ]}
+                >
                   <Ionicons name="document-text-outline" size={18} color={colors.gold} />
-                  <Text style={styles.warningText}>
+                  <Text style={[styles.warningText, !isDark ? { color: colors.textSecondary } : null]}>
                     We recommend writing it down on paper or storing it in a secure note or small file in your password manager. Never share it with anyone.
                   </Text>
                 </View>
@@ -256,9 +272,14 @@ export default function BackupScreen() {
               ))}
             </View>
 
-            <View style={styles.warningCard}>
+            <View
+              style={[
+                styles.warningCard,
+                daylightWarningCardStyle,
+              ]}
+            >
               <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
-              <Text style={styles.warningText}>
+              <Text style={[styles.warningText, !isDark ? { color: colors.textSecondary } : null]}>
                 Never share these words with anyone. Bellamy will never ask for them, and anyone with them can restore your wallet.
               </Text>
             </View>
@@ -467,7 +488,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "Nunito_400Regular",
     fontSize: 13,
-    color: "#CDDAED",
     lineHeight: 20,
   },
   goldBtn: {
