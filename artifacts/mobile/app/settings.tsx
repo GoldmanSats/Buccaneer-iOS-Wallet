@@ -83,13 +83,17 @@ export default function SettingsScreen() {
   const isPasskeyWallet = settings.walletMode === "passkey";
   const deleteRowLabel = "Abandon Ship";
   const deleteRowSubtitle = isPasskeyWallet
-    ? "Cast off this device and return to setup"
+    ? "Remove this wallet from this device"
     : "Scuttle this wallet and return to setup";
-  const deleteModalTitle = "Abandon Ship?";
+  const deleteModalTitle = isPasskeyWallet ? "Remove Wallet From This Device?" : "Abandon Ship?";
   const deleteModalDescription = isPasskeyWallet
-    ? "This will cast Bellamy's wallet off this device and send you back to setup."
+    ? "This removes Bellamy's wallet data from this device and sends you back to setup. Your passkey may still stay saved in Apple Passwords, so you can restore this wallet later."
     : "This will scuttle this wallet on this device. This action cannot be undone.";
-  const deleteModalButtonText = isPasskeyWallet ? "Cast Off This Device" : "Scuttle My Wallet";
+  const deleteModalNote = isPasskeyWallet
+    ? "To permanently remove the passkey itself, delete it in the Passwords app in iOS."
+    : null;
+  const deleteModalButtonText = isPasskeyWallet ? "Remove From This Device" : "Scuttle My Wallet";
+  const deleteModalCancelText = isPasskeyWallet ? "Keep Wallet on This Device" : "Actually, on second thought...";
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -435,11 +439,16 @@ export default function SettingsScreen() {
             <Text style={s.modalWarningText}>
               {deleteModalDescription}
             </Text>
+            {deleteModalNote && (
+              <Text style={[s.modalNoteText, { color: colors.textMuted }]}>
+                {deleteModalNote}
+              </Text>
+            )}
             <Pressable style={s.modalDeleteBtn} onPress={handleDeleteWallet}>
               <Text style={s.modalDeleteText}>{deleteModalButtonText}</Text>
             </Pressable>
             <Pressable style={[s.modalCancelBtn, { backgroundColor: colors.bgElevated }]} onPress={() => setShowDeleteModal(false)}>
-              <Text style={[s.modalCancelText, { color: colors.text }]}>Actually, on second thought...</Text>
+              <Text style={[s.modalCancelText, { color: colors.text }]}>{deleteModalCancelText}</Text>
             </Pressable>
           </View>
         </View>
@@ -639,6 +648,13 @@ const s = StyleSheet.create({
     fontFamily: "Nunito_700Bold",
     fontSize: 14,
     color: "#EF4444",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  modalNoteText: {
+    fontFamily: "Nunito_400Regular",
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: "center",
     marginBottom: 20,
   },
