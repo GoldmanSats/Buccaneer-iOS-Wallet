@@ -7,10 +7,10 @@ const configuredRpId =
 const RP_ID = configuredRpId || "bellamywallet.com";
 
 let passkeyCredentialId: string | null = null;
-let prfPreflightPassed = false;
 
 type PasskeyFlowOptions = {
   allowCredentialCreation?: boolean;
+  syncLabel?: boolean;
 };
 
 function getPasskeyApi() {
@@ -44,44 +44,89 @@ function normalizePasskeyError(error: any): Error {
   return new Error(rawMessage || "Face ID wallet setup failed.");
 }
 
-async function ensurePasskeyCredential(options?: PasskeyFlowOptions): Promise<string> {
-  if (passkeyCredentialId) return passkeyCredentialId;
+function shouldCreateCredential(error: any): boolean {
+  const rawMessage = error?.message || String(error || "");
+  const lower = rawMessage.toLowerCase();
+  return lower.includes("no credentials");
+}
+
+function rememberCredentialId(result: any): void {
+  if (result?.id && typeof result.id === "string") {
+    passkeyCredentialId = result.id;
+  }
+}
+
+function buildGetRequest(saltBytes: Uint8Array) {
+  return {
+    rpId: RP_ID,
+    challenge: randomChallenge(),
+    ...(passkeyCredentialId
+      ? {
+          allowCredentials: [{ id: passkeyCredentialId, type: "public-key" as const }],
+        }
+      : {}),
+    extensions: {
+      prf: {
+        eval: { first: saltBytes },
+      },
+    },
+  };
+}
+
+function buildCreateRequest(saltBytes?: Uint8Array) {
+  return {
+    rp: { id: RP_ID, name: "Bellamy Wallet" },
+    user: {
+      id: randomUserId(),
+      name: "wallet-user",
+      displayName: "Bellamy Wallet User",
+    },
+    challenge: randomChallenge(),
+    pubKeyCredParams: [
+      { type: "public-key", alg: -7 },
+      { type: "public-key", alg: -257 },
+    ],
+    authenticatorSelection: {
+      residentKey: "required",
+      userVerification: "required",
+    },
+    extensions: saltBytes
+      ? {
+          prf: {
+            eval: { first: saltBytes },
+          },
+        }
+      : { prf: {} },
+  };
+}
+
+function readPrfResult(result: any): ArrayBuffer | null {
+  const prfResult = result?.clientExtensionResults?.prf?.results?.first;
+  if (!prfResult) return null;
+  if (prfResult instanceof ArrayBuffer) return prfResult;
+  if (typeof prfResult === "string") return base64ToArrayBuffer(prfResult);
+  if (prfResult.buffer) return prfResult.buffer;
+  throw new Error("Unexpected PRF output format");
+}
+
+async function getOrCreateCredentialWithPrf(
+  saltBytes: Uint8Array,
+  allowCredentialCreation: boolean
+): Promise<{ result: any; created: boolean }> {
   const passkeyApi = getPasskeyApi();
-  const allowCredentialCreation = options?.allowCredentialCreation ?? false;
 
   try {
-    const result = await passkeyApi.get({
-      rpId: RP_ID,
-      challenge: randomChallenge(),
-      extensions: { prf: { eval: { first: prfSaltBytes("probe") } } },
-    });
-    passkeyCredentialId = result.id;
-    return result.id;
+    const result = await passkeyApi.get(buildGetRequest(saltBytes));
+    rememberCredentialId(result);
+    return { result, created: false };
   } catch (error) {
-    if (!allowCredentialCreation) {
+    if (!allowCredentialCreation || !shouldCreateCredential(error)) {
       throw error;
     }
 
-    const result = await passkeyApi.create({
-      rp: { id: RP_ID, name: "Bellamy Wallet" },
-      user: {
-        id: randomUserId(),
-        name: "wallet-user",
-        displayName: "Bellamy Wallet User",
-      },
-      challenge: randomChallenge(),
-      pubKeyCredParams: [
-        { type: "public-key", alg: -7 },
-        { type: "public-key", alg: -257 },
-      ],
-      authenticatorSelection: {
-        residentKey: "required",
-        userVerification: "required",
-      },
-      extensions: { prf: {} },
-    });
-    passkeyCredentialId = result.id;
-    return result.id;
+    const result = await passkeyApi.create(buildCreateRequest(saltBytes));
+    rememberCredentialId(result);
+    return { result, created: true };
   }
 }
 
@@ -139,29 +184,31 @@ export function createPrfProvider(options?: PasskeyFlowOptions) {
   return {
     async derivePrfSeed(salt: string): Promise<ArrayBuffer> {
       try {
-        await ensurePasskeyCredential({ allowCredentialCreation });
         const saltBytes = prfSaltBytes(salt);
+        const { result, created } = await getOrCreateCredentialWithPrf(
+          saltBytes,
+          allowCredentialCreation
+        );
 
-        const result = await passkeyApi.get({
-          rpId: RP_ID,
-          challenge: randomChallenge(),
-          extensions: {
-            prf: {
-              eval: { first: saltBytes },
-            },
-          },
-        });
+        const directPrfResult = readPrfResult(result);
+        if (directPrfResult) {
+          return directPrfResult;
+        }
 
-        const prfResult =
-          (result as any).clientExtensionResults?.prf?.results?.first;
-        if (!prfResult) {
+        if (!created) {
           throw new Error("PRF output not available. Your device may not support passkey key derivation.");
         }
 
-        if (prfResult instanceof ArrayBuffer) return prfResult;
-        if (typeof prfResult === "string") return base64ToArrayBuffer(prfResult);
-        if (prfResult.buffer) return prfResult.buffer;
-        throw new Error("Unexpected PRF output format");
+        // If registration succeeded but did not return PRF output, retry once
+        // against the newly created credential.
+        const fallbackResult = await passkeyApi.get(buildGetRequest(saltBytes));
+        rememberCredentialId(fallbackResult);
+        const fallbackPrfResult = readPrfResult(fallbackResult);
+        if (!fallbackPrfResult) {
+          throw new Error("PRF output not available. Your device may not support passkey key derivation.");
+        }
+
+        return fallbackPrfResult;
       } catch (error: any) {
         throw normalizePasskeyError(error);
       }
@@ -170,24 +217,13 @@ export function createPrfProvider(options?: PasskeyFlowOptions) {
     async isPrfAvailable(): Promise<boolean> {
       if (Platform.OS === "web") return false;
       try {
-        await ensurePasskeyCredential({ allowCredentialCreation });
+        await this.derivePrfSeed("bellamy-passkey-availability");
         return true;
       } catch {
         return false;
       }
     },
   };
-}
-
-async function preflightPasskeyPrf(provider: ReturnType<typeof createPrfProvider>): Promise<void> {
-  if (prfPreflightPassed) return;
-
-  const probe = await provider.derivePrfSeed("bellamy-passkey-preflight");
-  if (!(probe instanceof ArrayBuffer) || probe.byteLength === 0) {
-    throw new Error("Face ID wallet setup could not derive a secure key on this device.");
-  }
-
-  prfPreflightPassed = true;
 }
 
 export async function isPasskeyAvailable(): Promise<boolean> {
@@ -210,8 +246,8 @@ export async function continueWithPasskey(
   restored: boolean;
 }> {
   const allowCredentialCreation = options?.allowCredentialCreation ?? false;
+  const syncLabel = options?.syncLabel ?? true;
   const provider = createPrfProvider({ allowCredentialCreation });
-  await preflightPasskeyPrf(provider);
 
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   const passkey = new breez.Passkey(provider, undefined);
@@ -219,9 +255,11 @@ export async function continueWithPasskey(
   const wallet = await passkey.getWallet(targetLabel);
   const mnemonic = extractMnemonic(wallet.seed);
 
-  try {
-    await passkey.storeLabel(wallet.label);
-  } catch {}
+  if (syncLabel) {
+    try {
+      await passkey.storeLabel(wallet.label);
+    } catch {}
+  }
 
   const restored = targetLabel !== undefined || !allowCredentialCreation;
   return { mnemonic, label: wallet.label, labels: targetLabel ? [targetLabel] : [], restored };

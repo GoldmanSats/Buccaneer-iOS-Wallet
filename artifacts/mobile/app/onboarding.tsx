@@ -165,6 +165,7 @@ export default function OnboardingScreen() {
         settings.walletMode === "passkey" || !!settings.walletLabel;
       const result = await continueWithPasskey(settings.walletLabel ?? undefined, {
         allowCredentialCreation: !shouldRestoreExistingPasskey,
+        syncLabel: false,
       });
       setLoadingMessage("Opening your Face ID wallet...");
       await finishOnboarding(result.mnemonic, false, {
