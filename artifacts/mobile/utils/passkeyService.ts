@@ -25,23 +25,127 @@ function getPasskeyApi() {
   };
 }
 
-function normalizePasskeyError(error: any): Error {
+type ClassifiedPasskeyError =
+  | "cancelled"
+  | "credentialNotFound"
+  | "prfNotSupported"
+  | "prfEvaluationFailed"
+  | "authenticationFailed"
+  | "generic";
+
+function getPasskeyErrorContext(error: any): {
+  rawMessage: string;
+  lowerMessage: string;
+  lowerCode: string;
+  tag: string;
+  prfTag: string;
+} {
   const rawMessage = error?.message || String(error || "");
-  const lower = rawMessage.toLowerCase();
+  return {
+    rawMessage,
+    lowerMessage: rawMessage.toLowerCase(),
+    lowerCode: typeof error?.code === "string" ? error.code.toLowerCase() : "",
+    tag: typeof error?.tag === "string" ? error.tag : "",
+    prfTag: typeof error?.inner?.[0]?.tag === "string" ? error.inner[0].tag : "",
+  };
+}
 
-  if (lower.includes("cancel") || lower.includes("abort")) {
-    return new Error("Face ID wallet setup was cancelled.");
+function classifyPasskeyError(error: any): ClassifiedPasskeyError {
+  const { lowerMessage, lowerCode, tag, prfTag } = getPasskeyErrorContext(error);
+
+  if (
+    prfTag === "UserCancelled" ||
+    lowerCode.includes("cancelled") ||
+    lowerMessage.includes("cancel") ||
+    lowerMessage.includes("abort")
+  ) {
+    return "cancelled";
   }
 
-  if (lower.includes("no credentials were returned")) {
-    return new Error("Face ID could not access or create your wallet on this device. Please try again.");
+  if (
+    prfTag === "CredentialNotFound" ||
+    lowerMessage.includes("no credentials")
+  ) {
+    return "credentialNotFound";
   }
 
-  if (lower.includes("prf")) {
-    return new Error("This device could not complete secure Face ID key derivation. Please try again or use your recovery phrase.");
+  if (
+    prfTag === "PrfNotSupported" ||
+    lowerCode.includes("notsupported") ||
+    (lowerMessage.includes("not supported") && lowerMessage.includes("prf"))
+  ) {
+    return "prfNotSupported";
   }
 
-  return new Error(rawMessage || "Face ID wallet setup failed.");
+  if (
+    prfTag === "PrfEvaluationFailed" ||
+    tag === "KeyDerivationError" ||
+    tag === "InvalidPrfOutput" ||
+    lowerMessage.includes("prf output not available") ||
+    lowerMessage.includes("unexpected prf output") ||
+    lowerMessage.includes("key derivation") ||
+    lowerMessage.includes("prf")
+  ) {
+    return "prfEvaluationFailed";
+  }
+
+  if (
+    prfTag === "AuthenticationFailed" ||
+    lowerCode.includes("timedout") ||
+    lowerCode.includes("requestfailed") ||
+    lowerMessage.includes("timed out") ||
+    lowerMessage.includes("authentication failed")
+  ) {
+    return "authenticationFailed";
+  }
+
+  return "generic";
+}
+
+function normalizePasskeyError(error: any): Error {
+  const { rawMessage } = getPasskeyErrorContext(error);
+
+  switch (classifyPasskeyError(error)) {
+    case "cancelled":
+      return new Error("Face ID wallet setup was cancelled.");
+    case "credentialNotFound":
+      return new Error("Face ID could not access or create your wallet on this device. Please try again.");
+    case "prfNotSupported":
+    case "prfEvaluationFailed":
+      return new Error("This device could not complete secure Face ID key derivation. Please try again or use your recovery phrase.");
+    case "authenticationFailed":
+      return new Error("Face ID verification failed. Please try again.");
+    case "generic":
+    default:
+      return new Error(rawMessage || "Face ID wallet setup failed.");
+  }
+}
+
+async function toBreezPasskeyPrfError(error: any): Promise<any> {
+  const breez = await import("@breeztech/breez-sdk-spark-react-native");
+  const { rawMessage } = getPasskeyErrorContext(error);
+
+  switch (classifyPasskeyError(error)) {
+    case "cancelled":
+      return new breez.PasskeyPrfError.UserCancelled();
+    case "credentialNotFound":
+      return new breez.PasskeyPrfError.CredentialNotFound();
+    case "prfNotSupported":
+      return new breez.PasskeyPrfError.PrfNotSupported();
+    case "prfEvaluationFailed":
+      return new breez.PasskeyPrfError.PrfEvaluationFailed(
+        rawMessage || "PRF evaluation failed."
+      );
+    case "authenticationFailed":
+      return new breez.PasskeyPrfError.AuthenticationFailed(
+        rawMessage || "Passkey authentication failed."
+      );
+    case "generic":
+    default:
+      return new breez.PasskeyPrfError.Generic(
+        rawMessage || "Passkey operation failed."
+      );
+  }
 }
 
 function shouldCreateCredential(error: any): boolean {
@@ -210,7 +314,7 @@ export function createPrfProvider(options?: PasskeyFlowOptions) {
 
         return fallbackPrfResult;
       } catch (error: any) {
-        throw normalizePasskeyError(error);
+        throw await toBreezPasskeyPrfError(error);
       }
     },
 
@@ -252,17 +356,21 @@ export async function continueWithPasskey(
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   const passkey = new breez.Passkey(provider, undefined);
   const targetLabel = preferredLabel ?? undefined;
-  const wallet = await passkey.getWallet(targetLabel);
-  const mnemonic = extractMnemonic(wallet.seed);
+  try {
+    const wallet = await passkey.getWallet(targetLabel);
+    const mnemonic = extractMnemonic(wallet.seed);
 
-  if (syncLabel) {
-    try {
-      await passkey.storeLabel(wallet.label);
-    } catch {}
+    if (syncLabel) {
+      try {
+        await passkey.storeLabel(wallet.label);
+      } catch {}
+    }
+
+    const restored = targetLabel !== undefined || !allowCredentialCreation;
+    return { mnemonic, label: wallet.label, labels: targetLabel ? [targetLabel] : [], restored };
+  } catch (error: any) {
+    throw normalizePasskeyError(error);
   }
-
-  const restored = targetLabel !== undefined || !allowCredentialCreation;
-  return { mnemonic, label: wallet.label, labels: targetLabel ? [targetLabel] : [], restored };
 }
 
 export async function createWalletWithPasskey(label?: string): Promise<{
