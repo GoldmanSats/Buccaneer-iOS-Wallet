@@ -605,6 +605,17 @@ function validateLnurlAmount(payRequest: any, amountSats: number): void {
   }
 }
 
+async function resolveLnurlPayRequestFromInput(input: string): Promise<any | null> {
+  try {
+    const parsed = await parseInput(input);
+    if ((parsed.type === "lightning_address" || parsed.type === "lnurl") && parsed.payRequest) {
+      return parsed.payRequest;
+    }
+  } catch {}
+
+  return null;
+}
+
 export async function parseInput(input: string) {
   if (!input || typeof input !== "string" || input.trim().length === 0) {
     throw new Error("input must be a non-empty string");
@@ -698,9 +709,18 @@ export async function sendPayment(
   feeSats: number;
   amountSats: number;
 }> {
+  const normalizedBolt11 = normalizeInput(bolt11);
+  const lnurlPayRequest = await resolveLnurlPayRequestFromInput(normalizedBolt11);
+
+  if (lnurlPayRequest) {
+    if (!amountSats || amountSats <= 0) {
+      throw new Error("Amount is required for Lightning address payments.");
+    }
+    return sendLnurlPayment(lnurlPayRequest, amountSats);
+  }
+
   const sdk = await initBreezSdk();
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
-  const normalizedBolt11 = normalizeInput(bolt11);
 
   const prepRequest = breez.PrepareSendPaymentRequest.new({
     paymentRequest: normalizedBolt11,
@@ -791,9 +811,18 @@ export async function prepareSendPayment(
   bolt11: string,
   amountSats?: number
 ): Promise<{ feeSats: number; amountSats: number }> {
+  const normalizedBolt11 = normalizeInput(bolt11);
+  const lnurlPayRequest = await resolveLnurlPayRequestFromInput(normalizedBolt11);
+
+  if (lnurlPayRequest) {
+    if (!amountSats || amountSats <= 0) {
+      throw new Error("Amount is required for Lightning address payments.");
+    }
+    return prepareLnurlPayment(lnurlPayRequest, amountSats);
+  }
+
   const sdk = await initBreezSdk();
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
-  const normalizedBolt11 = normalizeInput(bolt11);
 
   const prepRequest = breez.PrepareSendPaymentRequest.new({
     paymentRequest: normalizedBolt11,
