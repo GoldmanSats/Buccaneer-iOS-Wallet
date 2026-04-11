@@ -9,7 +9,7 @@ const RP_ID = configuredRpId || "bellamywallet.com";
 let passkeyCredentialId: string | null = null;
 
 type PasskeyFlowOptions = {
-  allowCredentialCreation?: boolean;
+  intent?: "create" | "openExisting";
   syncLabel?: boolean;
 };
 
@@ -134,14 +134,25 @@ function classifyPasskeyError(error: any): ClassifiedPasskeyError {
   return "generic";
 }
 
-function normalizePasskeyError(error: any): Error {
+function normalizePasskeyError(
+  error: any,
+  intent: PasskeyFlowOptions["intent"] = "openExisting"
+): Error {
   const { rawMessage } = getPasskeyErrorContext(error);
 
   switch (classifyPasskeyError(error)) {
     case "cancelled":
-      return new Error("Face ID wallet setup was cancelled.");
+      return new Error(
+        intent === "create"
+          ? "Face ID wallet creation was cancelled."
+          : "Opening your Face ID wallet was cancelled."
+      );
     case "credentialNotFound":
-      return new Error("Face ID could not access or create your wallet on this device. Please try again.");
+      return new Error(
+        intent === "create"
+          ? "Bellamy could not create your Face ID wallet on this device. Please try again."
+          : "No existing Bellamy Face ID wallet was found on this device. Choose Create Face ID Wallet to make a new one or use your recovery phrase."
+      );
     case "prfNotSupported":
     case "prfEvaluationFailed":
       return new Error("This device could not complete secure Face ID key derivation. Please try again or use your recovery phrase.");
@@ -316,7 +327,7 @@ function extractMnemonic(seed: any): string {
 
 export function createPrfProvider(options?: PasskeyFlowOptions) {
   const passkeyApi = getPasskeyApi();
-  const allowCredentialCreation = options?.allowCredentialCreation ?? false;
+  const allowCredentialCreation = options?.intent === "create";
 
   return {
     async derivePrfSeed(salt: string): Promise<ArrayBuffer> {
@@ -427,9 +438,10 @@ export async function continueWithPasskey(
   labels: string[];
   restored: boolean;
 }> {
-  const allowCredentialCreation = options?.allowCredentialCreation ?? false;
+  const intent = options?.intent ?? "openExisting";
+  const allowCredentialCreation = intent === "create";
   const syncLabel = options?.syncLabel ?? true;
-  const provider = createPrfProvider({ allowCredentialCreation });
+  const provider = createPrfProvider({ intent });
 
   const breez = await import("@breeztech/breez-sdk-spark-react-native");
   const passkey = new breez.Passkey(provider, undefined);
@@ -444,10 +456,10 @@ export async function continueWithPasskey(
       } catch {}
     }
 
-    const restored = targetLabel !== undefined || !allowCredentialCreation;
+    const restored = intent === "openExisting";
     return { mnemonic, label: wallet.label, labels: targetLabel ? [targetLabel] : [], restored };
   } catch (error: any) {
-    throw normalizePasskeyError(error);
+    throw normalizePasskeyError(error, intent);
   }
 }
 
@@ -455,7 +467,7 @@ export async function createWalletWithPasskey(label?: string): Promise<{
   mnemonic: string;
   label: string;
 }> {
-  const result = await continueWithPasskey(label, { allowCredentialCreation: true });
+  const result = await continueWithPasskey(label, { intent: "create" });
   return { mnemonic: result.mnemonic, label: result.label };
 }
 
@@ -464,11 +476,11 @@ export async function restoreWalletWithPasskey(label?: string): Promise<{
   label: string;
   labels: string[];
 }> {
-  const result = await continueWithPasskey(label, { allowCredentialCreation: false });
+  const result = await continueWithPasskey(label, { intent: "openExisting" });
   return { mnemonic: result.mnemonic, label: result.label, labels: result.labels };
 }
 
 export async function exportMnemonicFromPasskey(label?: string): Promise<string> {
-  const result = await continueWithPasskey(label, { allowCredentialCreation: false });
+  const result = await continueWithPasskey(label, { intent: "openExisting" });
   return result.mnemonic;
 }

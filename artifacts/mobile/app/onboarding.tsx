@@ -27,7 +27,10 @@ import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import Svg, { Path, Circle } from "react-native-svg";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
-import { continueWithPasskey, getBellamyPasskeyReadiness } from "@/utils/passkeyService";
+import {
+  continueWithPasskey,
+  getBellamyPasskeyReadiness,
+} from "@/utils/passkeyService";
 import {
   deleteSeedFromSecureStore,
   generateMnemonic,
@@ -145,7 +148,7 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handlePasskeyPrimary = async () => {
+  const handlePasskeyAction = async (intent: "create" | "openExisting") => {
     if (Platform.OS !== "web") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -153,7 +156,9 @@ export default function OnboardingScreen() {
     setIsInitializing(true);
     setInitError(null);
     setShowMoreOptions(false);
-    setLoadingMessage("Preparing your Face ID wallet...");
+    setLoadingMessage(
+      intent === "create" ? "Creating your Face ID wallet..." : "Opening your Face ID wallet..."
+    );
 
     try {
       const passkeyReadiness = await getBellamyPasskeyReadiness();
@@ -164,13 +169,11 @@ export default function OnboardingScreen() {
         );
       }
 
-      const shouldRestoreExistingPasskey =
-        settings.walletMode === "passkey" || !!settings.walletLabel;
-      const result = await continueWithPasskey(settings.walletLabel ?? undefined, {
-        allowCredentialCreation: !shouldRestoreExistingPasskey,
-        syncLabel: false,
-      });
-      setLoadingMessage("Opening your Face ID wallet...");
+      const result =
+        await continueWithPasskey(
+          intent === "openExisting" ? settings.walletLabel ?? undefined : undefined,
+          { intent, syncLabel: false }
+        );
       await finishOnboarding(result.mnemonic, false, {
         walletMode: "passkey",
         walletLabel: result.label,
@@ -180,6 +183,14 @@ export default function OnboardingScreen() {
       setIsInitializing(false);
       setScreen("welcome");
     }
+  };
+
+  const handleCreatePasskeyWallet = async () => {
+    await handlePasskeyAction("create");
+  };
+
+  const handleOpenExistingPasskeyWallet = async () => {
+    await handlePasskeyAction("openExisting");
   };
 
   const handleRestoreFromSeed = async () => {
@@ -339,7 +350,11 @@ export default function OnboardingScreen() {
           )}
 
           <Animated.View style={[styles.buttonWrap, buttonStyle]}>
-            <Pressable testID="create-wallet-button" style={styles.button} onPress={handlePasskeyPrimary}>
+            <Pressable
+              testID="create-wallet-button"
+              style={styles.button}
+              onPress={handleCreatePasskeyWallet}
+            >
               <LinearGradient
                 colors={[GOLD_LIGHT, GOLD, "#b8922f"]}
                 start={{ x: 0, y: 0 }}
@@ -347,20 +362,27 @@ export default function OnboardingScreen() {
                 style={styles.buttonGradient}
               >
                 <Ionicons name="scan-outline" size={20} color={NAVY} />
-                <Text style={styles.buttonText}>Continue with Face ID</Text>
+                <Text style={styles.buttonText}>Create Face ID Wallet</Text>
               </LinearGradient>
             </Pressable>
           </Animated.View>
 
           <Text style={styles.passkeyNote}>
-            Face ID wallets need a PRF-capable platform passkey. On iPhone, this usually means iOS 18+.
+            Create makes a new Bellamy Face ID wallet. Open is for one you already set up before. Face ID wallets need a PRF-capable platform passkey, usually iOS 18+ on iPhone.
           </Text>
+
+          <Pressable
+            onPress={handleOpenExistingPasskeyWallet}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>Open Existing Face ID Wallet</Text>
+          </Pressable>
 
           <Pressable
             onPress={() => setScreen("restore-seed")}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>Use Recovery Phrase</Text>
+            <Text style={styles.secondaryButtonText}>Restore with Recovery Phrase</Text>
           </Pressable>
 
           <Pressable
