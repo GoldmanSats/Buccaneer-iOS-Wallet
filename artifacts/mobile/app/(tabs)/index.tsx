@@ -301,6 +301,13 @@ export default function HomeScreen() {
   const receiveSheetTranslateY = useSharedValue(0);
   const txDetailTranslateY = useSharedValue(0);
   const txLogScrollOffset = useRef(0);
+  const txLogDismissTriggeredRef = useRef(false);
+
+  const collapseTxLog = useCallback(() => {
+    if (!isLogExpandedRef.current) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsLogExpanded(false);
+  }, []);
 
   const txDismissGesture = Gesture.Pan()
     .activeOffsetY(8)
@@ -736,14 +743,19 @@ export default function HomeScreen() {
             scrollEnabled={true}
             scrollEventThrottle={16}
             bounces={true}
-            onScroll={(e) => { txLogScrollOffset.current = e.nativeEvent.contentOffset.y; }}
-            onScrollEndDrag={(e) => {
+            onScrollBeginDrag={() => {
+              txLogDismissTriggeredRef.current = false;
+            }}
+            onScroll={(e) => {
               const offsetY = e.nativeEvent.contentOffset.y;
-              const velocityY = e.nativeEvent.velocity?.y ?? 0;
-              if (offsetY <= 0 && (velocityY > 0.3 || offsetY < -20)) {
-                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsLogExpanded(false);
+              txLogScrollOffset.current = offsetY;
+              if (!txLogDismissTriggeredRef.current && offsetY < -20) {
+                txLogDismissTriggeredRef.current = true;
+                collapseTxLog();
               }
+            }}
+            onScrollEndDrag={() => {
+              txLogDismissTriggeredRef.current = false;
             }}
           >
             {transactions.length === 0 ? (
