@@ -803,9 +803,11 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             scrollEventThrottle={16}
-            bounces={true}
+            bounces={false}
+            alwaysBounceVertical={false}
+            overScrollMode="never"
             onScroll={(e) => {
-              txLogScrollOffset.current = e.nativeEvent.contentOffset.y;
+              txLogScrollOffset.current = Math.max(e.nativeEvent.contentOffset.y, 0);
             }}
           >
             {transactions.length === 0 ? (
