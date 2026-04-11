@@ -52,6 +52,51 @@ function sanitizeBigInt(obj: any): any {
   return obj;
 }
 
+function toPositiveNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function satsFromMsats(value: unknown): number | undefined {
+  const msats = toPositiveNumber(value);
+  return msats ? Math.floor(msats / 1000) : undefined;
+}
+
+function extractInvoiceAmountSats(parsed: any): number | undefined {
+  const details = parsed?.inner?.[0] || parsed?.inner;
+  const invoiceDetails = details?.invoiceDetails || details;
+
+  return (
+    toPositiveNumber(invoiceDetails?.amountSats) ??
+    toPositiveNumber(invoiceDetails?.amountSat) ??
+    satsFromMsats(invoiceDetails?.amountMsat) ??
+    satsFromMsats(invoiceDetails?.invoice?.amountMsat) ??
+    toPositiveNumber(parsed?.amountSats) ??
+    toPositiveNumber(parsed?.amountSat) ??
+    satsFromMsats(parsed?.amountMsat) ??
+    satsFromMsats(parsed?.invoice?.amountMsat)
+  );
+}
+
+function extractPrepareSendFeeSats(prepared: any): number {
+  const paymentMethod = prepared?.paymentMethod;
+
+  if (paymentMethod?.tag === "Bolt11Invoice") {
+    const inner = paymentMethod.inner || {};
+    return Number((inner.sparkTransferFeeSats ?? 0) + (inner.lightningFeeSats ?? 0));
+  }
+
+  if (paymentMethod?.tag === "SparkAddress") {
+    return Number(paymentMethod.inner?.fee ?? 0);
+  }
+
+  if (paymentMethod?.tag === "BitcoinAddress") {
+    const medium = paymentMethod.inner?.feeQuote?.speedMedium;
+    return Number((medium?.userFeeSat ?? 0) + (medium?.l1BroadcastFeeSat ?? 0));
+  }
+
+  return Number(prepared?.feeSats ?? prepared?.fees ?? prepared?.feeSat ?? prepared?.feesSat ?? prepared?.estimatedFees ?? 0);
+}
+
 async function autoClaimDeposits(deposits: any[]) {
   if (!sdkInstance || deposits.length === 0) return;
   const { MaxFee } = await import("@breeztech/breez-sdk-spark-react-native");
@@ -650,12 +695,7 @@ export async function parseInput(input: string) {
   if (sanitized?.tag === "Bolt11Invoice") {
     const details = sanitized.inner?.[0] || sanitized.inner;
     const invoice = details?.invoice;
-    let amountSats: number | undefined;
-    if (typeof details?.amountSats === "number" && details.amountSats > 0) {
-      amountSats = details.amountSats;
-    } else if (typeof invoice?.amountMsat === "number" && invoice.amountMsat > 0) {
-      amountSats = Math.floor(invoice.amountMsat / 1000);
-    }
+    const amountSats = extractInvoiceAmountSats(sanitized);
     return {
       type: "bolt11" as const,
       invoice: invoice?.bolt11 || trimmed,
@@ -847,8 +887,8 @@ export async function prepareSendPayment(
 
   const sanitized = sanitizeBigInt(prepared);
   return {
-    feeSats: Number(sanitized.fees ?? sanitized.feeSat ?? sanitized.feesSat ?? sanitized.estimatedFees ?? 0),
-    amountSats: Number(prepared.amount ?? amountSats ?? 0),
+    feeSats: extractPrepareSendFeeSats(sanitized),
+    amountSats: Number(sanitized.amount ?? amountSats ?? 0),
   };
 }
 
@@ -935,13 +975,7 @@ export async function decodeInvoice(bolt11: string): Promise<{
   if (sanitized?.tag === "Bolt11Invoice") {
     const details = sanitized.inner?.[0] || sanitized.inner;
     const invoice = details?.invoice;
-
-    let amountSats: number | undefined;
-    if (typeof details?.amountSats === "number" && details.amountSats > 0) {
-      amountSats = details.amountSats;
-    } else if (typeof invoice?.amountMsat === "number" && invoice.amountMsat > 0) {
-      amountSats = Math.floor(invoice.amountMsat / 1000);
-    }
+    const amountSats = extractInvoiceAmountSats(sanitized);
 
     const expiry = invoice?.expiry ?? 3600;
     const timestamp = invoice?.timestamp || 0;

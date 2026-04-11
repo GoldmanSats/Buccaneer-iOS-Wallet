@@ -113,6 +113,51 @@ function sanitizeBigInt(obj: any): any {
   return obj;
 }
 
+function toPositiveNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function satsFromMsats(value: unknown): number | undefined {
+  const msats = toPositiveNumber(value);
+  return msats ? Math.floor(msats / 1000) : undefined;
+}
+
+function extractInvoiceAmountSats(parsed: any): number | undefined {
+  const details = parsed?.inner?.[0] || parsed?.inner;
+  const invoiceDetails = details?.invoiceDetails || details;
+
+  return (
+    toPositiveNumber(invoiceDetails?.amountSats) ??
+    toPositiveNumber(invoiceDetails?.amountSat) ??
+    satsFromMsats(invoiceDetails?.amountMsat) ??
+    satsFromMsats(invoiceDetails?.invoice?.amountMsat) ??
+    toPositiveNumber(parsed?.amountSats) ??
+    toPositiveNumber(parsed?.amountSat) ??
+    satsFromMsats(parsed?.amountMsat) ??
+    satsFromMsats(parsed?.invoice?.amountMsat)
+  );
+}
+
+function extractPrepareSendFeeSats(prepared: any): number {
+  const paymentMethod = prepared?.paymentMethod;
+
+  if (paymentMethod?.tag === "Bolt11Invoice") {
+    const inner = paymentMethod.inner || {};
+    return Number((inner.sparkTransferFeeSats ?? 0) + (inner.lightningFeeSats ?? 0));
+  }
+
+  if (paymentMethod?.tag === "SparkAddress") {
+    return Number(paymentMethod.inner?.fee ?? 0);
+  }
+
+  if (paymentMethod?.tag === "BitcoinAddress") {
+    const medium = paymentMethod.inner?.feeQuote?.speedMedium;
+    return Number((medium?.userFeeSat ?? 0) + (medium?.l1BroadcastFeeSat ?? 0));
+  }
+
+  return Number(prepared?.feeSats ?? prepared?.fees ?? prepared?.feeSat ?? prepared?.feesSat ?? prepared?.estimatedFees ?? 0);
+}
+
 export async function initBreezSdk(): Promise<any> {
   if (sdkInstance) return sdkInstance;
   if (sdkInitializing) return sdkInitializing;
@@ -274,14 +319,7 @@ export async function parseInput(input: string) {
   console.log(`[Breez parseInput] type=${sanitized?.type}, keys=${JSON.stringify(Object.keys(sanitized || {}))}, full=${JSON.stringify(sanitized).slice(0, 500)}`);
 
   if (sanitized?.type === "bolt11" || sanitized?.type === "bolt11Invoice") {
-    let amountSats: number | undefined;
-    if (typeof sanitized.amountMsat === "number" && sanitized.amountMsat > 0) {
-      amountSats = Math.floor(sanitized.amountMsat / 1000);
-    } else if (typeof sanitized.invoice?.amountMsat === "number" && sanitized.invoice.amountMsat > 0) {
-      amountSats = Math.floor(sanitized.invoice.amountMsat / 1000);
-    } else if (typeof sanitized.amountSats === "number" && sanitized.amountSats > 0) {
-      amountSats = sanitized.amountSats;
-    }
+    const amountSats = extractInvoiceAmountSats(sanitized);
     const bolt11Str = sanitized.invoice?.bolt11 || trimmed;
     console.log(`[Breez parseInput bolt11] amountSats=${amountSats}, amountMsat=${sanitized.amountMsat}`);
     return {
@@ -347,9 +385,9 @@ export async function prepareSendPayment(destination: string, amountSats?: numbe
   lastPrepareResponse = prepared;
   const sanitized = sanitizeBigInt(prepared);
   return {
-    feesSat: sanitized.fees || sanitized.feeSat || 0,
+    feesSat: extractPrepareSendFeeSats(sanitized),
     destination,
-    amountSat: sanitized.amountSat || amountSats || 0,
+    amountSat: sanitized.amount || sanitized.amountSat || amountSats || 0,
     prepareResponse: prepared,
   };
 }
@@ -594,14 +632,7 @@ export async function decodeInvoice(bolt11: string): Promise<{
     const sanitized = sanitizeBigInt(parsed);
     const now = Math.floor(Date.now() / 1000);
 
-    let amountSats: number | undefined;
-    if (typeof sanitized.amountMsat === "number" && sanitized.amountMsat > 0) {
-      amountSats = Math.floor(sanitized.amountMsat / 1000);
-    } else if (typeof sanitized.invoice?.amountMsat === "number" && sanitized.invoice.amountMsat > 0) {
-      amountSats = Math.floor(sanitized.invoice.amountMsat / 1000);
-    } else if (typeof sanitized.amountSats === "number" && sanitized.amountSats > 0) {
-      amountSats = sanitized.amountSats;
-    }
+    const amountSats = extractInvoiceAmountSats(sanitized);
 
     const expiry = sanitized.expiry ?? sanitized.invoice?.expiry ?? 3600;
     const timestamp = sanitized.timestamp || sanitized.invoice?.timestamp || 0;

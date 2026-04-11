@@ -31,7 +31,7 @@ export default function SendScreen() {
   const { settings } = useSettings();
   const colors = settings.isDarkMode ? MIDNIGHT : DAYLIGHT;
   const isDark = settings.isDarkMode;
-  const { sendPayment, sendLnurlPayment, decodeInvoice, parseInput, btcPrice, balance } = useWallet();
+  const { sendPayment, sendLnurlPayment, decodeInvoice, parseInput, btcPrice, balance, sparkAddress, unifiedQr, bitcoinAddress } = useWallet();
   const sats = balance?.balanceSats ?? 0;
   const [stage, setStage] = useState<Stage>("scan");
   const [invoiceInput, setInvoiceInput] = useState("");
@@ -94,7 +94,24 @@ export default function SendScreen() {
     setStage("paste");
     Clipboard.getStringAsync()
       .then((text) => {
-        if (text) setInvoiceInput((prev) => prev || text);
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        const normalizedClipboard = normalizeQrData(trimmed).toLowerCase();
+        const ownDestinations = new Set(
+          [sparkAddress, unifiedQr, bitcoinAddress]
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .flatMap((value) => [value.toLowerCase(), normalizeQrData(value).toLowerCase()])
+        );
+
+        if (ownDestinations.has(trimmed.toLowerCase()) || ownDestinations.has(normalizedClipboard)) {
+          setError("Clipboard contains one of your own wallet addresses. Paste the recipient's invoice instead.");
+          return;
+        }
+
+        setError("");
+        setInvoiceInput((prev) => prev || trimmed);
       })
       .catch(() => {});
   };
@@ -165,6 +182,29 @@ export default function SendScreen() {
     if (reqId === feeRequestRef.current) setIsFeeLoading(false);
   };
 
+  useEffect(() => {
+    if (!decodedInvoice) return;
+
+    const amountSats = sendAmountInput ? parseInt(sendAmountInput, 10) : undefined;
+    if (!amountSats || amountSats <= 0) {
+      feeRequestRef.current++;
+      setEstimatedFee(null);
+      setIsFeeLoading(false);
+      return;
+    }
+
+    const isLnurlPayment = decodedInvoice.type === "lightning_address" || decodedInvoice.type === "lnurl";
+    const destinationSource = isLnurlPayment ? (decodedInvoice.address || invoiceInput) : invoiceInput;
+    const destination = destinationSource.trim();
+    if (!destination && !decodedInvoice.payRequest) return;
+
+    const timeoutId = setTimeout(() => {
+      fetchFeeEstimate(destination, amountSats, decodedInvoice.type, decodedInvoice.payRequest);
+    }, 250);
+
+    return () => clearTimeout(timeoutId);
+  }, [decodedInvoice, invoiceInput, sendAmountInput]);
+
   const handleDecodeInput = async (input: string) => {
     if (!input.trim()) return;
     setIsDecoding(true);
@@ -174,7 +214,6 @@ export default function SendScreen() {
       const parsed = await parseInput(input.trim());
 
       let decoded: typeof decodedInvoice = null;
-      let canonicalDest = input.trim();
 
       if (parsed.type === "bolt11" && parsed.invoice) {
         const dec = await decodeInvoice(parsed.invoice);
@@ -189,7 +228,6 @@ export default function SendScreen() {
           description: dec.description ?? parsed.description,
           type: "bolt11",
         };
-        canonicalDest = parsed.invoice;
         setInvoiceInput(parsed.invoice);
       } else if (parsed.type === "lightning_address") {
         decoded = {
@@ -199,7 +237,6 @@ export default function SendScreen() {
           isExpired: false,
           payRequest: parsed.payRequest,
         };
-        canonicalDest = parsed.address || input.trim();
       } else if (parsed.type === "bitcoin") {
         decoded = {
           type: "bitcoin",
@@ -208,7 +245,6 @@ export default function SendScreen() {
           description: "On-chain payment",
           isExpired: false,
         };
-        canonicalDest = parsed.address || input.trim();
       } else if (parsed.type === "lnurl") {
         decoded = {
           type: "lnurl",
@@ -217,7 +253,6 @@ export default function SendScreen() {
           isExpired: false,
           payRequest: parsed.payRequest,
         };
-        canonicalDest = parsed.address || input.trim();
       } else if (parsed.type === "nwc_uri") {
         setDecodedInvoice(null);
         setError("This is an NWC connection string, not a payment destination. Paste a Lightning invoice, Lightning address, LNURL, or Bitcoin address instead.");
@@ -239,11 +274,8 @@ export default function SendScreen() {
 
       if (decoded) {
         setDecodedInvoice(decoded);
-        setSendAmountInput("");
+        setSendAmountInput(decoded.amountSats && decoded.amountSats > 0 ? String(decoded.amountSats) : "");
         setStage("paste");
-        if (decoded.amountSats && decoded.amountSats > 0) {
-          fetchFeeEstimate(canonicalDest, decoded.amountSats, decoded.type, decoded.payRequest);
-        }
       }
     } catch (e) {
       setDecodedInvoice(null);
@@ -255,7 +287,7 @@ export default function SendScreen() {
 
   const handleSend = async () => {
     if (!invoiceInput) return;
-    const amountToSend = decodedInvoice?.amountSats || (sendAmountInput ? parseInt(sendAmountInput, 10) : undefined);
+    const amountToSend = sendAmountInput ? parseInt(sendAmountInput, 10) : undefined;
     if (!amountToSend || amountToSend <= 0) {
       setError("Please enter an amount");
       return;
@@ -295,6 +327,10 @@ export default function SendScreen() {
       default: return "Lightning";
     }
   };
+
+  const parsedSendAmount = sendAmountInput ? parseInt(sendAmountInput, 10) || 0 : 0;
+  const isFixedInvoiceAmount = decodedInvoice?.type === "bolt11" && Boolean(decodedInvoice.amountSats && decodedInvoice.amountSats > 0);
+  const feePlaceholder = parsedSendAmount > 0 ? "Fee preview unavailable" : "Enter amount to preview fees";
 
   return (
     <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
@@ -402,26 +438,17 @@ export default function SendScreen() {
                 )}
               </View>
 
-              {decodedInvoice && decodedInvoice.amountSats && decodedInvoice.amountSats > 0 && (
-                <Animated.View entering={FadeIn} style={{ alignItems: "center", gap: 4, paddingVertical: 8 }}>
-                  <Text style={[styles.amountLabel, { color: colors.textMuted, textAlign: "center" }]}>Amount to send</Text>
-                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-                    <Text style={[styles.fixedAmountDisplay, { color: colors.text }]}>
-                      {decodedInvoice.amountSats.toLocaleString()}
-                    </Text>
-                    <Text style={[styles.fixedAmountUnit, { color: isDark ? colors.coral : colors.coralDark }]}>sats</Text>
-                  </View>
-                  {satsToFiat(decodedInvoice.amountSats) && (
-                    <Text style={[styles.fiatConversion, { color: colors.textMuted }]}>
-                      ≈ {satsToFiat(decodedInvoice.amountSats)}
-                    </Text>
-                  )}
-                </Animated.View>
-              )}
-
-              {decodedInvoice && !decodedInvoice.amountSats && (
+              {decodedInvoice && (
                 <Animated.View entering={FadeIn}>
-                  <Text style={[styles.amountLabel, { color: colors.text }]}>Enter Amount to Send</Text>
+                  <View style={styles.amountHeaderRow}>
+                    <Text style={[styles.amountLabel, { color: colors.text, marginBottom: 0 }]}>Amount to Send</Text>
+                    {isFixedInvoiceAmount && (
+                      <View style={[styles.fixedAmountBadge, { backgroundColor: isDark ? "rgba(74,144,217,0.15)" : "rgba(74,144,217,0.10)" }]}>
+                        <Ionicons name="lock-closed-outline" size={12} color="#4A90D9" />
+                        <Text style={styles.fixedAmountBadgeText}>Fixed by invoice</Text>
+                      </View>
+                    )}
+                  </View>
                   <View style={[styles.amountInputRow, { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, borderColor: colors.border }]}>
                     <TextInput
                       testID="send-amount-input"
@@ -435,44 +462,30 @@ export default function SendScreen() {
                         setError("");
                       }}
                       keyboardType="number-pad"
-                      onBlur={() => {
-                        const amt = parseInt(sendAmountInput, 10);
-                        if (amt > 0 && invoiceInput) {
-                          fetchFeeEstimate(
-                            invoiceInput.trim(),
-                            amt,
-                            decodedInvoice?.type,
-                            decodedInvoice?.payRequest
-                          );
-                        }
-                      }}
+                      editable={!isFixedInvoiceAmount}
                     />
                     <Text style={[styles.amountUnit, { color: colors.textMuted }]}>sats</Text>
                   </View>
-                  <View style={styles.balanceRow}>
-                    <Text style={[styles.balanceText, { color: colors.textMuted }]}>
-                      Available: {sats.toLocaleString()} sats
-                    </Text>
-                    <Pressable
-                      style={[styles.maxBtn, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(13,110,125,0.12)" }]}
-                      onPress={() => {
-                        setSendAmountInput(String(sats));
-                        if (sats > 0 && invoiceInput) {
-                          fetchFeeEstimate(
-                            invoiceInput.trim(),
-                            sats,
-                            decodedInvoice?.type,
-                            decodedInvoice?.payRequest
-                          );
-                        }
-                      }}
-                    >
-                      <Text style={[styles.maxBtnText, { color: isDark ? colors.teal : colors.tealDark }]}>Max</Text>
-                    </Pressable>
-                  </View>
-                  {sendAmountInput && satsToFiat(parseInt(sendAmountInput, 10) || 0) && (
+                  {!isFixedInvoiceAmount && (
+                    <View style={styles.balanceRow}>
+                      <Text style={[styles.balanceText, { color: colors.textMuted }]}>
+                        Available: {sats.toLocaleString()} sats
+                      </Text>
+                      <Pressable
+                        style={[styles.maxBtn, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(13,110,125,0.12)" }]}
+                        onPress={() => {
+                          setSendAmountInput(String(sats));
+                          setEstimatedFee(null);
+                          setError("");
+                        }}
+                      >
+                        <Text style={[styles.maxBtnText, { color: isDark ? colors.teal : colors.tealDark }]}>Max</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                  {parsedSendAmount > 0 && satsToFiat(parsedSendAmount) && (
                     <Text style={[styles.fiatConversion, { color: colors.textMuted }]}>
-                      ≈ {satsToFiat(parseInt(sendAmountInput, 10) || 0)}
+                      ≈ {satsToFiat(parsedSendAmount)}
                     </Text>
                   )}
                 </Animated.View>
@@ -492,7 +505,7 @@ export default function SendScreen() {
                     </Text>
                   ) : (
                     <Text style={[styles.feeValue, { color: isDark ? colors.coral : colors.coralDark }]}>
-                      Calculated on send
+                      {feePlaceholder}
                     </Text>
                   )}
                 </View>
@@ -517,7 +530,7 @@ export default function SendScreen() {
                     testID="confirm-send-button"
                     style={styles.confirmBtn}
                     onPress={handleSend}
-                    disabled={!decodedInvoice.amountSats && (!sendAmountInput || parseInt(sendAmountInput, 10) <= 0)}
+                    disabled={!sendAmountInput || parseInt(sendAmountInput, 10) <= 0}
                   >
                     <LinearGradient
                       colors={["#E76F51", "#C45A3D"]}
@@ -727,7 +740,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   parsedSubtext: { fontFamily: "Nunito_400Regular", fontSize: 12 },
+  amountHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
   amountLabel: { fontFamily: "Nunito_700Bold", fontSize: 16, marginBottom: 8 },
+  fixedAmountBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  fixedAmountBadgeText: { fontFamily: "Nunito_500Medium", fontSize: 12, color: "#4A90D9" },
   amountInputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -757,8 +786,6 @@ const styles = StyleSheet.create({
   },
   maxBtnText: { fontFamily: "Nunito_700Bold", fontSize: 13 },
   fiatConversion: { fontFamily: "Nunito_400Regular", fontSize: 13, textAlign: "right", marginTop: 4 },
-  fixedAmountDisplay: { fontFamily: "Chewy_400Regular", fontSize: 48 },
-  fixedAmountUnit: { fontFamily: "Nunito_700Bold", fontSize: 22, marginBottom: 6 },
   feeCard: {
     borderRadius: 14,
     padding: 14,
