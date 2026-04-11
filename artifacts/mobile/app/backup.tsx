@@ -20,7 +20,7 @@ import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import { getSeedFromSecureStore } from "@/utils/breezService";
 import { exportMnemonicFromPasskey } from "@/utils/passkeyService";
 
-type Stage = "choose" | "warning" | "seed" | "verify" | "done";
+type Stage = "choose" | "seed" | "verify" | "done";
 
 function TreasureMapIcon({ colors }: { colors: typeof MIDNIGHT }) {
   return (
@@ -67,6 +67,11 @@ export default function BackupScreen() {
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
   const [seedError, setSeedError] = useState<string | null>(null);
+  const passkeyIntroTitle = "Recovery Phrase";
+  const passkeyIntroSubtitle =
+    "Your Face ID wallet is convenient for daily use, but your recovery phrase is the backup we most recommend. It gives you a more sovereign way to restore your wallet if you lose your phone or Bellamy is ever unavailable.";
+  const passkeyRevealSubtitle =
+    "These 12 words are the most independent way to restore this wallet. Write them down on paper or save them in a secure note or small file inside your password manager.";
 
   const loadSeedPhrase = async () => {
     if (isPasskeyWallet) {
@@ -78,11 +83,6 @@ export default function BackupScreen() {
 
   const handleWriteDown = async () => {
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (isPasskeyWallet) {
-      setSeedError(null);
-      setStage("warning");
-      return;
-    }
     await revealSeedPhrase();
   };
 
@@ -95,7 +95,7 @@ export default function BackupScreen() {
         const enrolled = await LocalAuthentication.isEnrolledAsync();
         if (compatible && enrolled) {
           const result = await LocalAuthentication.authenticateAsync({
-            promptMessage: "Reveal emergency recovery phrase",
+            promptMessage: "Reveal recovery phrase",
             fallbackLabel: "Use Passcode",
           });
           if (!result.success) {
@@ -112,7 +112,7 @@ export default function BackupScreen() {
       } else {
         setSeedError(
           isPasskeyWallet
-            ? "Could not retrieve your emergency recovery phrase. Please try Face ID again."
+            ? "Could not retrieve your recovery phrase. Please try Face ID again."
             : "Could not retrieve your seed phrase. Your wallet may not have been created yet."
         );
         setIsLoading(false);
@@ -122,7 +122,7 @@ export default function BackupScreen() {
       setSeedError(
         e?.message ||
           (isPasskeyWallet
-            ? "Failed to access your emergency recovery phrase. Please try again."
+            ? "Failed to access your recovery phrase. Please try again."
             : "Failed to access secure storage. Please try again.")
       );
       setIsLoading(false);
@@ -184,11 +184,11 @@ export default function BackupScreen() {
           <Animated.View entering={FadeIn} style={styles.stageContainer}>
             <TreasureMapIcon colors={colors} />
             <Text style={[styles.stageTitle, { color: colors.text }]}>
-              {isPasskeyWallet ? "Emergency Recovery" : "Protect Your Treasure"}
+              {isPasskeyWallet ? passkeyIntroTitle : "Protect Your Treasure"}
             </Text>
             <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
               {isPasskeyWallet
-                ? "Your Face ID wallet protects day-to-day access. The recovery phrase is an advanced emergency tool, not something you should open casually."
+                ? passkeyIntroSubtitle
                 : "For now, the only safe backup in Bellamy is writing down your seed phrase by hand."}
             </Text>
 
@@ -204,17 +204,17 @@ export default function BackupScreen() {
                   <>
                     <View style={[styles.optionIcon, { backgroundColor: "rgba(231,111,81,0.15)" }]}>
                       <MaterialCommunityIcons
-                        name={isPasskeyWallet ? "shield-alert-outline" : "pencil"}
+                        name={isPasskeyWallet ? "key-chain-variant" : "pencil"}
                         size={26}
                         color="#E76F51"
                       />
                     </View>
                     <View style={styles.optionText}>
                       <Text style={[styles.optionTitle, { color: colors.text }]}>
-                        {isPasskeyWallet ? "Emergency Recovery Phrase" : "Write It Down"}
+                        {isPasskeyWallet ? "View Recovery Phrase" : "Write It Down"}
                       </Text>
                       <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
-                        {isPasskeyWallet ? "Advanced access to the words behind your Face ID wallet" : "12 secret words, pen & paper"}
+                        {isPasskeyWallet ? "Recommended secondary backup for independent wallet recovery" : "12 secret words, pen & paper"}
                       </Text>
                     </View>
                   </>
@@ -222,58 +222,25 @@ export default function BackupScreen() {
               </Pressable>
             </View>
 
+            {isPasskeyWallet && (
+              <>
+                <View style={styles.warningCard}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
+                  <Text style={styles.warningText}>
+                    If you lose this phone, your Face ID wallet may only be restorable in another Bellamy Wallet instance. Keeping this phrase gives you a backup path that does not depend on that.
+                  </Text>
+                </View>
+                <View style={styles.warningCard}>
+                  <Ionicons name="document-text-outline" size={18} color={colors.gold} />
+                  <Text style={styles.warningText}>
+                    We recommend writing it down on paper or storing it in a secure note or small file in your password manager. Never share it with anyone.
+                  </Text>
+                </View>
+              </>
+            )}
+
             {seedError && (
               <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
-                <Text style={{ color: "#E76F51", fontSize: 14, textAlign: "center", fontFamily: "Nunito_400Regular" }}>{seedError}</Text>
-              </View>
-            )}
-          </Animated.View>
-        )}
-
-        {stage === "warning" && (
-          <Animated.View entering={FadeInDown} style={styles.stageContainer}>
-            <View style={[iconStyles.container]}>
-              <View style={[iconStyles.bg, { backgroundColor: "rgba(231,111,81,0.12)", borderColor: "rgba(231,111,81,0.3)" }]}>
-                <Ionicons name="warning-outline" size={40} color="#E76F51" />
-              </View>
-            </View>
-            <Text style={[styles.stageTitle, { color: colors.text }]}>Before You Reveal It</Text>
-            <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
-              Your recovery phrase gives full control of this wallet. Only reveal it if you are writing it down for emergency recovery and nobody else can see your screen.
-            </Text>
-
-            <View style={styles.warningCard}>
-              <Ionicons name="shield-outline" size={18} color={colors.gold} />
-              <Text style={styles.warningText}>
-                Bellamy will ask for Face ID before showing the phrase when your device supports it.
-              </Text>
-            </View>
-
-            <Pressable
-              testID="reveal-emergency-phrase-button"
-              style={styles.goldBtn}
-              onPress={revealSeedPhrase}
-            >
-              <LinearGradient
-                colors={["#d4ad5a", "#c9a24d", "#a07c35"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.goldBtnGradient}
-              >
-                <Text style={styles.goldBtnText}>I Understand, Reveal It</Text>
-              </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              testID="keep-hidden-button"
-              style={[styles.secondaryBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
-              onPress={() => setStage("choose")}
-            >
-              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Keep It Hidden</Text>
-            </Pressable>
-
-            {seedError && (
-              <View style={{ marginTop: 4, paddingHorizontal: 16 }}>
                 <Text style={{ color: "#E76F51", fontSize: 14, textAlign: "center", fontFamily: "Nunito_400Regular" }}>{seedError}</Text>
               </View>
             )}
@@ -289,11 +256,11 @@ export default function BackupScreen() {
               </View>
             </View>
             <Text style={[styles.stageTitle, { color: colors.text }]}>
-              {isPasskeyWallet ? "Emergency Recovery Phrase" : "Your Secret Words"}
+              {isPasskeyWallet ? "Recovery Phrase" : "Your Secret Words"}
             </Text>
             <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
               {isPasskeyWallet
-                ? "Write these 12 words in order and store them somewhere safe offline. These words can fully restore your Face ID wallet."
+                ? passkeyRevealSubtitle
                 : "Write these 12 words in order. Keep them safe — they unlock your entire wallet."}
             </Text>
 
@@ -307,9 +274,9 @@ export default function BackupScreen() {
             </View>
 
             <View style={styles.warningCard}>
-              <Ionicons name="warning-outline" size={18} color={colors.gold} />
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
               <Text style={styles.warningText}>
-                Never share these words with anyone. Bellamy will never ask for them.
+                Never share these words with anyone. Bellamy will never ask for them, and anyone with them can restore your wallet.
               </Text>
             </View>
 
@@ -340,7 +307,7 @@ export default function BackupScreen() {
             </View>
             <Text style={[styles.stageTitle, { color: colors.text }]}>Verify Your Backup</Text>
             <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
-              What is word #{(verifyWord.index + 1)} of your {isPasskeyWallet ? "emergency recovery phrase" : "seed phrase"}?
+              What is word #{(verifyWord.index + 1)} of your {isPasskeyWallet ? "recovery phrase" : "seed phrase"}?
             </Text>
 
             <View style={styles.verifyOptions}>
@@ -395,7 +362,9 @@ export default function BackupScreen() {
             </View>
             <Text style={[styles.stageTitle, { color: colors.text }]}>Treasure Secured!</Text>
             <Text style={[styles.stageSubtitle, { color: colors.textMuted }]}>
-              Your wallet is backed up. Your sats are safe, Captain.
+              {isPasskeyWallet
+                ? "Your recovery phrase is backed up. You now have a stronger, more sovereign way to restore this wallet if you ever need it."
+                : "Your wallet is backed up. Your sats are safe, Captain."}
             </Text>
             <Pressable
               testID="backup-done-button"
@@ -556,16 +525,5 @@ const styles = StyleSheet.create({
     fontFamily: "Nunito_500Medium",
     fontSize: 14,
     color: "#4A6080",
-  },
-  secondaryBtn: {
-    width: "100%",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  secondaryBtnText: {
-    fontFamily: "Nunito_700Bold",
-    fontSize: 16,
   },
 });

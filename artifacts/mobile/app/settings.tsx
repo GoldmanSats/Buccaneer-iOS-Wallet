@@ -185,10 +185,10 @@ export default function SettingsScreen() {
             </View>
             <View style={s.rowText}>
               <Text style={[s.rowLabel, { color: colors.text }]}>
-                {isPasskeyWallet ? "Emergency Recovery Phrase" : "Seed Phrase"}
+                {isPasskeyWallet ? "Recovery Phrase" : "Seed Phrase"}
               </Text>
               <Text style={[s.rowSub, { color: colors.textMuted }]}>
-                {isPasskeyWallet ? "Advanced access behind a warning screen" : "Backup your booty"}
+                {isPasskeyWallet ? "Recommended secondary backup for wallet recovery" : "Backup your booty"}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
