@@ -28,7 +28,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
-import { useAudioPlayer } from "expo-audio";
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
@@ -373,39 +373,19 @@ export default function HomeScreen() {
     }
   }, [bellPlayer]);
 
-  const seenTxIdsRef = useRef<Set<string> | null>(null);
+  const previousTxStateRef = useRef<Map<string, { type: string; status: string }>>(new Map());
   const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDoneRef = useRef(false);
+
   useEffect(() => {
-    if (!transactions.length) return;
-    const currentIds = new Set(transactions.map((tx: any) => tx.id || `${tx.timestamp}-${tx.amountSats}`));
-    if (!initialLoadDoneRef.current) {
-      seenTxIdsRef.current = currentIds;
-      initialLoadDoneRef.current = true;
-      return;
-    }
-    const prevIds = seenTxIdsRef.current!;
-    const newReceived = transactions.filter((tx: any) => {
-      const txId = tx.id || `${tx.timestamp}-${tx.amountSats}`;
-      return !prevIds.has(txId) && tx.type === "receive" && tx.status === "completed";
+    if (Platform.OS === "web") return;
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: "mixWithOthers",
+    }).catch((e) => {
+      console.warn("Bell audio mode failed", e);
     });
-    if (newReceived.length > 0) {
-      const sorted = [...newReceived].sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
-      const mostRecent = sorted[0];
-      if (receiveOpen) {
-        receiveSheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250, easing: Easing.in(Easing.cubic) }, () => {
-          runOnJS(setReceiveOpen)(false);
-          runOnJS(resetReceiveState)();
-        });
-      }
-      refetchBalance();
-      playBellSound();
-      if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
-      setGlowTxId(mostRecent.id);
-      glowTimerRef.current = setTimeout(() => setGlowTxId(null), 2500);
-    }
-    seenTxIdsRef.current = currentIds;
-  }, [transactions]);
+  }, []);
 
   useEffect(() => {
     return () => { if (glowTimerRef.current) clearTimeout(glowTimerRef.current); };
@@ -445,6 +425,56 @@ export default function HomeScreen() {
       runOnJS(resetReceiveState)();
     });
   };
+
+  const handleReceiveSuccess = useCallback((tx: TxType) => {
+    if (receiveOpen) {
+      closeReceiveDrawer();
+    }
+    refetchBalance();
+    playBellSound();
+    if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
+    setGlowTxId(tx.id);
+    glowTimerRef.current = setTimeout(() => setGlowTxId(null), 2500);
+  }, [playBellSound, receiveOpen, refetchBalance]);
+
+  useEffect(() => {
+    const currentTxState = new Map(
+      transactions.map((tx: any) => [
+        tx.id || `${tx.timestamp}-${tx.amountSats}`,
+        { type: tx.type, status: tx.status },
+      ])
+    );
+
+    if (!transactions.length) {
+      previousTxStateRef.current = currentTxState;
+      return;
+    }
+
+    if (!initialLoadDoneRef.current) {
+      previousTxStateRef.current = currentTxState;
+      initialLoadDoneRef.current = true;
+      return;
+    }
+
+    const previousTxState = previousTxStateRef.current;
+    const newlyCompletedReceives = transactions.filter((tx: any) => {
+      const txId = tx.id || `${tx.timestamp}-${tx.amountSats}`;
+      const previous = previousTxState.get(txId);
+      const isCompletedReceive = tx.type === "receive" && tx.status === "completed";
+      if (!isCompletedReceive) return false;
+      if (!previous) return true;
+      return previous.type !== "receive" || previous.status !== "completed";
+    });
+
+    if (newlyCompletedReceives.length > 0) {
+      const mostRecent = [...newlyCompletedReceives].sort(
+        (a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
+      )[0];
+      handleReceiveSuccess(mostRecent as TxType);
+    }
+
+    previousTxStateRef.current = currentTxState;
+  }, [transactions, handleReceiveSuccess]);
 
   const receiveDismissGesture = Gesture.Pan()
     .activeOffsetY([0, 15])
