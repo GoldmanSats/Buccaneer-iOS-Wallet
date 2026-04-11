@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "buccaneerwallet",
-      "buildNumber": "24",
+      "buildNumber": "26",
       "associatedDomains": [
         "webcredentials:bellamywallet.com"
       ],
