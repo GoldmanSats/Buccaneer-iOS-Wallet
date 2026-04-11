@@ -14,7 +14,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as LocalAuthentication from "expo-local-authentication";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import { getSeedFromSecureStore } from "@/utils/breezService";
@@ -90,22 +89,6 @@ export default function BackupScreen() {
     setIsLoading(true);
     setSeedError(null);
     try {
-      if (isPasskeyWallet && Platform.OS !== "web") {
-        const compatible = await LocalAuthentication.hasHardwareAsync();
-        const enrolled = await LocalAuthentication.isEnrolledAsync();
-        if (compatible && enrolled) {
-          const result = await LocalAuthentication.authenticateAsync({
-            promptMessage: "Reveal recovery phrase",
-            fallbackLabel: "Use Passcode",
-          });
-          if (!result.success) {
-            setSeedError("Face ID confirmation was cancelled. Your recovery phrase stayed hidden.");
-            setIsLoading(false);
-            return;
-          }
-        }
-      }
-
       const seed = await loadSeedPhrase();
       if (seed) {
         setSeedWords(seed.split(" "));

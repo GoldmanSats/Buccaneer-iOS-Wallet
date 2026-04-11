@@ -439,8 +439,7 @@ export async function continueWithPasskey(
   restored: boolean;
 }> {
   const intent = options?.intent ?? "openExisting";
-  const allowCredentialCreation = intent === "create";
-  const syncLabel = options?.syncLabel ?? true;
+  const syncLabel = options?.syncLabel ?? intent === "create";
   const provider = createPrfProvider({ intent });
 
   const breez = await import("@breeztech/breez-sdk-spark-react-native");

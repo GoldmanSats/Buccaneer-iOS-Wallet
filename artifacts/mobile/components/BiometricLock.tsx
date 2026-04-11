@@ -4,6 +4,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSettings } from "@/contexts/SettingsContext";
+import { noteSuccessfulLocalAuth } from "@/utils/localAuthState";
 
 const appIconSource = require("@/assets/images/app-icon.png");
 
@@ -24,6 +25,7 @@ export default function BiometricLock({ children }: { children: React.ReactNode 
         disableDeviceFallback: false,
       });
       if (result.success) {
+        noteSuccessfulLocalAuth();
         setIsLocked(false);
         setAuthFailed(false);
       } else {
@@ -42,9 +44,17 @@ export default function BiometricLock({ children }: { children: React.ReactNode 
       return;
     }
 
+    if (settings.walletMode === "passkey" && settings.onboardingDone) {
+      // Passkey wallet startup already requires passkey authentication to
+      // derive the wallet seed, so skip a redundant app-level prompt on launch.
+      setIsLocked(false);
+      setAuthFailed(false);
+      return;
+    }
+
     setIsLocked(true);
     authenticate();
-  }, [settings.biometricsEnabled, isLoading, authenticate]);
+  }, [settings.biometricsEnabled, settings.onboardingDone, settings.walletMode, isLoading, authenticate]);
 
   useEffect(() => {
     if (isLoading || !settings.biometricsEnabled || Platform.OS === "web") return;
