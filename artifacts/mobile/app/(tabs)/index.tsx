@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  PanResponder,
   RefreshControl,
   Platform,
   TextInput,
@@ -267,6 +268,7 @@ export default function HomeScreen() {
   const TX_COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.22;
   const TX_EXPANDED_HEIGHT = SCREEN_HEIGHT - topPad;
   const txPanelHeight = useSharedValue(TX_COLLAPSED_HEIGHT);
+  const txPanelDragOffset = useSharedValue(0);
   const isLogExpandedRef = useRef(false);
 
   useEffect(() => {
@@ -275,10 +277,14 @@ export default function HomeScreen() {
       isLogExpanded ? TX_EXPANDED_HEIGHT : TX_COLLAPSED_HEIGHT,
       { duration: 350, easing: Easing.out(Easing.cubic) }
     );
+    if (!isLogExpanded) {
+      txPanelDragOffset.value = 0;
+    }
   }, [isLogExpanded]);
 
   const txPanelAnimStyle = useAnimatedStyle(() => ({
     height: txPanelHeight.value,
+    transform: [{ translateY: txPanelDragOffset.value }],
   }));
 
   const txPanGesture = Gesture.Pan()
@@ -301,7 +307,6 @@ export default function HomeScreen() {
   const receiveSheetTranslateY = useSharedValue(0);
   const txDetailTranslateY = useSharedValue(0);
   const txLogScrollOffset = useRef(0);
-  const txLogDismissTriggeredRef = useRef(false);
 
   const collapseTxLog = useCallback(() => {
     if (!isLogExpandedRef.current) return;
@@ -309,18 +314,47 @@ export default function HomeScreen() {
     setIsLogExpanded(false);
   }, []);
 
-  const txDismissGesture = Gesture.Pan()
-    .activeOffsetY(8)
-    .failOffsetX([-20, 20])
-    .onEnd((e) => {
-      const SWIPE_THRESHOLD = 30;
-      const VELOCITY_THRESHOLD = 300;
-      const swipedDown = e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD;
-      if (swipedDown && isLogExpandedRef.current) {
-        if (Platform.OS !== "web") runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-        runOnJS(setIsLogExpanded)(false);
+  const txLogPanResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponderCapture: () => false,
+    onMoveShouldSetPanResponder: (_, gestureState) => (
+      isLogExpandedRef.current &&
+      txLogScrollOffset.current <= 0 &&
+      gestureState.dy > 6 &&
+      Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+    ),
+    onMoveShouldSetPanResponderCapture: (_, gestureState) => (
+      isLogExpandedRef.current &&
+      txLogScrollOffset.current <= 0 &&
+      gestureState.dy > 6 &&
+      Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+    ),
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderMove: (_, gestureState) => {
+      txPanelDragOffset.value = Math.min(Math.max(gestureState.dy, 0) * 0.35, 120);
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      const shouldCollapse = gestureState.dy > 90 || gestureState.vy > 0.75;
+      if (shouldCollapse) {
+        const finalOffset = Math.min(Math.max(gestureState.dy, 0) * 0.35 + 24, 140);
+        txPanelDragOffset.value = withTiming(
+          finalOffset,
+          { duration: 120, easing: Easing.out(Easing.cubic) },
+          (finished) => {
+            if (!finished) return;
+            txPanelDragOffset.value = 0;
+            runOnJS(collapseTxLog)();
+          }
+        );
+        return;
       }
-    });
+
+      txPanelDragOffset.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
+    },
+    onPanResponderTerminate: () => {
+      txPanelDragOffset.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
+    },
+  }), [collapseTxLog, txPanelDragOffset]);
 
   const receiveSheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: receiveSheetTranslateY.value }],
@@ -748,8 +782,7 @@ export default function HomeScreen() {
           </GestureDetector>
         ) : (
           <>
-          <GestureDetector gesture={txDismissGesture}>
-          <View>
+          <View {...txLogPanResponder.panHandlers} style={{ flex: 1 }}>
             <View style={styles.expandedDragHandle}>
               <View style={[styles.dragIndicator, { backgroundColor: colors.textMuted + "60" }]} />
             </View>
@@ -764,28 +797,15 @@ export default function HomeScreen() {
               <Text style={[styles.txHeaderText, { color: colors.textSecondary }]}>Transaction Log</Text>
               <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
             </Pressable>
-          </View>
-          </GestureDetector>
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: bottomPad + 8 }}
+            contentContainerStyle={{ paddingBottom: bottomPad + 8, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             scrollEventThrottle={16}
             bounces={true}
-            onScrollBeginDrag={() => {
-              txLogDismissTriggeredRef.current = false;
-            }}
             onScroll={(e) => {
-              const offsetY = e.nativeEvent.contentOffset.y;
-              txLogScrollOffset.current = offsetY;
-              if (!txLogDismissTriggeredRef.current && offsetY < -20) {
-                txLogDismissTriggeredRef.current = true;
-                collapseTxLog();
-              }
-            }}
-            onScrollEndDrag={() => {
-              txLogDismissTriggeredRef.current = false;
+              txLogScrollOffset.current = e.nativeEvent.contentOffset.y;
             }}
           >
             {transactions.length === 0 ? (
@@ -807,6 +827,7 @@ export default function HomeScreen() {
               </View>
             )}
           </ScrollView>
+          </View>
           </>
         )}
       </Animated.View>
