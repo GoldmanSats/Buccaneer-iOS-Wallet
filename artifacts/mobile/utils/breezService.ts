@@ -125,26 +125,29 @@ export async function clearLocalWalletData(): Promise<void> {
 }
 
 async function getStoredWalletMetadata(): Promise<{
+  onboardingDone: boolean;
   walletMode: WalletMode;
   walletLabel: string | null;
 }> {
   try {
     const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) {
-      return { walletMode: null, walletLabel: null };
+      return { onboardingDone: false, walletMode: null, walletLabel: null };
     }
 
     const parsed = JSON.parse(raw) as {
+      onboardingDone?: boolean;
       walletMode?: WalletMode;
       walletLabel?: string | null;
     };
 
     return {
+      onboardingDone: parsed.onboardingDone ?? false,
       walletMode: parsed.walletMode ?? null,
       walletLabel: parsed.walletLabel ?? null,
     };
   } catch {
-    return { walletMode: null, walletLabel: null };
+    return { onboardingDone: false, walletMode: null, walletLabel: null };
   }
 }
 
@@ -153,7 +156,11 @@ async function resolveSeedForSdk(mnemonic?: string): Promise<string | null> {
     return mnemonic;
   }
 
-  const { walletMode, walletLabel } = await getStoredWalletMetadata();
+  const { onboardingDone, walletMode, walletLabel } = await getStoredWalletMetadata();
+
+  if (!onboardingDone) {
+    return null;
+  }
 
   if (walletMode === "passkey") {
     const result = await continueWithPasskey(walletLabel ?? undefined, {
