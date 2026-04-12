@@ -84,17 +84,17 @@ export default function SettingsScreen() {
   const isPasskeyWallet = settings.walletMode === "passkey";
   const deleteRowLabel = "Abandon Ship";
   const deleteRowSubtitle = isPasskeyWallet
-    ? "Remove this wallet from this device"
+    ? "Delete this wallet from this device"
     : "Scuttle this wallet and return to setup";
-  const deleteModalTitle = isPasskeyWallet ? "Remove Wallet From This Device?" : "Abandon Ship?";
+  const deleteModalTitle = isPasskeyWallet ? "Delete This Wallet?" : "Abandon Ship?";
   const deleteModalDescription = isPasskeyWallet
-    ? "This removes Bellamy's wallet data from this device and sends you back to setup. Your passkey may still stay saved in Apple Passwords, so you can restore this wallet later."
+    ? "This deletes your wallet data from this device and sends you back to the onboarding screen. Your passkey will stay saved in Apple Passwords, so you can restore this wallet later."
     : "This will scuttle this wallet on this device. This action cannot be undone.";
   const deleteModalNote = isPasskeyWallet
-    ? "To permanently remove the passkey itself, delete it in the Passwords app in iOS."
+    ? "If you also want to remove the passkey itself, you can delete it in the Passwords app in iOS."
     : null;
-  const deleteModalButtonText = isPasskeyWallet ? "Remove From This Device" : "Scuttle My Wallet";
-  const deleteModalCancelText = isPasskeyWallet ? "Keep Wallet on This Device" : "Actually, on second thought...";
+  const deleteModalButtonText = isPasskeyWallet ? "Delete Wallet" : "Scuttle My Wallet";
+  const deleteModalCancelText = isPasskeyWallet ? "Actually, on second thought..." : "Actually, on second thought...";
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -437,7 +437,13 @@ export default function SettingsScreen() {
               <Ionicons name="warning-outline" size={32} color="#EF4444" />
             </View>
             <Text style={[s.modalTitle, { color: colors.text }]}>{deleteModalTitle}</Text>
-            <Text style={s.modalWarningText}>
+            <Text
+              style={
+                isPasskeyWallet
+                  ? [s.modalDescriptionText, { color: colors.textSecondary }]
+                  : s.modalWarningText
+              }
+            >
               {deleteModalDescription}
             </Text>
             {deleteModalNote && (
@@ -647,9 +653,17 @@ const s = StyleSheet.create({
   modalTitle: { fontFamily: "Chewy_400Regular", fontSize: 24, marginBottom: 8 },
   modalWarningText: {
     fontFamily: "Nunito_700Bold",
+  modalDescriptionText: {
+    fontFamily: "Nunito_600SemiBold",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 12,
+  },
     fontSize: 14,
     color: "#EF4444",
     textAlign: "center",
+    lineHeight: 22,
     marginBottom: 12,
   },
   modalNoteText: {
