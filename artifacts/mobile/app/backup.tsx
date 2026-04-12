@@ -488,6 +488,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "Nunito_400Regular",
     fontSize: 13,
+    color: "#CDDAED",
     lineHeight: 20,
   },
   goldBtn: {
