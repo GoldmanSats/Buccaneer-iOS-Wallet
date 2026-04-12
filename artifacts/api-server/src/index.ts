@@ -1,3 +1,4 @@
+import http from "http";
 import app from "./app";
 import { backfillLegacyApiSecretHashes } from "./lib/agentSecrets.js";
 import { startNwcRelay } from "./lib/nwc.js";
@@ -17,7 +18,10 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = app.listen(port, () => {
+const server = http.createServer(app);
+mountNwcRelay(server);
+
+server.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 
   void backfillLegacyApiSecretHashes()
@@ -34,5 +38,3 @@ const server = app.listen(port, () => {
     startNwcRelay();
   }, 3000);
 });
-
-mountNwcRelay(server);

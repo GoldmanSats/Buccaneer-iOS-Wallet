@@ -380,6 +380,25 @@ router.post("/requests/:id/reject", requireWalletAgentSession as any, async (req
   res.status(204).end();
 });
 
+router.post("/push-token", requireWalletAgentSession as any, async (req: WalletAgentAuthenticatedRequest, res): Promise<void> => {
+  const body = req.body as { pushToken?: string; platform?: string };
+  if (!body.pushToken?.trim()) {
+    res.status(400).json({ error: "missing_push_token", message: "pushToken is required." });
+    return;
+  }
+
+  await db
+    .update(walletAgentIdentitiesTable)
+    .set({
+      pushToken: body.pushToken.trim(),
+      pushPlatform: body.platform ?? "ios",
+      lastSeenAt: new Date(),
+    })
+    .where(eq(walletAgentIdentitiesTable.id, req.walletAgentSession!.identityId));
+
+  res.status(204).end();
+});
+
 router.post("/snapshots", requireWalletAgentSession as any, async (req: WalletAgentAuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { balance?: unknown; transactions?: unknown };
   await upsertWalletAgentSnapshot(

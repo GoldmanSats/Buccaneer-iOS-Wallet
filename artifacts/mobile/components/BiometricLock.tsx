@@ -44,17 +44,9 @@ export default function BiometricLock({ children }: { children: React.ReactNode 
       return;
     }
 
-    if (settings.walletMode === "passkey" && settings.onboardingDone) {
-      // Passkey wallet startup already requires passkey authentication to
-      // derive the wallet seed, so skip a redundant app-level prompt on launch.
-      setIsLocked(false);
-      setAuthFailed(false);
-      return;
-    }
-
     setIsLocked(true);
     authenticate();
-  }, [settings.biometricsEnabled, settings.onboardingDone, settings.walletMode, isLoading, authenticate]);
+  }, [settings.biometricsEnabled, isLoading, authenticate]);
 
   useEffect(() => {
     if (isLoading || !settings.biometricsEnabled || Platform.OS === "web") return;

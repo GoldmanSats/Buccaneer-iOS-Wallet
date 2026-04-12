@@ -12,6 +12,7 @@ out-tsc
 node_modules
 
 # IDEs and editors
+*.swp
 /.idea
 .project
 .classpath
@@ -36,6 +37,15 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+
+# Environment files (contain secrets like DATABASE_URL)
+.env
+.env.local
+.env.*.local
+
+# Apple Push Notification keys (never commit)
+*.p8
+AuthKey_*.p8
 
 # System Files
 .DS_Store

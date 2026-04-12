@@ -30,6 +30,9 @@ import {
 
 const API_PATH = "/api/agent-access/policies";
 
+const NOTIFICATIONS_HINT =
+  "Allow notifications when your phone asks—Bellamy uses them only to wake the wallet briefly so your agent can pay while the app is in the background or the screen is off.";
+
 interface AgentConnection {
   id: number;
   name: string;
@@ -345,6 +348,7 @@ export default function AgentKeysScreen() {
                 <Text style={[st.introDesc, { color: colors.textMuted }]}>
                   Face ID confirms it's really you before Bellamy links agent access to this wallet and starts relaying requests back to your phone.
                 </Text>
+                <Text style={[st.introDesc, { color: colors.textMuted, marginTop: 10 }]}>{NOTIFICATIONS_HINT}</Text>
               </View>
             </View>
 
@@ -378,6 +382,7 @@ export default function AgentKeysScreen() {
                 <Text style={[st.introDesc, { color: colors.textMuted }]}>
                   Create a Nostr Wallet Connect link for your AI agent. Your phone stays the signer -- Bellamy enforces the limits you set.
                 </Text>
+                <Text style={[st.introDesc, { color: colors.textMuted, marginTop: 10 }]}>{NOTIFICATIONS_HINT}</Text>
               </View>
             </View>
 

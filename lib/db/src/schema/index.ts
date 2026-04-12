@@ -61,6 +61,8 @@ export const walletAgentIdentitiesTable = pgTable("wallet_agent_identities", {
   walletPublicKey: text("wallet_public_key").notNull().unique(),
   walletLabel: text("wallet_label"),
   walletMode: text("wallet_mode").notNull().default("seed"),
+  pushToken: text("push_token"),
+  pushPlatform: text("push_platform"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at"),
   revokedAt: timestamp("revoked_at"),

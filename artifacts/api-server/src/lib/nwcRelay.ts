@@ -15,6 +15,7 @@ import {
   touchWalletAgentPolicy,
   waitForWalletAgentRequestResult,
 } from "./perUserAgentAccess.js";
+import { sendSilentPush } from "./pushService.js";
 
 const NWC_KIND = 23194;
 const NWC_RESPONSE_KIND = 23195;
@@ -301,11 +302,16 @@ async function handleNwcRequest(
         if (spendFailure) {
           return { result_type: method, error: { code: "QUOTA_EXCEEDED", message: spendFailure } };
         }
+        const autoApproved = policy.approvalMode === "session";
         const requestRow = await createWalletAgentRequest(policy, "send_payment", { bolt11: invoice, amountSats }, {
           amountSats,
           requiresFreshApproval: policy.approvalMode === "per_action",
           expiresInMs: 60_000,
+          autoApproved,
         });
+        if (autoApproved) {
+          void sendSilentPush(policy.identityId);
+        }
         const result = await waitForWalletAgentRequestResult(requestRow.id);
         if (!result) {
           return { result_type: method, error: { code: "OTHER", message: "Awaiting approval in Bellamy." } };
@@ -333,11 +339,16 @@ async function handleNwcRequest(
         }
         const description = typeof params.description === "string" ? params.description : "";
         const amountSats = Math.ceil(amountMsat / 1000);
+        const autoApprovedInvoice = policy.approvalMode === "session";
         const requestRow = await createWalletAgentRequest(policy, "create_invoice", { amountSats, description }, {
           amountSats,
           requiresFreshApproval: policy.approvalMode === "per_action",
           expiresInMs: 60_000,
+          autoApproved: autoApprovedInvoice,
         });
+        if (autoApprovedInvoice) {
+          void sendSilentPush(policy.identityId);
+        }
         const result = await waitForWalletAgentRequestResult(requestRow.id);
         if (!result) {
           return { result_type: method, error: { code: "OTHER", message: "Awaiting approval in Bellamy." } };

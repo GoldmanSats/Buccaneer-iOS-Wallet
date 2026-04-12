@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { schnorr } from "@noble/curves/secp256k1";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   walletAgentPoliciesTable,
@@ -38,7 +38,8 @@ export function createPerUserNwcSecret(): string {
 
 export function createPerUserNwcUri(servicePubkey: string, clientSecret: string): string {
   const domain = process.env.BELLAMY_DOMAIN ?? "";
-  const wsUrl = domain.replace(/^https?:\/\//, "wss://") + "/nwc";
+  const wsScheme = domain.startsWith("https://") ? "wss://" : "ws://";
+  const wsUrl = domain.replace(/^https?:\/\//, wsScheme) + "/nwc";
   return `nostr+walletconnect://${servicePubkey}?relay=${encodeURIComponent(wsUrl)}&secret=${clientSecret}`;
 }
 
@@ -158,8 +159,9 @@ export async function createWalletAgentRequest(
   policy: typeof walletAgentPoliciesTable.$inferSelect,
   requestType: string,
   payload: unknown,
-  options?: { amountSats?: number | null; requiresFreshApproval?: boolean; expiresInMs?: number },
+  options?: { amountSats?: number | null; requiresFreshApproval?: boolean; expiresInMs?: number; autoApproved?: boolean },
 ) {
+  const status = options?.autoApproved ? "approved" : "pending";
   const [request] = await db.insert(walletAgentRequestsTable).values({
     identityId: policy.identityId,
     policyId: policy.id,
@@ -167,7 +169,7 @@ export async function createWalletAgentRequest(
     requestPayload: JSON.stringify(payload),
     amountSats: options?.amountSats ?? null,
     requiresFreshApproval: options?.requiresFreshApproval ?? false,
-    status: "pending",
+    status,
     expiresAt: options?.expiresInMs ? new Date(Date.now() + options.expiresInMs) : null,
   }).returning();
 
@@ -193,7 +195,7 @@ export async function listPendingWalletAgentRequests(identityId: number) {
     .innerJoin(walletAgentPoliciesTable, eq(walletAgentRequestsTable.policyId, walletAgentPoliciesTable.id))
     .where(and(
       eq(walletAgentRequestsTable.identityId, identityId),
-      eq(walletAgentRequestsTable.status, "pending"),
+      inArray(walletAgentRequestsTable.status, ["pending", "approved"]),
     ));
 
   return rows.map((row) => ({
@@ -227,7 +229,7 @@ export async function rejectWalletAgentRequest(requestId: number, errorMessage: 
     .where(eq(walletAgentRequestsTable.id, requestId));
 }
 
-export async function waitForWalletAgentRequestResult(requestId: number, timeoutMs = 20000) {
+export async function waitForWalletAgentRequestResult(requestId: number, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const rows = await db
