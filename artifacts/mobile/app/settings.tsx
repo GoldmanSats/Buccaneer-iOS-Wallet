@@ -191,7 +191,7 @@ export default function SettingsScreen() {
                 {isPasskeyWallet ? "Recovery Phrase" : "Seed Phrase"}
               </Text>
               <Text style={[s.rowSub, { color: colors.textMuted }]}>
-                {isPasskeyWallet ? "Recommended secondary backup for wallet recovery" : "Backup your booty"}
+                {isPasskeyWallet ? "Recommended secondary wallet backup" : "Backup your wallet"}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />

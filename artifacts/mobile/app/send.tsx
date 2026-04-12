@@ -85,7 +85,9 @@ export default function SendScreen() {
     });
   }, []);
 
+  const topPad = insets.top;
   const bottomPad = insets.bottom + 16;
+  const expandedSheetHeight = SCREEN_HEIGHT - topPad;
 
   const sheetTranslateY = useSharedValue(SCREEN_HEIGHT);
 
@@ -418,7 +420,7 @@ export default function SendScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.sheetPositioner}>
         <GestureDetector gesture={dismissGesture}>
         <Animated.View
-          style={[styles.sheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, sheetAnimStyle]}
+          style={[styles.sheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20, height: expandedSheetHeight }, sheetAnimStyle]}
         >
           {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 40, borderTopRightRadius: 40 }]} />}
 
@@ -718,7 +720,6 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 40, borderTopRightRadius: 40,
     paddingHorizontal: 24,
-    height: SCREEN_HEIGHT * 0.86,
   },
   dragZone: { alignItems: "center", paddingTop: 12, paddingBottom: 16 },
   sheetHandle: { width: 48, height: 6, borderRadius: 3, alignSelf: "center", marginTop: 16, marginBottom: 20 },

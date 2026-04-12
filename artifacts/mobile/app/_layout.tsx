@@ -1,4 +1,5 @@
 import "@/polyfills";
+import "@/utils/backgroundNotificationTask";
 import {
   Nunito_400Regular,
   Nunito_500Medium,
@@ -38,7 +39,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade" }} />
-      <Stack.Screen name="send" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="send" options={{ headerShown: false, presentation: "transparentModal", animation: "none" }} />
       <Stack.Screen name="receive" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="backup" options={{ headerShown: false }} />

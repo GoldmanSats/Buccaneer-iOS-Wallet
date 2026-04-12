@@ -7,6 +7,7 @@ import {
   hasStoredWalletAgentIdentity,
   walletAgentFetch,
 } from "@/utils/walletAgentAccess";
+import { registerPushToken } from "@/utils/pushService";
 
 type PendingAgentRequest = {
   id: number;
@@ -22,11 +23,40 @@ type PendingAgentRequest = {
   approvalMode: "session" | "per_action";
 };
 
+type NotificationsModule = {
+  setNotificationHandler: (handler: {
+    handleNotification: () => Promise<{
+      shouldShowAlert: boolean;
+      shouldPlaySound: boolean;
+      shouldSetBadge: boolean;
+    }>;
+  }) => void;
+  addNotificationReceivedListener: (
+    listener: (notification: { request: { content: { data?: Record<string, unknown> } } }) => void,
+  ) => { remove: () => void };
+};
+
+let Notifications: NotificationsModule | null = null;
+
+try {
+  Notifications = require("expo-notifications") as NotificationsModule;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: false,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (err) {
+  console.warn("[AgentAccess] Notifications native module unavailable; push handling disabled.", err);
+}
+
 export function AgentAccessProvider({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
   const { balance, transactions, sdkReady, isOffline, sendPayment, createInvoice, decodeInvoice } = useWallet();
   const syncInFlight = useRef(false);
   const processInFlight = useRef(false);
+  const pushRegistered = useRef(false);
   const agentAccessEnabled = process.env.EXPO_PUBLIC_ENABLE_PER_USER_AGENT_ACCESS !== "0";
 
   useEffect(() => {
@@ -152,6 +182,18 @@ export function AgentAccessProvider({ children }: { children: React.ReactNode })
     void syncSnapshot();
     void pollPendingRequests();
 
+    if (!pushRegistered.current) {
+      pushRegistered.current = true;
+      void registerPushToken();
+    }
+
+    const notificationSub = Notifications?.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data;
+      if (data?.type === "agent_request") {
+        void pollPendingRequests();
+      }
+    });
+
     const syncTimer = setInterval(() => {
       void syncSnapshot();
     }, 20_000);
@@ -161,6 +203,7 @@ export function AgentAccessProvider({ children }: { children: React.ReactNode })
 
     return () => {
       cancelled = true;
+      notificationSub?.remove();
       clearInterval(syncTimer);
       clearInterval(requestTimer);
     };

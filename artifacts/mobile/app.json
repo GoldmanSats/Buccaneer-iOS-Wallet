@@ -24,7 +24,8 @@
         "CFBundleDisplayName": "Bellamy Wallet",
         "CFBundleName": "Bellamy Wallet",
         "NSFaceIDUsageDescription": "Bellamy Wallet uses Face ID to secure your wallet",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
@@ -53,6 +54,13 @@
         "@breeztech/breez-sdk-spark-react-native",
         {
           "enablePasskey": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0B1426"
         }
       ]
     ],
