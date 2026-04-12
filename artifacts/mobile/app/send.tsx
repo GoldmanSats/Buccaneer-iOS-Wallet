@@ -9,11 +9,15 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeIn, useSharedValue, withSpring, useAnimatedStyle } from "react-native-reanimated";
+import Animated, { FadeIn, useSharedValue, withSpring, withTiming, Easing, useAnimatedStyle, runOnJS } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
@@ -25,6 +29,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import { TASK_SHEET_TITLE } from "@/constants/typography";
 import * as BreezService from "@/utils/breezService";
+import { requirePasskeyForSensitiveAction } from "@/utils/passkeyVerificationPolicy";
 
 type Stage = "scan" | "paste" | "sending" | "success" | "error";
 
@@ -80,8 +85,41 @@ export default function SendScreen() {
     });
   }, []);
 
-  const topPad = insets.top;
   const bottomPad = insets.bottom + 16;
+
+  const sheetTranslateY = useSharedValue(SCREEN_HEIGHT);
+
+  useEffect(() => {
+    sheetTranslateY.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.cubic) });
+  }, []);
+
+  const dismissSheet = useCallback(() => {
+    sheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 250, easing: Easing.in(Easing.cubic) }, () => {
+      runOnJS(router.back)();
+    });
+  }, []);
+
+  const sheetAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sheetTranslateY.value }],
+  }));
+
+  const dismissGesture = Gesture.Pan()
+    .activeOffsetY([0, 15])
+    .failOffsetX([-15, 15])
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        sheetTranslateY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY > 60 || e.velocityY > 400) {
+        sheetTranslateY.value = withTiming(SCREEN_HEIGHT, { duration: 200 }, () => {
+          runOnJS(router.back)();
+        });
+      } else {
+        sheetTranslateY.value = withTiming(0, { duration: 200 });
+      }
+    });
 
   useEffect(() => {
     if (!permission?.granted && permission?.canAskAgain) {
@@ -152,6 +190,8 @@ export default function SendScreen() {
   };
 
   const feeRequestRef = useRef(0);
+  /** Passkey wallet: set after Max tap + passkey, cleared when amount ≠ full balance (avoids double passkey on Send). */
+  const fullBalancePasskeyOkRef = useRef(false);
 
   const resetSendState = () => {
     setInvoiceInput("");
@@ -161,6 +201,7 @@ export default function SendScreen() {
     setIsFeeLoading(false);
     setError("");
     feeRequestRef.current++;
+    fullBalancePasskeyOkRef.current = false;
   };
 
   const fetchFeeEstimate = async (
@@ -315,6 +356,21 @@ export default function SendScreen() {
       setError("Please enter an amount");
       return;
     }
+    if (
+      Platform.OS !== "web" &&
+      settings.walletMode === "passkey" &&
+      sats > 0 &&
+      amountToSend === sats &&
+      !fullBalancePasskeyOkRef.current
+    ) {
+      setError("");
+      try {
+        await requirePasskeyForSensitiveAction(settings.walletLabel);
+      } catch (e: any) {
+        setError(e?.message || "Passkey verification failed.");
+        return;
+      }
+    }
     if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setStage("sending");
     try {
@@ -357,23 +413,26 @@ export default function SendScreen() {
   const feePlaceholder = parsedSendAmount > 0 ? "Fee preview unavailable" : "Enter amount to preview fees";
 
   return (
-    <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
-      {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
-
-      <View style={styles.headerHandle}>
-        <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
-      </View>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 20 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+    <View style={styles.overlay}>
+      <Pressable style={styles.backdrop} onPress={dismissSheet} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.sheetPositioner}>
+        <GestureDetector gesture={dismissGesture}>
+        <Animated.View
+          style={[styles.sheet, { backgroundColor: colors.bg, paddingBottom: bottomPad + 20 }, sheetAnimStyle]}
         >
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Send</Text>
+          {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 40, borderTopRightRadius: 40 }]} />}
+
+          <Pressable onPress={dismissSheet} style={styles.dragZone}>
+            <View style={[styles.sheetHandle, { backgroundColor: colors.textMuted + "40" }]} />
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Send</Text>
+          </Pressable>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
           {stage === "scan" && (
             <Animated.View entering={FadeIn} style={{ gap: 20 }}>
@@ -479,7 +538,11 @@ export default function SendScreen() {
                       placeholderTextColor={colors.textMuted + "80"}
                       value={sendAmountInput}
                       onChangeText={(t) => {
-                        setSendAmountInput(t.replace(/[^0-9]/g, ""));
+                        const next = t.replace(/[^0-9]/g, "");
+                        setSendAmountInput(next);
+                        if (next !== String(sats)) {
+                          fullBalancePasskeyOkRef.current = false;
+                        }
                         setEstimatedFee(null);
                         setError("");
                       }}
@@ -495,7 +558,19 @@ export default function SendScreen() {
                       </Text>
                       <Pressable
                         style={[styles.maxBtn, { backgroundColor: isDark ? "rgba(23,162,184,0.15)" : "rgba(13,110,125,0.12)" }]}
-                        onPress={() => {
+                        onPress={async () => {
+                          if (Platform.OS !== "web" && settings.walletMode === "passkey") {
+                            setError("");
+                            try {
+                              await requirePasskeyForSensitiveAction(settings.walletLabel);
+                              fullBalancePasskeyOkRef.current = true;
+                            } catch (e: any) {
+                              setError(e?.message || "Passkey required to use Max.");
+                              return;
+                            }
+                          } else {
+                            fullBalancePasskeyOkRef.current = true;
+                          }
                           setSendAmountInput(String(sats));
                           setEstimatedFee(null);
                           setError("");
@@ -607,7 +682,7 @@ export default function SendScreen() {
               {result.feeSats > 0 && (
                 <Text style={[styles.feeNote, { color: colors.textMuted }]}>Fee: {result.feeSats} sats</Text>
               )}
-              <Pressable testID="send-done-button" style={[styles.returnBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]} onPress={() => router.back()}>
+              <Pressable testID="send-done-button" style={[styles.returnBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]} onPress={dismissSheet}>
                 <Text style={[styles.returnBtnText, { color: colors.textSecondary }]}>Return to Port</Text>
               </Pressable>
             </Animated.View>
@@ -628,22 +703,31 @@ export default function SendScreen() {
               </Pressable>
             </Animated.View>
           )}
-        </ScrollView>
+          </ScrollView>
+        </Animated.View>
+        </GestureDetector>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerHandle: { alignItems: "center", paddingVertical: 10 },
-  handleBar: { width: 40, height: 4, borderRadius: 2 },
-  content: { paddingHorizontal: 24, gap: 16, flexGrow: 1 },
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" },
+  sheetPositioner: { justifyContent: "flex-end" },
+  sheet: {
+    borderTopLeftRadius: 40, borderTopRightRadius: 40,
+    paddingHorizontal: 24,
+    height: SCREEN_HEIGHT * 0.86,
+  },
+  dragZone: { alignItems: "center", paddingTop: 12, paddingBottom: 16 },
+  sheetHandle: { width: 48, height: 6, borderRadius: 3, alignSelf: "center", marginTop: 16, marginBottom: 20 },
+  content: { paddingHorizontal: 0, gap: 16, flexGrow: 1 },
   pageTitle: {
     ...TASK_SHEET_TITLE,
-    alignSelf: "flex-start",
+    textAlign: "center",
     marginTop: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   scannerBox: {
     width: "100%",

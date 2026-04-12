@@ -32,12 +32,12 @@ import {
   getBellamyPasskeyReadiness,
 } from "@/utils/passkeyService";
 import {
-  deleteSeedFromSecureStore,
   generateMnemonic,
   validateMnemonic,
   saveSeedToSecureStore,
   initBreezSdk,
 } from "@/utils/breezService";
+import { notePasskeyVerification } from "@/utils/passkeyVerificationPolicy";
 
 const appIconSource = require("@/assets/images/app-icon.png");
 
@@ -104,10 +104,9 @@ export default function OnboardingScreen() {
     markBackupDone: boolean,
     walletDetails: { walletMode: "seed" | "passkey"; walletLabel: string | null }
   ) => {
-    if (walletDetails.walletMode === "seed") {
-      await saveSeedToSecureStore(mnemonic);
-    } else {
-      await deleteSeedFromSecureStore();
+    await saveSeedToSecureStore(mnemonic);
+    if (walletDetails.walletMode === "passkey") {
+      await notePasskeyVerification();
     }
 
     if (Platform.OS !== "web") {

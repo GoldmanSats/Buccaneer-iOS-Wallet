@@ -5,7 +5,8 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { mnemonicToSeedSync } from "bip39";
 import { Platform } from "react-native";
 import { SETTINGS_STORAGE_KEY, type WalletMode } from "@/constants/walletMetadata";
-import { getSeedFromSecureStore } from "@/utils/breezService";
+import { getSeedFromSecureStore, saveSeedToSecureStore } from "@/utils/breezService";
+import { notePasskeyVerification } from "@/utils/passkeyVerificationPolicy";
 import { hasRecentLocalAuth, noteSuccessfulLocalAuth } from "@/utils/localAuthState";
 import { exportMnemonicFromPasskey } from "@/utils/passkeyService";
 
@@ -90,16 +91,19 @@ async function getWalletMnemonic(): Promise<{ mnemonic: string; walletMode: Wall
     throw new Error("Create or restore a Bellamy wallet before enabling Agent Access.");
   }
 
+  const cached = await getSeedFromSecureStore();
+  if (cached) {
+    return { mnemonic: cached, walletMode: settings.walletMode, walletLabel: settings.walletLabel };
+  }
+
   if (settings.walletMode === "passkey") {
     const mnemonic = await exportMnemonicFromPasskey(settings.walletLabel ?? undefined);
+    await saveSeedToSecureStore(mnemonic);
+    await notePasskeyVerification();
     return { mnemonic, walletMode: settings.walletMode, walletLabel: settings.walletLabel };
   }
 
-  const mnemonic = await getSeedFromSecureStore();
-  if (!mnemonic) {
-    throw new Error("Bellamy couldn't find your wallet seed on this device.");
-  }
-  return { mnemonic, walletMode: settings.walletMode, walletLabel: settings.walletLabel };
+  throw new Error("Bellamy couldn't find your wallet seed on this device.");
 }
 
 async function authenticateAgentAccess(promptMessage: string): Promise<void> {

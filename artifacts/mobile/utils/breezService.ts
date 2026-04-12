@@ -3,6 +3,12 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { SETTINGS_STORAGE_KEY, type WalletMode } from "@/constants/walletMetadata";
 import { continueWithPasskey } from "@/utils/passkeyService";
+import {
+  clearPasskeyVerificationRecord,
+  getLastPasskeyVerificationMs,
+  isPasskeyRefreshDue,
+  notePasskeyVerification,
+} from "@/utils/passkeyVerificationPolicy";
 
 const SEED_KEY = "buccaneer_wallet_seed";
 const MEMO_STORE_KEY = "buccaneer_wallet_memos";
@@ -165,6 +171,7 @@ export async function deleteLocalSdkStorage(): Promise<void> {
 export async function clearLocalWalletData(): Promise<void> {
   await disconnectSdk();
   await deleteSeedFromSecureStore();
+  await clearPasskeyVerificationRecord();
   await deleteWalletMemosFromSecureStore();
   await deleteLocalSdkStorage();
 }
@@ -208,10 +215,25 @@ async function resolveSeedForSdk(mnemonic?: string): Promise<string | null> {
   }
 
   if (walletMode === "passkey") {
+    const cached = await getSeedFromSecureStore();
+    const lastMs = await getLastPasskeyVerificationMs();
+
+    if (cached) {
+      if (lastMs == null) {
+        await notePasskeyVerification();
+        return cached;
+      }
+      if (!isPasskeyRefreshDue(lastMs)) {
+        return cached;
+      }
+      await deleteSeedFromSecureStore();
+    }
+
     const result = await continueWithPasskey(walletLabel ?? undefined, {
       intent: "openExisting",
     });
-    await deleteSeedFromSecureStore();
+    await saveSeedToSecureStore(result.mnemonic);
+    await notePasskeyVerification();
     return result.mnemonic;
   }
 

@@ -16,8 +16,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
-import { getSeedFromSecureStore } from "@/utils/breezService";
-import { exportMnemonicFromPasskey } from "@/utils/passkeyService";
+import { getSeedFromSecureStore, saveSeedToSecureStore } from "@/utils/breezService";
+import { passkeySensitiveUnlock } from "@/utils/passkeyVerificationPolicy";
 
 type Stage = "choose" | "seed" | "verify" | "done";
 
@@ -80,7 +80,11 @@ export default function BackupScreen() {
 
   const loadSeedPhrase = async () => {
     if (isPasskeyWallet) {
-      const seed = await exportMnemonicFromPasskey(settings.walletLabel ?? undefined);
+      if (Platform.OS === "web") {
+        return null;
+      }
+      const seed = await passkeySensitiveUnlock(settings.walletLabel);
+      await saveSeedToSecureStore(seed);
       return seed;
     }
     return getSeedFromSecureStore();
