@@ -14,6 +14,8 @@ import {
   decodeInvoice,
 } from "../lib/breez.js";
 
+// Legacy prototype path: this route talks to the single server wallet.
+// Consumer Agent Access now lives under /api/agent-access and relays to the user's device.
 const router: IRouter = Router();
 
 router.use(agentAuthMiddleware as any);
@@ -46,7 +48,8 @@ router.get("/transactions", async (req: AuthenticatedRequest, res) => {
 router.post("/send", async (req: AuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { bolt11: string; amountSats?: number };
   if (!body.bolt11) {
-    return res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    return;
   }
 
   try {
@@ -56,7 +59,8 @@ router.post("/send", async (req: AuthenticatedRequest, res): Promise<void> => {
     const reservation = await reserveAgentSpend(req.agentKey!.id, amountSats);
     if (!reservation.ok) {
       await logAgentAction(req.agentKey!.id, "send", "rejected", reservation.error, amountSats);
-      return res.status(403).json({ error: "spending_limit", message: reservation.error });
+      res.status(403).json({ error: "spending_limit", message: reservation.error });
+      return;
     }
 
     let paymentSent = false;
@@ -83,7 +87,8 @@ router.post("/send", async (req: AuthenticatedRequest, res): Promise<void> => {
 router.post("/receive", async (req: AuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { amountSats: number; description?: string };
   if (!body.amountSats || body.amountSats <= 0) {
-    return res.status(400).json({ error: "invalid_amount", message: "amountSats must be a positive number" });
+    res.status(400).json({ error: "invalid_amount", message: "amountSats must be a positive number" });
+    return;
   }
 
   try {
@@ -101,7 +106,8 @@ router.post("/receive", async (req: AuthenticatedRequest, res): Promise<void> =>
 router.post("/decode-invoice", async (req: AuthenticatedRequest, res): Promise<void> => {
   const body = req.body as { bolt11: string };
   if (!body.bolt11) {
-    return res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    return;
   }
   try {
     const decoded = await decodeInvoice(body.bolt11);

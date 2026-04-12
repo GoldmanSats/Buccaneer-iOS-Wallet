@@ -4,10 +4,14 @@ import walletRouter from "./wallet.js";
 import settingsRouter from "./settings.js";
 import agentKeysRouter from "./agentKeys.js";
 import agentApiRouter from "./agentApi.js";
+import ownerAuthRouter from "./ownerAuth.js";
+import agentAccessRouter from "./agentAccess.js";
 
 const router = Router();
 
 router.use(healthRouter);
+router.use("/owner-auth", ownerAuthRouter);
+router.use("/agent-access", agentAccessRouter);
 router.use("/wallet", walletRouter);
 router.use("/settings", settingsRouter);
 router.use("/agent-keys", agentKeysRouter);

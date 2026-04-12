@@ -8,6 +8,8 @@ import { eq } from "drizzle-orm";
 import { getBalance, sendPayment, listPayments, decodeInvoice, receivePayment } from "./breez.js";
 import { reserveAgentSpend, releaseAgentSpend } from "./agentAuth.js";
 
+// Legacy prototype relay for the single server wallet.
+// New per-user NWC lives in perUserNwc.ts and routes requests back to the wallet device.
 function bytesToHex(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("hex");
 }

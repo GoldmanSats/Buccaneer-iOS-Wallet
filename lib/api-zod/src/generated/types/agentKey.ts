@@ -5,13 +5,18 @@
  * Buccaneer Wallet API
  * OpenAPI spec version: 0.1.0
  */
+import type { AgentKeyConnectionType } from "./agentKeyConnectionType";
 
 export interface AgentKey {
   id: number;
   name: string;
-  nwcUri: string;
-  spendingLimitSats?: number;
+  nwcUri?: string | null;
+  apiToken?: string | null;
+  spendingLimitSats?: number | null;
+  maxDailySats?: number | null;
+  spentToday: number;
+  connectionType: AgentKeyConnectionType;
   createdAt: Date;
-  lastUsedAt?: Date;
+  lastUsedAt?: Date | null;
   isActive: boolean;
 }

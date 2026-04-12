@@ -134,13 +134,25 @@ export interface UpdateSettingsRequest {
   lightningAddress?: string;
 }
 
+export type AgentKeyConnectionType =
+  (typeof AgentKeyConnectionType)[keyof typeof AgentKeyConnectionType];
+
+export const AgentKeyConnectionType = {
+  api: "api",
+  nwc: "nwc",
+} as const;
+
 export interface AgentKey {
   id: number;
   name: string;
-  nwcUri: string;
-  spendingLimitSats?: number;
+  nwcUri?: string | null;
+  apiToken?: string | null;
+  spendingLimitSats?: number | null;
+  maxDailySats?: number | null;
+  spentToday: number;
+  connectionType: AgentKeyConnectionType;
   createdAt: string;
-  lastUsedAt?: string;
+  lastUsedAt?: string | null;
   isActive: boolean;
 }
 
@@ -148,9 +160,94 @@ export interface AgentKeyList {
   keys: AgentKey[];
 }
 
+export type CreateAgentKeyRequestConnectionType =
+  (typeof CreateAgentKeyRequestConnectionType)[keyof typeof CreateAgentKeyRequestConnectionType];
+
+export const CreateAgentKeyRequestConnectionType = {
+  api: "api",
+  nwc: "nwc",
+} as const;
+
 export interface CreateAgentKeyRequest {
   name: string;
   spendingLimitSats?: number;
+  maxDailySats?: number;
+  connectionType?: CreateAgentKeyRequestConnectionType;
+}
+
+export interface UpdateAgentKeyRequest {
+  name?: string;
+  spendingLimitSats?: number | null;
+  maxDailySats?: number | null;
+  isActive?: boolean;
+}
+
+export interface AgentLog {
+  id: number;
+  action: string;
+  amount?: number | null;
+  status: string;
+  detail?: string | null;
+  createdAt: string;
+}
+
+export interface AgentLogList {
+  logs: AgentLog[];
+}
+
+export interface BootstrapOwnerDeviceRequest {
+  publicKey: string;
+  label: string;
+}
+
+export interface OwnerDevice {
+  id: number;
+  publicKey: string;
+  label: string;
+  createdAt: string;
+}
+
+export interface OwnerAuthChallengeRequest {
+  publicKey: string;
+}
+
+export interface OwnerAuthChallengeResponse {
+  challengeId: number;
+  nonce: string;
+  expiresAt: string;
+  deviceLabel: string;
+  serverTime: string;
+}
+
+export interface OwnerAuthVerifyRequest {
+  challengeId: number;
+  publicKey: string;
+  signature: string;
+}
+
+export type OwnerSessionResponseDevice = {
+  id: number;
+  label: string;
+  publicKey: string;
+};
+
+export interface OwnerSessionResponse {
+  sessionToken: string;
+  expiresAt: string;
+  device: OwnerSessionResponseDevice;
+}
+
+export type OwnerSessionStatusSession = {
+  sessionId: number;
+  expiresAt: string;
+  deviceId: number;
+  label: string;
+  publicKey: string;
+};
+
+export interface OwnerSessionStatus {
+  ok: boolean;
+  session: OwnerSessionStatusSession;
 }
 
 export interface DeleteResponse {

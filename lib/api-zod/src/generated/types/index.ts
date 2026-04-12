@@ -7,10 +7,15 @@
  */
 
 export * from "./agentKey";
+export * from "./agentKeyConnectionType";
 export * from "./agentKeyList";
+export * from "./agentLog";
+export * from "./agentLogList";
 export * from "./apiError";
+export * from "./bootstrapOwnerDeviceRequest";
 export * from "./btcPrice";
 export * from "./createAgentKeyRequest";
+export * from "./createAgentKeyRequestConnectionType";
 export * from "./createInvoiceRequest";
 export * from "./createInvoiceResponse";
 export * from "./decodedInvoice";
@@ -20,6 +25,14 @@ export * from "./getBtcPriceParams";
 export * from "./getTransactionsParams";
 export * from "./healthStatus";
 export * from "./lightningAddressInfo";
+export * from "./ownerAuthChallengeRequest";
+export * from "./ownerAuthChallengeResponse";
+export * from "./ownerAuthVerifyRequest";
+export * from "./ownerDevice";
+export * from "./ownerSessionResponse";
+export * from "./ownerSessionResponseDevice";
+export * from "./ownerSessionStatus";
+export * from "./ownerSessionStatusSession";
 export * from "./seedPhraseResponse";
 export * from "./sendPaymentRequest";
 export * from "./sendPaymentResponse";
@@ -27,6 +40,7 @@ export * from "./transaction";
 export * from "./transactionList";
 export * from "./transactionStatus";
 export * from "./transactionType";
+export * from "./updateAgentKeyRequest";
 export * from "./updateSettingsRequest";
 export * from "./updateSettingsRequestPrimaryDisplay";
 export * from "./userSettings";

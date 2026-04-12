@@ -13,6 +13,8 @@ tags:
     description: Lightning wallet operations
   - name: settings
     description: User settings
+  - name: owner-auth
+    description: Owner device authentication and sessions
   - name: agent-keys
     description: NWC agent key management
 paths:
@@ -225,7 +227,9 @@ paths:
     get:
       operationId: getAgentKeys
       tags: [agent-keys]
-      summary: Get all NWC agent keys
+      summary: Get all agent keys
+      security:
+        - ownerSessionHeader: []
       responses:
         "200":
           description: List of agent keys
@@ -236,7 +240,9 @@ paths:
     post:
       operationId: createAgentKey
       tags: [agent-keys]
-      summary: Create a new NWC agent key
+      summary: Create a new agent key
+      security:
+        - ownerSessionHeader: []
       requestBody:
         required: true
         content:
@@ -252,10 +258,37 @@ paths:
                 $ref: "#/components/schemas/AgentKey"
 
   /agent-keys/{id}:
+    patch:
+      operationId: updateAgentKey
+      tags: [agent-keys]
+      summary: Update an agent key
+      security:
+        - ownerSessionHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAgentKeyRequest"
+      responses:
+        "200":
+          description: Agent key updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentKey"
     delete:
       operationId: deleteAgentKey
       tags: [agent-keys]
       summary: Delete an agent key
+      security:
+        - ownerSessionHeader: []
       parameters:
         - name: id
           in: path
@@ -269,6 +302,141 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
+
+  /agent-keys/{id}/logs:
+    get:
+      operationId: getAgentKeyLogs
+      tags: [agent-keys]
+      summary: Get recent agent key activity
+      security:
+        - ownerSessionHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Agent key activity log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentLogList"
+
+  /owner-auth/bootstrap/device:
+    post:
+      operationId: bootstrapOwnerDevice
+      tags: [owner-auth]
+      summary: Register or relabel an owner device
+      security:
+        - ownerBootstrapHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BootstrapOwnerDeviceRequest"
+      responses:
+        "200":
+          description: Owner device updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerDevice"
+        "201":
+          description: Owner device created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerDevice"
+
+  /owner-auth/register-initial-device:
+    post:
+      operationId: registerInitialOwnerDevice
+      tags: [owner-auth]
+      summary: Register the first trusted owner device when none exists yet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BootstrapOwnerDeviceRequest"
+      responses:
+        "201":
+          description: First owner device created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerDevice"
+
+  /owner-auth/challenge:
+    post:
+      operationId: createOwnerAuthChallenge
+      tags: [owner-auth]
+      summary: Create an owner auth challenge for a registered device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OwnerAuthChallengeRequest"
+      responses:
+        "200":
+          description: Challenge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerAuthChallengeResponse"
+
+  /owner-auth/verify:
+    post:
+      operationId: verifyOwnerAuthChallenge
+      tags: [owner-auth]
+      summary: Verify a signed owner auth challenge and issue a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OwnerAuthVerifyRequest"
+      responses:
+        "200":
+          description: Owner session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerSessionResponse"
+
+  /owner-auth/logout:
+    post:
+      operationId: logoutOwnerSession
+      tags: [owner-auth]
+      summary: Revoke the current owner session
+      security:
+        - ownerSessionHeader: []
+      responses:
+        "200":
+          description: Owner session revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /owner-auth/status:
+    get:
+      operationId: getOwnerSessionStatus
+      tags: [owner-auth]
+      summary: Get the current owner session status
+      security:
+        - ownerSessionHeader: []
+      responses:
+        "200":
+          description: Active owner session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerSessionStatus"
 
   /wallet/seed-phrase:
     get:
@@ -284,6 +452,15 @@ paths:
                 $ref: "#/components/schemas/SeedPhraseResponse"
 
 components:
+  securitySchemes:
+    ownerSessionHeader:
+      type: apiKey
+      in: header
+      name: X-Owner-Session
+    ownerBootstrapHeader:
+      type: apiKey
+      in: header
+      name: X-Wallet-Owner
   schemas:
     HealthStatus:
       type: object
@@ -475,17 +652,31 @@ components:
           type: string
         nwcUri:
           type: string
+          nullable: true
+        apiToken:
+          type: string
+          nullable: true
         spendingLimitSats:
           type: integer
+          nullable: true
+        maxDailySats:
+          type: integer
+          nullable: true
+        spentToday:
+          type: integer
+        connectionType:
+          type: string
+          enum: [api, nwc]
         createdAt:
           type: string
           format: date-time
         lastUsedAt:
           type: string
           format: date-time
+          nullable: true
         isActive:
           type: boolean
-      required: [id, name, nwcUri, isActive, createdAt]
+      required: [id, name, spentToday, connectionType, isActive, createdAt]
 
     AgentKeyList:
       type: object
@@ -503,7 +694,155 @@ components:
           type: string
         spendingLimitSats:
           type: integer
+        maxDailySats:
+          type: integer
+        connectionType:
+          type: string
+          enum: [api, nwc]
       required: [name]
+
+    UpdateAgentKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        spendingLimitSats:
+          type: integer
+          nullable: true
+        maxDailySats:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+
+    AgentLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        amount:
+          type: integer
+          nullable: true
+        status:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, action, status, createdAt]
+
+    AgentLogList:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentLog"
+      required: [logs]
+
+    BootstrapOwnerDeviceRequest:
+      type: object
+      properties:
+        publicKey:
+          type: string
+        label:
+          type: string
+      required: [publicKey, label]
+
+    OwnerDevice:
+      type: object
+      properties:
+        id:
+          type: integer
+        publicKey:
+          type: string
+        label:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, publicKey, label, createdAt]
+
+    OwnerAuthChallengeRequest:
+      type: object
+      properties:
+        publicKey:
+          type: string
+      required: [publicKey]
+
+    OwnerAuthChallengeResponse:
+      type: object
+      properties:
+        challengeId:
+          type: integer
+        nonce:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        deviceLabel:
+          type: string
+        serverTime:
+          type: string
+          format: date-time
+      required: [challengeId, nonce, expiresAt, deviceLabel, serverTime]
+
+    OwnerAuthVerifyRequest:
+      type: object
+      properties:
+        challengeId:
+          type: integer
+        publicKey:
+          type: string
+        signature:
+          type: string
+      required: [challengeId, publicKey, signature]
+
+    OwnerSessionResponse:
+      type: object
+      properties:
+        sessionToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        device:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
+            publicKey:
+              type: string
+          required: [id, label, publicKey]
+      required: [sessionToken, expiresAt, device]
+
+    OwnerSessionStatus:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        session:
+          type: object
+          properties:
+            sessionId:
+              type: integer
+            expiresAt:
+              type: string
+              format: date-time
+            deviceId:
+              type: integer
+            label:
+              type: string
+            publicKey:
+              type: string
+          required: [sessionId, expiresAt, deviceId, label, publicKey]
+      required: [ok, session]
 
     DeleteResponse:
       type: object

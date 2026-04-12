@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx ./src/index.ts",
     "build": "tsx ./build.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "DATABASE_URL=postgres://test:test@127.0.0.1:5432/test tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@breeztech/breez-sdk-liquid": "^0.12.1",
@@ -28,6 +29,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
+    "@types/ws": "^8.18.1",
     "esbuild": "^0.27.3",
     "tsx": "catalog:"
   }

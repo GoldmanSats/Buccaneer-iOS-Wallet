@@ -3,6 +3,11 @@ export const APP_SHELL_TITLE = {
   fontSize: 28,
 } as const;
 
+export const APP_SUBPAGE_TITLE = {
+  fontFamily: "Nunito_700Bold",
+  fontSize: 24,
+} as const;
+
 export const TASK_SHEET_TITLE = {
   fontFamily: "Nunito_700Bold",
   fontSize: 20,

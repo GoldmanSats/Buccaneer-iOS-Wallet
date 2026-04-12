@@ -5,8 +5,11 @@
  * Buccaneer Wallet API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateAgentKeyRequestConnectionType } from "./createAgentKeyRequestConnectionType";
 
 export interface CreateAgentKeyRequest {
   name: string;
   spendingLimitSats?: number;
+  maxDailySats?: number;
+  connectionType?: CreateAgentKeyRequestConnectionType;
 }

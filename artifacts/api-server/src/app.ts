@@ -12,7 +12,7 @@ if (process.env.NODE_ENV !== "production") {
   app.use((_req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Owner-Session, X-Wallet-Owner, X-Wallet-Agent-Session");
     if (_req.method === "OPTIONS") { res.sendStatus(200); return; }
     next();
   });

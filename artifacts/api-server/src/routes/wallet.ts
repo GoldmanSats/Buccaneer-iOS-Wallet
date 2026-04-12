@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { transactionMemosTable, transactionCacheTable, agentLogsTable, agentKeysTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -20,30 +20,19 @@ import {
   listUnclaimedDeposits,
   initBreezSdk,
 } from "../lib/breez.js";
+import { requireOwnerBootstrapAuth } from "../lib/ownerAuth.js";
 
 const router: IRouter = Router();
 
 const PUBLIC_PATHS = ["/btc-price", "/status"];
 
-function walletOwnerAuth(req: Request, res: Response, next: NextFunction): void {
-  if (PUBLIC_PATHS.some(p => req.path === p)) {
+router.use((req, res, next) => {
+  if (PUBLIC_PATHS.some((p) => req.path === p)) {
     next();
     return;
   }
-  const token = req.headers["x-wallet-owner"];
-  const expected = process.env["WALLET_OWNER_TOKEN"];
-  if (!expected) {
-    res.status(503).json({ error: "not_configured", message: "Wallet owner authentication is not configured" });
-    return;
-  }
-  if (!token || token !== expected) {
-    res.status(403).json({ error: "forbidden", message: "Wallet owner authentication required" });
-    return;
-  }
-  next();
-}
-
-router.use(walletOwnerAuth);
+  requireOwnerBootstrapAuth(req, res, next);
+});
 
 router.get("/balance", async (_req, res) => {
   try {
@@ -150,7 +139,8 @@ router.patch("/transactions/:id/memo", async (req, res) => {
     const txId = req.params["id"] ?? "";
     const { memo } = req.body as { memo: string };
     if (memo === undefined) {
-      return res.status(400).json({ error: "missing_memo" });
+      res.status(400).json({ error: "missing_memo" });
+      return;
     }
     await db.insert(transactionMemosTable)
       .values({ txId, memo, updatedAt: new Date() })
@@ -167,7 +157,8 @@ router.patch("/transactions/:id/memo", async (req, res) => {
 router.post("/prepare-send", async (req, res) => {
   const body = req.body as { destination: string; amountSats?: number };
   if (!body.destination) {
-    return res.status(400).json({ error: "missing_destination", message: "Payment destination is required" });
+    res.status(400).json({ error: "missing_destination", message: "Payment destination is required" });
+    return;
   }
   try {
     const result = await prepareSendPayment(body.destination, body.amountSats);
@@ -183,7 +174,8 @@ router.post("/prepare-send", async (req, res) => {
 router.post("/send", async (req, res) => {
   const body = req.body as { bolt11: string; amountSats?: number };
   if (!body.bolt11) {
-    return res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    return;
   }
   try {
     const result = await sendPayment(body.bolt11, body.amountSats);
@@ -196,7 +188,8 @@ router.post("/send", async (req, res) => {
 router.post("/decode-invoice", async (req, res) => {
   const body = req.body as { bolt11: string };
   if (!body.bolt11) {
-    return res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    res.status(400).json({ error: "missing_bolt11", message: "BOLT11 invoice is required" });
+    return;
   }
   try {
     const decoded = await decodeInvoice(body.bolt11);
@@ -209,7 +202,8 @@ router.post("/decode-invoice", async (req, res) => {
 router.post("/parse", async (req, res) => {
   const body = req.body as { input: string };
   if (!body.input) {
-    return res.status(400).json({ error: "missing_input" });
+    res.status(400).json({ error: "missing_input" });
+    return;
   }
   try {
     const parsed = await parseInput(body.input);
@@ -222,7 +216,8 @@ router.post("/parse", async (req, res) => {
 router.post("/receive", async (req, res) => {
   const body = req.body as { amountSats: number; description?: string };
   if (!body.amountSats || body.amountSats <= 0) {
-    return res.status(400).json({ error: "invalid_amount", message: "Valid amountSats required" });
+    res.status(400).json({ error: "invalid_amount", message: "Valid amountSats required" });
+    return;
   }
   try {
     const result = await receivePayment(body.amountSats, body.description);

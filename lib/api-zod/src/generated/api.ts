@@ -151,28 +151,62 @@ export const UpdateSettingsResponse = zod.object({
 });
 
 /**
- * @summary Get all NWC agent keys
+ * @summary Get all agent keys
  */
 export const GetAgentKeysResponse = zod.object({
   keys: zod.array(
     zod.object({
       id: zod.number(),
       name: zod.string(),
-      nwcUri: zod.string(),
-      spendingLimitSats: zod.number().optional(),
+      nwcUri: zod.string().nullish(),
+      apiToken: zod.string().nullish(),
+      spendingLimitSats: zod.number().nullish(),
+      maxDailySats: zod.number().nullish(),
+      spentToday: zod.number(),
+      connectionType: zod.enum(["api", "nwc"]),
       createdAt: zod.date(),
-      lastUsedAt: zod.date().optional(),
+      lastUsedAt: zod.date().nullish(),
       isActive: zod.boolean(),
     }),
   ),
 });
 
 /**
- * @summary Create a new NWC agent key
+ * @summary Create a new agent key
  */
 export const CreateAgentKeyBody = zod.object({
   name: zod.string(),
   spendingLimitSats: zod.number().optional(),
+  maxDailySats: zod.number().optional(),
+  connectionType: zod.enum(["api", "nwc"]).optional(),
+});
+
+/**
+ * @summary Update an agent key
+ */
+export const UpdateAgentKeyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAgentKeyBody = zod.object({
+  name: zod.string().optional(),
+  spendingLimitSats: zod.number().nullish(),
+  maxDailySats: zod.number().nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateAgentKeyResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  nwcUri: zod.string().nullish(),
+  apiToken: zod.string().nullish(),
+  spendingLimitSats: zod.number().nullish(),
+  maxDailySats: zod.number().nullish(),
+  spentToday: zod.number(),
+  connectionType: zod.enum(["api", "nwc"]),
+  createdAt: zod.date(),
+  lastUsedAt: zod.date().nullish(),
+  isActive: zod.boolean(),
 });
 
 /**
@@ -184,6 +218,104 @@ export const DeleteAgentKeyParams = zod.object({
 
 export const DeleteAgentKeyResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary Get recent agent key activity
+ */
+export const GetAgentKeyLogsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAgentKeyLogsResponse = zod.object({
+  logs: zod.array(
+    zod.object({
+      id: zod.number(),
+      action: zod.string(),
+      amount: zod.number().nullish(),
+      status: zod.string(),
+      detail: zod.string().nullish(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Register or relabel an owner device
+ */
+export const BootstrapOwnerDeviceBody = zod.object({
+  publicKey: zod.string(),
+  label: zod.string(),
+});
+
+export const BootstrapOwnerDeviceResponse = zod.object({
+  id: zod.number(),
+  publicKey: zod.string(),
+  label: zod.string(),
+  createdAt: zod.date(),
+});
+
+/**
+ * @summary Register the first trusted owner device when none exists yet
+ */
+export const RegisterInitialOwnerDeviceBody = zod.object({
+  publicKey: zod.string(),
+  label: zod.string(),
+});
+
+/**
+ * @summary Create an owner auth challenge for a registered device
+ */
+export const CreateOwnerAuthChallengeBody = zod.object({
+  publicKey: zod.string(),
+});
+
+export const CreateOwnerAuthChallengeResponse = zod.object({
+  challengeId: zod.number(),
+  nonce: zod.string(),
+  expiresAt: zod.date(),
+  deviceLabel: zod.string(),
+  serverTime: zod.date(),
+});
+
+/**
+ * @summary Verify a signed owner auth challenge and issue a session
+ */
+export const VerifyOwnerAuthChallengeBody = zod.object({
+  challengeId: zod.number(),
+  publicKey: zod.string(),
+  signature: zod.string(),
+});
+
+export const VerifyOwnerAuthChallengeResponse = zod.object({
+  sessionToken: zod.string(),
+  expiresAt: zod.date(),
+  device: zod.object({
+    id: zod.number(),
+    label: zod.string(),
+    publicKey: zod.string(),
+  }),
+});
+
+/**
+ * @summary Revoke the current owner session
+ */
+export const LogoutOwnerSessionResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get the current owner session status
+ */
+export const GetOwnerSessionStatusResponse = zod.object({
+  ok: zod.boolean(),
+  session: zod.object({
+    sessionId: zod.number(),
+    expiresAt: zod.date(),
+    deviceId: zod.number(),
+    label: zod.string(),
+    publicKey: zod.string(),
+  }),
 });
 
 /**

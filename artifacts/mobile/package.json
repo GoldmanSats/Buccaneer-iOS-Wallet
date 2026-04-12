@@ -64,20 +64,21 @@
     "@expo-google-fonts/chewy": "^0.4.0",
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo-google-fonts/pirata-one": "^0.4.1",
+    "@noble/curves": "1.8.1",
     "bip39": "^3.1.0",
     "buffer": "^6.0.3",
+    "expo": "~54.0.33",
     "expo-audio": "^1.1.1",
     "expo-camera": "^55.0.9",
     "expo-clipboard": "^55.0.8",
     "expo-dev-client": "~6.0.20",
     "expo-local-authentication": "^55.0.9",
     "expo-secure-store": "^55.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
     "react-native-fs": "^2.20.0",
     "react-native-get-random-values": "^2.0.0",
     "react-native-passkey": "^3.3.3",
-    "react-native-qrcode-svg": "^6.3.21",
-    "expo": "~54.0.33",
-    "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native-qrcode-svg": "^6.3.21"
   }
 }

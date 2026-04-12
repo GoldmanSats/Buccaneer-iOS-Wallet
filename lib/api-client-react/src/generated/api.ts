@@ -19,7 +19,9 @@ import type {
 import type {
   AgentKey,
   AgentKeyList,
+  AgentLogList,
   ApiError,
+  BootstrapOwnerDeviceRequest,
   BtcPrice,
   CreateAgentKeyRequest,
   CreateInvoiceRequest,
@@ -31,10 +33,17 @@ import type {
   GetTransactionsParams,
   HealthStatus,
   LightningAddressInfo,
+  OwnerAuthChallengeRequest,
+  OwnerAuthChallengeResponse,
+  OwnerAuthVerifyRequest,
+  OwnerDevice,
+  OwnerSessionResponse,
+  OwnerSessionStatus,
   SeedPhraseResponse,
   SendPaymentRequest,
   SendPaymentResponse,
   TransactionList,
+  UpdateAgentKeyRequest,
   UpdateSettingsRequest,
   UserSettings,
   WalletBalance,
@@ -882,7 +891,7 @@ export const useUpdateSettings = <
 };
 
 /**
- * @summary Get all NWC agent keys
+ * @summary Get all agent keys
  */
 export const getGetAgentKeysUrl = () => {
   return `/api/agent-keys`;
@@ -933,7 +942,7 @@ export type GetAgentKeysQueryResult = NonNullable<
 export type GetAgentKeysQueryError = ErrorType<unknown>;
 
 /**
- * @summary Get all NWC agent keys
+ * @summary Get all agent keys
  */
 
 export function useGetAgentKeys<
@@ -957,7 +966,7 @@ export function useGetAgentKeys<
 }
 
 /**
- * @summary Create a new NWC agent key
+ * @summary Create a new agent key
  */
 export const getCreateAgentKeyUrl = () => {
   return `/api/agent-keys`;
@@ -1020,7 +1029,7 @@ export type CreateAgentKeyMutationBody = BodyType<CreateAgentKeyRequest>;
 export type CreateAgentKeyMutationError = ErrorType<unknown>;
 
 /**
- * @summary Create a new NWC agent key
+ * @summary Create a new agent key
  */
 export const useCreateAgentKey = <
   TError = ErrorType<unknown>,
@@ -1040,6 +1049,93 @@ export const useCreateAgentKey = <
   TContext
 > => {
   return useMutation(getCreateAgentKeyMutationOptions(options));
+};
+
+/**
+ * @summary Update an agent key
+ */
+export const getUpdateAgentKeyUrl = (id: number) => {
+  return `/api/agent-keys/${id}`;
+};
+
+export const updateAgentKey = async (
+  id: number,
+  updateAgentKeyRequest: UpdateAgentKeyRequest,
+  options?: RequestInit,
+): Promise<AgentKey> => {
+  return customFetch<AgentKey>(getUpdateAgentKeyUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateAgentKeyRequest),
+  });
+};
+
+export const getUpdateAgentKeyMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAgentKey>>,
+    TError,
+    { id: number; data: BodyType<UpdateAgentKeyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAgentKey>>,
+  TError,
+  { id: number; data: BodyType<UpdateAgentKeyRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateAgentKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAgentKey>>,
+    { id: number; data: BodyType<UpdateAgentKeyRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAgentKey(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAgentKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAgentKey>>
+>;
+export type UpdateAgentKeyMutationBody = BodyType<UpdateAgentKeyRequest>;
+export type UpdateAgentKeyMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an agent key
+ */
+export const useUpdateAgentKey = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAgentKey>>,
+    TError,
+    { id: number; data: BodyType<UpdateAgentKeyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAgentKey>>,
+  TError,
+  { id: number; data: BodyType<UpdateAgentKeyRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateAgentKeyMutationOptions(options));
 };
 
 /**
@@ -1125,6 +1221,600 @@ export const useDeleteAgentKey = <
 > => {
   return useMutation(getDeleteAgentKeyMutationOptions(options));
 };
+
+/**
+ * @summary Get recent agent key activity
+ */
+export const getGetAgentKeyLogsUrl = (id: number) => {
+  return `/api/agent-keys/${id}/logs`;
+};
+
+export const getAgentKeyLogs = async (
+  id: number,
+  options?: RequestInit,
+): Promise<AgentLogList> => {
+  return customFetch<AgentLogList>(getGetAgentKeyLogsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAgentKeyLogsQueryKey = (id: number) => {
+  return [`/api/agent-keys/${id}/logs`] as const;
+};
+
+export const getGetAgentKeyLogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAgentKeyLogs>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAgentKeyLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAgentKeyLogsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAgentKeyLogs>>> = ({
+    signal,
+  }) => getAgentKeyLogs(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAgentKeyLogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAgentKeyLogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAgentKeyLogs>>
+>;
+export type GetAgentKeyLogsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get recent agent key activity
+ */
+
+export function useGetAgentKeyLogs<
+  TData = Awaited<ReturnType<typeof getAgentKeyLogs>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAgentKeyLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAgentKeyLogsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Register or relabel an owner device
+ */
+export const getBootstrapOwnerDeviceUrl = () => {
+  return `/api/owner-auth/bootstrap/device`;
+};
+
+export const bootstrapOwnerDevice = async (
+  bootstrapOwnerDeviceRequest: BootstrapOwnerDeviceRequest,
+  options?: RequestInit,
+): Promise<OwnerDevice> => {
+  return customFetch<OwnerDevice>(getBootstrapOwnerDeviceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bootstrapOwnerDeviceRequest),
+  });
+};
+
+export const getBootstrapOwnerDeviceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bootstrapOwnerDevice>>,
+    TError,
+    { data: BodyType<BootstrapOwnerDeviceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bootstrapOwnerDevice>>,
+  TError,
+  { data: BodyType<BootstrapOwnerDeviceRequest> },
+  TContext
+> => {
+  const mutationKey = ["bootstrapOwnerDevice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bootstrapOwnerDevice>>,
+    { data: BodyType<BootstrapOwnerDeviceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return bootstrapOwnerDevice(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BootstrapOwnerDeviceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bootstrapOwnerDevice>>
+>;
+export type BootstrapOwnerDeviceMutationBody =
+  BodyType<BootstrapOwnerDeviceRequest>;
+export type BootstrapOwnerDeviceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Register or relabel an owner device
+ */
+export const useBootstrapOwnerDevice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bootstrapOwnerDevice>>,
+    TError,
+    { data: BodyType<BootstrapOwnerDeviceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof bootstrapOwnerDevice>>,
+  TError,
+  { data: BodyType<BootstrapOwnerDeviceRequest> },
+  TContext
+> => {
+  return useMutation(getBootstrapOwnerDeviceMutationOptions(options));
+};
+
+/**
+ * @summary Register the first trusted owner device when none exists yet
+ */
+export const getRegisterInitialOwnerDeviceUrl = () => {
+  return `/api/owner-auth/register-initial-device`;
+};
+
+export const registerInitialOwnerDevice = async (
+  bootstrapOwnerDeviceRequest: BootstrapOwnerDeviceRequest,
+  options?: RequestInit,
+): Promise<OwnerDevice> => {
+  return customFetch<OwnerDevice>(getRegisterInitialOwnerDeviceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bootstrapOwnerDeviceRequest),
+  });
+};
+
+export const getRegisterInitialOwnerDeviceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerInitialOwnerDevice>>,
+    TError,
+    { data: BodyType<BootstrapOwnerDeviceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerInitialOwnerDevice>>,
+  TError,
+  { data: BodyType<BootstrapOwnerDeviceRequest> },
+  TContext
+> => {
+  const mutationKey = ["registerInitialOwnerDevice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerInitialOwnerDevice>>,
+    { data: BodyType<BootstrapOwnerDeviceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerInitialOwnerDevice(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterInitialOwnerDeviceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerInitialOwnerDevice>>
+>;
+export type RegisterInitialOwnerDeviceMutationBody =
+  BodyType<BootstrapOwnerDeviceRequest>;
+export type RegisterInitialOwnerDeviceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Register the first trusted owner device when none exists yet
+ */
+export const useRegisterInitialOwnerDevice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerInitialOwnerDevice>>,
+    TError,
+    { data: BodyType<BootstrapOwnerDeviceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerInitialOwnerDevice>>,
+  TError,
+  { data: BodyType<BootstrapOwnerDeviceRequest> },
+  TContext
+> => {
+  return useMutation(getRegisterInitialOwnerDeviceMutationOptions(options));
+};
+
+/**
+ * @summary Create an owner auth challenge for a registered device
+ */
+export const getCreateOwnerAuthChallengeUrl = () => {
+  return `/api/owner-auth/challenge`;
+};
+
+export const createOwnerAuthChallenge = async (
+  ownerAuthChallengeRequest: OwnerAuthChallengeRequest,
+  options?: RequestInit,
+): Promise<OwnerAuthChallengeResponse> => {
+  return customFetch<OwnerAuthChallengeResponse>(
+    getCreateOwnerAuthChallengeUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(ownerAuthChallengeRequest),
+    },
+  );
+};
+
+export const getCreateOwnerAuthChallengeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOwnerAuthChallenge>>,
+    TError,
+    { data: BodyType<OwnerAuthChallengeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOwnerAuthChallenge>>,
+  TError,
+  { data: BodyType<OwnerAuthChallengeRequest> },
+  TContext
+> => {
+  const mutationKey = ["createOwnerAuthChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOwnerAuthChallenge>>,
+    { data: BodyType<OwnerAuthChallengeRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOwnerAuthChallenge(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOwnerAuthChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOwnerAuthChallenge>>
+>;
+export type CreateOwnerAuthChallengeMutationBody =
+  BodyType<OwnerAuthChallengeRequest>;
+export type CreateOwnerAuthChallengeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an owner auth challenge for a registered device
+ */
+export const useCreateOwnerAuthChallenge = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOwnerAuthChallenge>>,
+    TError,
+    { data: BodyType<OwnerAuthChallengeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOwnerAuthChallenge>>,
+  TError,
+  { data: BodyType<OwnerAuthChallengeRequest> },
+  TContext
+> => {
+  return useMutation(getCreateOwnerAuthChallengeMutationOptions(options));
+};
+
+/**
+ * @summary Verify a signed owner auth challenge and issue a session
+ */
+export const getVerifyOwnerAuthChallengeUrl = () => {
+  return `/api/owner-auth/verify`;
+};
+
+export const verifyOwnerAuthChallenge = async (
+  ownerAuthVerifyRequest: OwnerAuthVerifyRequest,
+  options?: RequestInit,
+): Promise<OwnerSessionResponse> => {
+  return customFetch<OwnerSessionResponse>(getVerifyOwnerAuthChallengeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ownerAuthVerifyRequest),
+  });
+};
+
+export const getVerifyOwnerAuthChallengeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyOwnerAuthChallenge>>,
+    TError,
+    { data: BodyType<OwnerAuthVerifyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyOwnerAuthChallenge>>,
+  TError,
+  { data: BodyType<OwnerAuthVerifyRequest> },
+  TContext
+> => {
+  const mutationKey = ["verifyOwnerAuthChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyOwnerAuthChallenge>>,
+    { data: BodyType<OwnerAuthVerifyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyOwnerAuthChallenge(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyOwnerAuthChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyOwnerAuthChallenge>>
+>;
+export type VerifyOwnerAuthChallengeMutationBody =
+  BodyType<OwnerAuthVerifyRequest>;
+export type VerifyOwnerAuthChallengeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Verify a signed owner auth challenge and issue a session
+ */
+export const useVerifyOwnerAuthChallenge = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyOwnerAuthChallenge>>,
+    TError,
+    { data: BodyType<OwnerAuthVerifyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyOwnerAuthChallenge>>,
+  TError,
+  { data: BodyType<OwnerAuthVerifyRequest> },
+  TContext
+> => {
+  return useMutation(getVerifyOwnerAuthChallengeMutationOptions(options));
+};
+
+/**
+ * @summary Revoke the current owner session
+ */
+export const getLogoutOwnerSessionUrl = () => {
+  return `/api/owner-auth/logout`;
+};
+
+export const logoutOwnerSession = async (
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getLogoutOwnerSessionUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getLogoutOwnerSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logoutOwnerSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logoutOwnerSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["logoutOwnerSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logoutOwnerSession>>,
+    void
+  > = () => {
+    return logoutOwnerSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogoutOwnerSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logoutOwnerSession>>
+>;
+
+export type LogoutOwnerSessionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Revoke the current owner session
+ */
+export const useLogoutOwnerSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logoutOwnerSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logoutOwnerSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getLogoutOwnerSessionMutationOptions(options));
+};
+
+/**
+ * @summary Get the current owner session status
+ */
+export const getGetOwnerSessionStatusUrl = () => {
+  return `/api/owner-auth/status`;
+};
+
+export const getOwnerSessionStatus = async (
+  options?: RequestInit,
+): Promise<OwnerSessionStatus> => {
+  return customFetch<OwnerSessionStatus>(getGetOwnerSessionStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOwnerSessionStatusQueryKey = () => {
+  return [`/api/owner-auth/status`] as const;
+};
+
+export const getGetOwnerSessionStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOwnerSessionStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnerSessionStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOwnerSessionStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOwnerSessionStatus>>
+  > = ({ signal }) => getOwnerSessionStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnerSessionStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOwnerSessionStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOwnerSessionStatus>>
+>;
+export type GetOwnerSessionStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the current owner session status
+ */
+
+export function useGetOwnerSessionStatus<
+  TData = Awaited<ReturnType<typeof getOwnerSessionStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnerSessionStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOwnerSessionStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get wallet seed phrase (protected)

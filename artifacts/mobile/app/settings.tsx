@@ -32,6 +32,7 @@ import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
 import { APP_SHELL_TITLE } from "@/constants/typography";
 import { clearLocalWalletData } from "@/utils/breezService";
 import { deleteWalletBackup } from "@/utils/icloudBackup";
+import { clearWalletAgentAccessLocalState } from "@/utils/walletAgentAccess";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "NZD", "AUD", "CAD", "JPY", "CHF"];
 const FIAT_LABELS: Record<string, string> = {
@@ -131,6 +132,7 @@ export default function SettingsScreen() {
     try {
       await clearLocalWalletData();
       await deleteWalletBackup();
+      await clearWalletAgentAccessLocalState();
     } catch {}
     await updateSettings({
       onboardingDone: false,
@@ -239,8 +241,8 @@ export default function SettingsScreen() {
               <MaterialCommunityIcons name="robot" size={20} color={colors.purple} />
             </View>
             <View style={s.rowText}>
-              <Text style={[s.rowLabel, { color: colors.text }]}>AI Agent Keys</Text>
-              <Text style={[s.rowSub, { color: colors.textMuted }]}>Let AI agents use your wallet</Text>
+              <Text style={[s.rowLabel, { color: colors.text }]}>Agent Access</Text>
+              <Text style={[s.rowSub, { color: colors.textMuted }]}>Link AI agents to only this wallet with Face ID approval</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </Pressable>
@@ -651,8 +653,6 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   modalTitle: { fontFamily: "Chewy_400Regular", fontSize: 24, marginBottom: 8 },
-  modalWarningText: {
-    fontFamily: "Nunito_700Bold",
   modalDescriptionText: {
     fontFamily: "Nunito_600SemiBold",
     fontSize: 14,
@@ -660,10 +660,12 @@ const s = StyleSheet.create({
     textAlign: "center",
     marginBottom: 12,
   },
+  modalWarningText: {
+    fontFamily: "Nunito_700Bold",
     fontSize: 14,
+    lineHeight: 22,
     color: "#EF4444",
     textAlign: "center",
-    lineHeight: 22,
     marginBottom: 12,
   },
   modalNoteText: {

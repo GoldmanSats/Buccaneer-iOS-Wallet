@@ -1,28 +1,14 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { agentKeysTable, agentLogsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { deriveNwcPubkey, refreshNwcSubscriptions } from "../lib/nwc.js";
 import { hashAgentSecret } from "../lib/agentSecrets.js";
+import { requireOwnerSession } from "../lib/ownerAuth.js";
 
 const router: IRouter = Router();
-
-function walletOwnerAuth(req: Request, res: Response, next: NextFunction): void {
-  const token = req.headers["x-wallet-owner"];
-  const expected = process.env["WALLET_OWNER_TOKEN"];
-  if (!expected) {
-    res.status(503).json({ error: "not_configured", message: "Wallet owner authentication is not configured" });
-    return;
-  }
-  if (!token || token !== expected) {
-    res.status(403).json({ error: "forbidden", message: "Wallet owner authentication required" });
-    return;
-  }
-  next();
-}
-
-router.use(walletOwnerAuth);
+router.use(requireOwnerSession as any);
 
 function generateNwcUri(servicePubkey: string, clientSecret: string): string {
   const relay = "wss://relay.damus.io";
