@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { MIDNIGHT, DAYLIGHT } from "@/constants/colors";
@@ -57,6 +58,27 @@ export default function SendScreen() {
   const successStyle = useAnimatedStyle(() => ({
     transform: [{ scale: successScale.value }],
   }));
+
+  const cannonPlayer = useAudioPlayer(require("@/assets/sounds/cannon_fire.wav"));
+  const playCannonSound = useCallback(() => {
+    if (!settings.soundEffectsEnabled) return;
+    try {
+      cannonPlayer.seekTo(0);
+      cannonPlayer.play();
+    } catch (e) {
+      console.warn("Cannon sound failed", e);
+    }
+  }, [cannonPlayer, settings.soundEffectsEnabled]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: "mixWithOthers",
+    }).catch((e) => {
+      console.warn("Cannon audio mode failed", e);
+    });
+  }, []);
 
   const topPad = insets.top;
   const bottomPad = insets.bottom + 16;
@@ -306,6 +328,7 @@ export default function SendScreen() {
       setResult(res);
       successScale.value = withSpring(1, { damping: 12 });
       setStage("success");
+      playCannonSound();
       if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Payment failed");
@@ -337,12 +360,8 @@ export default function SendScreen() {
     <View style={[styles.container, { paddingTop: topPad, backgroundColor: colors.bg }]}>
       {isDark && <LinearGradient colors={[colors.bg, "#0A1020"]} style={StyleSheet.absoluteFill} />}
 
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]} testID="send-back-button">
-          <Ionicons name="chevron-back" size={22} color={colors.textMuted} />
-        </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Send</Text>
-        <View style={{ width: 44 }} />
+      <View style={styles.headerHandle}>
+        <View style={[styles.handleBar, { backgroundColor: colors.border }]} />
       </View>
 
       <KeyboardAvoidingView
@@ -354,6 +373,8 @@ export default function SendScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Send</Text>
+
           {stage === "scan" && (
             <Animated.View entering={FadeIn} style={{ gap: 20 }}>
               <View style={styles.scannerBox}>
@@ -398,7 +419,7 @@ export default function SendScreen() {
           )}
 
           {stage === "paste" && (
-            <Animated.View entering={FadeIn} style={styles.scanStage}>
+            <Animated.View entering={FadeIn} style={styles.pasteStage}>
               <View style={[styles.invoiceCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
                 <View style={styles.invoiceCardHeader}>
                   <Ionicons name="key-outline" size={16} color={colors.textMuted} />
@@ -409,7 +430,7 @@ export default function SendScreen() {
                   style={[
                     styles.invoiceTextArea,
                     { backgroundColor: isDark ? "rgba(11,20,38,0.5)" : colors.bgInput, color: colors.text, borderColor: decodedInvoice ? (isDark ? colors.coral : colors.coralDark) : colors.border + "60" },
-                    decodedInvoice && { minHeight: 60 },
+                    decodedInvoice && styles.invoiceTextAreaCompact,
                   ]}
                   placeholder="Paste lightning invoice, Bitcoin address, or LNURL..."
                   placeholderTextColor={colors.textMuted + "80"}
@@ -523,8 +544,6 @@ export default function SendScreen() {
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-              <View style={{ flex: 1 }} />
-
               <View style={styles.scanActions}>
                 {decodedInvoice ? (
                   <Pressable
@@ -617,24 +636,17 @@ export default function SendScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+  headerHandle: { alignItems: "center", paddingVertical: 10 },
+  handleBar: { width: 40, height: 4, borderRadius: 2 },
+  content: { paddingHorizontal: 24, gap: 16, flexGrow: 1 },
+  pageTitle: {
+    ...TASK_SHEET_TITLE,
+    alignSelf: "flex-start",
+    marginTop: 8,
+    marginBottom: 20,
   },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
-  title: TASK_SHEET_TITLE,
-  content: { padding: 20, gap: 16, flexGrow: 1 },
   scannerBox: {
+    width: "100%",
     height: 300,
     backgroundColor: "#000",
     borderRadius: 20,
@@ -658,12 +670,12 @@ const styles = StyleSheet.create({
     bottom: 28,
     textTransform: "uppercase",
   },
-  scanStage: { flex: 1, gap: 16 },
+  pasteStage: { gap: 16 },
   invoiceCard: {
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
-    gap: 12,
+    gap: 10,
   },
   invoiceCardHeader: {
     flexDirection: "row",
@@ -682,6 +694,12 @@ const styles = StyleSheet.create({
     fontFamily: "Nunito_400Regular",
     fontSize: 15,
     borderWidth: 1,
+  },
+  invoiceTextAreaCompact: {
+    minHeight: 60,
+    maxHeight: 120,
+    fontSize: 13,
+    padding: 12,
   },
   scanActions: { gap: 12 },
   sendCoralBtn: {
@@ -725,7 +743,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   warningText: { flex: 1, fontFamily: "Nunito_400Regular", fontSize: 12, lineHeight: 18 },
-  confirmBtn: { borderRadius: 14, overflow: "hidden", marginTop: 8 },
+  confirmBtn: { borderRadius: 14, overflow: "hidden" },
   confirmGradient: {
     flexDirection: "row",
     alignItems: "center",

@@ -410,13 +410,14 @@ export default function HomeScreen() {
 
   const bellPlayer = useAudioPlayer(require("@/assets/sounds/ships_bell.wav"));
   const playBellSound = useCallback(() => {
+    if (!settings.soundEffectsEnabled) return;
     try {
       bellPlayer.seekTo(0);
       bellPlayer.play();
     } catch (e) {
       console.warn("Bell sound failed", e);
     }
-  }, [bellPlayer]);
+  }, [bellPlayer, settings.soundEffectsEnabled]);
 
   const previousTxStateRef = useRef<Map<string, { type: string; status: string }>>(new Map());
   const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -482,6 +483,13 @@ export default function HomeScreen() {
     glowTimerRef.current = setTimeout(() => setGlowTxId(null), 2500);
   }, [playBellSound, receiveOpen, refetchBalance]);
 
+  const handleSendSuccess = useCallback((tx: TxType) => {
+    refetchBalance();
+    if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
+    setGlowTxId(tx.id);
+    glowTimerRef.current = setTimeout(() => setGlowTxId(null), 2500);
+  }, [refetchBalance]);
+
   useEffect(() => {
     const currentTxState = new Map(
       transactions.map((tx: any) => [
@@ -518,8 +526,24 @@ export default function HomeScreen() {
       handleReceiveSuccess(mostRecent as TxType);
     }
 
+    const newlyCompletedSends = transactions.filter((tx: any) => {
+      const txId = tx.id || `${tx.timestamp}-${tx.amountSats}`;
+      const previous = previousTxState.get(txId);
+      const isCompletedSend = tx.type === "send" && tx.status === "completed";
+      if (!isCompletedSend) return false;
+      if (!previous) return true;
+      return previous.type !== "send" || previous.status !== "completed";
+    });
+
+    if (newlyCompletedSends.length > 0) {
+      const mostRecentSend = [...newlyCompletedSends].sort(
+        (a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
+      )[0];
+      handleSendSuccess(mostRecentSend as TxType);
+    }
+
     previousTxStateRef.current = currentTxState;
-  }, [transactions, handleReceiveSuccess]);
+  }, [transactions, handleReceiveSuccess, handleSendSuccess]);
 
   const receiveDismissGesture = Gesture.Pan()
     .activeOffsetY([0, 15])
