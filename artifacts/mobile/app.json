@@ -24,8 +24,7 @@
         "CFBundleDisplayName": "Bellamy Wallet",
         "CFBundleName": "Bellamy Wallet",
         "NSFaceIDUsageDescription": "Bellamy Wallet uses Face ID to secure your wallet",
-        "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["remote-notification"]
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -56,13 +55,7 @@
           "enablePasskey": true
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#0B1426"
-        }
-      ]
+      "expo-notifications"
     ],
     "extra": {
       "passkeyRpId": "bellamywallet.com",
