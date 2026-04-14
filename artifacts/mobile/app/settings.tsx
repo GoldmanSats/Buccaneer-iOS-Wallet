@@ -230,24 +230,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <Text style={[s.sectionHeader, { color: colors.textMuted }]}>AGENT ACCESS</Text>
-        <View style={[s.card, { backgroundColor: colors.bgCard, borderColor: cardBorder }]}>
-          <Pressable
-            testID="agent-keys-row"
-            style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.bgElevated + "50" }]}
-            onPress={() => router.push("/agent-keys")}
-          >
-            <View style={[s.iconBox, { backgroundColor: isDark ? "rgba(147,51,234,0.15)" : "rgba(124,58,237,0.1)" }]}>
-              <MaterialCommunityIcons name="robot" size={20} color={colors.purple} />
-            </View>
-            <View style={s.rowText}>
-              <Text style={[s.rowLabel, { color: colors.text }]}>Agent Access</Text>
-              <Text style={[s.rowSub, { color: colors.textMuted }]}>Link AI agents to only this wallet with Face ID approval</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-          </Pressable>
-        </View>
-
         <Text style={[s.sectionHeader, { color: colors.textMuted }]}>PREFERENCES</Text>
         <View style={[s.card, { backgroundColor: colors.bgCard, borderColor: cardBorder }]}>
           <Pressable
