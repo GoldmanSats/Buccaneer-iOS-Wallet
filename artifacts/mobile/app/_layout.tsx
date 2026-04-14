@@ -1,5 +1,4 @@
 import "@/polyfills";
-import "@/utils/backgroundNotificationTask";
 import {
   Nunito_400Regular,
   Nunito_500Medium,
